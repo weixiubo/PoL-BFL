@@ -8,6 +8,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -215,7 +216,8 @@ def create_model(model_name: str, num_classes: int = 10, input_channels: int = 3
     else:
         raise ValueError(f"Unknown model: {model_name}")
     
-    logger.info(f"Created {model_name} model")
+    if str(os.getenv('POL_SUPPRESS_MODEL_INFO', '0')).strip().lower() not in ('1', 'true', 'yes', 'on'):
+        logger.info(f"Created {model_name} model")
     return model
 
 
