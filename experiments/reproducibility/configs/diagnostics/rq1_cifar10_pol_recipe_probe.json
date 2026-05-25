@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "runner": "experiments/scripts/runners/run_rq1_security.py",
+  "output_root": "experiments/results/reproduction/formal/diagnostics/pol_recipe_probe_20260521",
+  "protocol": {
+    "pol_remote_mode": "strict_replay",
+    "pol_integrity": 1,
+    "distance_only_allowed_for_claims": false
+  },
+  "execution": {
+    "rounds": 10,
+    "num_clients": 50,
+    "clients_per_round": 10,
+    "local_epochs": 5,
+    "batch_size": 128,
+    "learning_rate": 0.05,
+    "momentum": 0.9,
+    "weight_decay": 0.0005,
+    "seeds": [42],
+    "data_distribution": "IID"
+  },
+  "datasets": [
+    {"name": "CIFAR10", "model": "ResNet18", "data_distribution": "IID"}
+  ],
+  "attacks": ["free_riding_no_training"],
+  "baselines": ["PoL_FL"],
+  "acceptance": {
+    "ma_min_delta_pp": -1.0,
+    "dr_min_delta_pp": -1.0,
+    "fpr_max_delta_pp": 1.0
+  }
+}

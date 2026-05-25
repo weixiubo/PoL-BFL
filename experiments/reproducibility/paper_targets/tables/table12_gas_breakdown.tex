@@ -1,0 +1,21 @@
+% Table 12: Gas Cost Breakdown
+% Data source: result.md §2.3
+
+\begin{table}[t]
+\centering
+\caption{Gas Cost Breakdown per Round (@30 gwei, \$2500/ETH).}
+\label{tab:gas_breakdown}
+\small
+\begin{tabular}{l|cc}
+\toprule
+\textbf{Operation} & \textbf{Gas} & \textbf{Cost (USD)} \\
+\midrule
+Submit Commitment & 85,000 & \$0.32 \\
+Submit ZK Proof & 120,000 & \$0.45 \\
+Claim Reward & 45,000 & \$0.17 \\
+Slash Penalty & 65,000 & \$0.24 \\
+\midrule
+\textbf{Average/round} & $\sim$225,000 & \textbf{\$0.85} \\
+\bottomrule
+\end{tabular}
+\end{table}

@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "runner": "experiments/scripts/runners/run_rq1_security.py",
+  "output_root": "experiments/results/reproduction/formal/rq1_main_security",
+  "protocol": {
+    "pol_remote_mode": "strict_replay",
+    "pol_integrity": 1,
+    "distance_only_allowed_for_claims": false
+  },
+  "execution": {
+    "rounds": 200,
+    "num_clients": 50,
+    "clients_per_round": 50,
+    "local_epochs": 5,
+    "verification_rate": 0.2,
+    "seeds": [42],
+    "data_distribution": "IID"
+  },
+  "datasets": [
+    {
+      "name": "CIFAR10",
+      "model": "ResNet18",
+      "data_distribution": "IID",
+      "batch_size": 32,
+      "learning_rate": 0.01,
+      "momentum": 0.9,
+      "weight_decay": 0.0005
+    },
+    {"name": "CIFAR100", "model": "ResNet34", "data_distribution": "IID"},
+    {"name": "FEMNIST", "model": "SimpleCNN", "data_distribution": "Natural_Writer"}
+  ],
+  "attacks": [
+    "free_riding_no_training",
+    "free_riding_lazy_training",
+    "byzantine_random_noise",
+    "byzantine_model_replacement",
+    "byzantine_alie",
+    "byzantine_minmax",
+    "data_poisoning",
+    "sybil"
+  ],
+  "baselines": ["Vanilla_FL", "Krum", "ShapleyFL", "FoolsGold", "SDEA", "PoL_FL"],
+  "acceptance": {
+    "ma_min_delta_pp": -1.0,
+    "dr_min_delta_pp": -1.0,
+    "fpr_max_delta_pp": 1.0
+  }
+}

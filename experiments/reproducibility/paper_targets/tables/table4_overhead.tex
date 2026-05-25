@@ -1,0 +1,19 @@
+% Table 4: System Overhead Comparison (PoL-BFL LAST column)
+% Data source: result.md §2.1 + §9.4
+
+\begin{table}[t]
+\centering
+\caption{System Overhead Comparison on CIFAR-10.}
+\label{tab:overhead}
+\small
+\begin{tabular}{l|cccc}
+\toprule
+\textbf{Metric} & \textbf{Vanilla} & \textbf{Veriblock-FL} & \textbf{kaizen} & \textbf{PoL-BFL} \\
+\midrule
+Time/round (s) & 52.3 & 1850.2 & 265.8 & \textbf{78.5} \\
+Comm (MB/round) & 98.5 & 520.5 & 312.5 & \textbf{178.2} \\
+Gas (USD/round) & 0 & 5.20 & 2.85 & \textbf{0.85} \\
+Storage (MB/client) & 0 & 45.8 & 12.8 & \textbf{2.5} \\
+\bottomrule
+\end{tabular}
+\end{table}

@@ -1,0 +1,20 @@
+% Table 9: Adaptive Attacker Evaluation
+% Data source: result.md §9.2
+
+\begin{table}[h]
+\centering
+\caption{Adaptive Attacker Evaluation on CIFAR-10. Forge/Train: ratio of forging cost to honest training cost.}
+\label{tab:adaptive}
+\small
+\begin{tabular}{l|cccc}
+\toprule
+\textbf{Attack Variant} & \textbf{DR} & \textbf{FPR} & \textbf{Forge/Train} & \textbf{Profitable?} \\
+\midrule
+Baseline (NT) & 96.5 & 2.1 & -- & No \\
+Checkpoint Interpolation & 94.2 & 2.8 & 1.8$\times$ & No \\
+Gradient Mimicry & 91.5 & 3.2 & 2.3$\times$ & No \\
+Partial Replay & 88.8 & 3.5 & 1.2$\times$ & No \\
+Combined Adaptive & 85.2 & 4.0 & 2.8$\times$ & No \\
+\bottomrule
+\end{tabular}
+\end{table}

@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "runner": "experiments/scripts/runners/run_rq9_adaptive.py",
+  "output_root": "experiments/results/reproduction/formal/rq9_adaptive",
+  "protocol": {
+    "pol_integrity": 1,
+    "pol_remote_mode": "strict_replay",
+    "enable_sybil_detector": true
+  },
+  "execution": {
+    "rounds": 200,
+    "num_clients": 50,
+    "clients_per_round": 10,
+    "local_epochs": 5,
+    "seeds": [42],
+    "dirichlet_alpha": 0.5
+  },
+  "variants": [
+    "baseline_nt",
+    "checkpoint_interpolation",
+    "gradient_mimicry",
+    "partial_replay",
+    "combined_adaptive"
+  ],
+  "datasets": ["CIFAR10"],
+  "model": "ResNet18",
+  "metrics": ["DR", "FPR", "MA", "attack_cost"]
+}

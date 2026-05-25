@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "runner": "experiments/scripts/runners/run_rq2_layer_contribution.py",
+  "output_root": "experiments/results/reproduction/formal/rq2_layer_ablation",
+  "protocol": {
+    "pol_integrity": 1,
+    "validation_target_table": "table2_layer_contribution"
+  },
+  "execution": {
+    "rounds": 200,
+    "num_clients": 50,
+    "clients_per_round": 10,
+    "local_epochs": 5,
+    "seeds": [42]
+  },
+  "layers": ["L1_training_trajectory", "L2_strict_replay", "L3_commitment_zkp"],
+  "datasets": ["CIFAR10", "CIFAR100", "FEMNIST"],
+  "attacks": ["free_riding_no_training", "byzantine_alie", "sybil"],
+  "metrics": ["DR", "FPR", "MA"]
+}

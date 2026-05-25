@@ -1,0 +1,45 @@
+% Table 1: Main Security Results (8 attacks × 3 datasets, multirow, PoL-BFL last column)
+% Data source: result.md §1.1-1.3
+
+\begin{table*}[t]
+\centering
+\caption{Main Security Results across 8 attacks and 3 datasets.}
+\label{tab:main_security}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{ll|c|ccc|ccc|ccc|ccc|ccc}
+\toprule
+\textbf{Dataset} & \textbf{Attack} & \textbf{Vanilla} & \multicolumn{3}{c|}{\textbf{Krum}} & \multicolumn{3}{c|}{\textbf{SDEA}} & \multicolumn{3}{c|}{\textbf{ShapleyFL}} & \multicolumn{3}{c|}{\textbf{FoolsGold}} & \multicolumn{3}{c}{\textbf{PoL-BFL}} \\
+& & MA & MA & DR & FPR & MA & DR & FPR & MA & DR & FPR & MA & DR & FPR & MA & DR & FPR \\
+\midrule
+\multirow{8}{*}{CIFAR-10}
+& Free-riding (NT) & 67.2 & 72.5 & 15.2 & 8.5 & 74.8 & 18.3 & 9.2 & 81.3 & 72.5 & 12.3 & 73.1 & 12.5 & 7.8 & \textbf{86.8} & \textbf{96.5} & \textbf{2.1} \\
+& Free-riding (LT) & 69.5 & 73.8 & 12.8 & 7.2 & 75.2 & 15.6 & 8.1 & 79.6 & 68.2 & 10.5 & 74.5 & 10.2 & 6.5 & \textbf{85.2} & \textbf{92.3} & \textbf{2.5} \\
+& Byzantine (Random) & 58.3 & 76.5 & 62.5 & 5.8 & 79.8 & 75.2 & 4.5 & 71.2 & 35.8 & 8.2 & 68.5 & 28.3 & 6.2 & \textbf{84.2} & \textbf{91.5} & \textbf{2.8} \\
+& Model Replacement & 52.1 & 74.2 & 58.3 & 6.2 & 78.5 & 72.8 & 5.1 & 68.5 & 32.5 & 9.5 & 65.2 & 25.6 & 7.5 & \textbf{83.5} & \textbf{89.2} & \textbf{3.1} \\
+& ALIE & 48.5 & 68.2 & 45.2 & 7.5 & 78.2 & 68.5 & 5.8 & 62.5 & 28.6 & 11.2 & 58.3 & 22.5 & 8.5 & \textbf{82.8} & \textbf{85.6} & \textbf{3.5} \\
+& MinMax & 46.2 & 66.5 & 42.8 & 8.2 & 77.5 & 66.2 & 6.2 & 60.8 & 26.5 & 12.5 & 56.2 & 20.8 & 9.2 & \textbf{82.0} & \textbf{84.0} & \textbf{3.8} \\
+& Data Poisoning & 55.2 & 72.8 & 52.3 & 6.8 & 76.5 & 65.8 & 5.2 & 65.3 & 30.2 & 10.5 & 62.1 & 25.8 & 7.2 & \textbf{81.5} & \textbf{82.3} & \textbf{3.2} \\
+& Sybil & 45.8 & 65.2 & 32.5 & 8.2 & 67.8 & 35.2 & 7.8 & 68.5 & 42.8 & 7.5 & 78.5 & 75.2 & 5.5 & \textbf{84.5} & \textbf{92.8} & \textbf{2.5} \\
+\cmidrule{1-18}
+\multirow{8}{*}{FEMNIST}
+& Free-riding (NT) & 85.2 & 88.5 & 16.5 & 7.2 & 89.2 & 19.2 & 8.0 & 90.8 & 73.8 & 11.5 & 88.5 & 14.5 & 6.5 & \textbf{92.5} & \textbf{96.8} & \textbf{2.0} \\
+& Free-riding (LT) & 86.0 & 88.8 & 14.2 & 6.5 & 89.5 & 17.0 & 7.2 & 90.2 & 69.5 & 9.8 & 89.0 & 11.8 & 5.8 & \textbf{92.0} & \textbf{93.8} & \textbf{2.2} \\
+& Byzantine (Random) & 78.5 & 89.8 & 63.5 & 5.2 & 91.2 & 77.2 & 4.0 & 87.5 & 37.2 & 7.5 & 86.8 & 31.5 & 5.8 & \textbf{92.2} & \textbf{92.5} & \textbf{2.5} \\
+& Model Replacement & 74.2 & 88.5 & 59.2 & 5.5 & 90.5 & 74.5 & 4.5 & 85.8 & 34.2 & 8.2 & 84.5 & 29.2 & 6.2 & \textbf{91.8} & \textbf{90.5} & \textbf{2.8} \\
+& ALIE & 72.5 & 86.2 & 47.2 & 6.2 & 89.5 & 71.2 & 5.0 & 82.5 & 31.5 & 9.5 & 79.8 & 27.5 & 7.0 & \textbf{91.2} & \textbf{87.5} & \textbf{3.0} \\
+& MinMax & 70.8 & 85.0 & 44.2 & 6.8 & 88.8 & 69.2 & 5.5 & 80.8 & 29.2 & 10.2 & 78.0 & 25.2 & 7.8 & \textbf{90.5} & \textbf{85.5} & \textbf{3.2} \\
+& Data Poisoning & 76.5 & 87.8 & 54.2 & 5.8 & 90.0 & 67.2 & 4.8 & 84.2 & 34.8 & 8.8 & 82.5 & 29.2 & 6.2 & \textbf{91.5} & \textbf{84.2} & \textbf{2.8} \\
+& Sybil & 69.5 & 82.5 & 34.2 & 7.0 & 83.5 & 37.2 & 6.8 & 84.2 & 44.5 & 6.5 & 89.2 & 77.2 & 5.0 & \textbf{92.5} & \textbf{93.8} & \textbf{2.2} \\
+\cmidrule{1-18}
+\multirow{8}{*}{CIFAR-100}
+& Free-riding (NT) & 42.5 & 48.2 & 12.5 & 9.5 & 50.5 & 16.5 & 10.2 & 55.8 & 70.2 & 13.5 & 48.8 & 10.5 & 8.5 & \textbf{62.5} & \textbf{95.8} & \textbf{2.5} \\
+& Free-riding (LT) & 44.2 & 49.5 & 10.2 & 8.2 & 51.2 & 14.2 & 9.0 & 54.2 & 66.5 & 11.5 & 50.2 & 8.8 & 7.2 & \textbf{61.2} & \textbf{91.5} & \textbf{2.8} \\
+& Byzantine (Random) & 35.2 & 50.5 & 58.5 & 6.5 & 54.8 & 72.5 & 5.2 & 46.2 & 32.5 & 9.2 & 44.5 & 26.5 & 7.0 & \textbf{59.8} & \textbf{89.5} & \textbf{3.2} \\
+& Model Replacement & 32.8 & 48.2 & 55.2 & 7.0 & 53.2 & 70.2 & 5.8 & 43.5 & 30.2 & 10.5 & 42.2 & 24.5 & 8.2 & \textbf{58.5} & \textbf{87.2} & \textbf{3.5} \\
+& ALIE & 32.5 & 45.2 & 42.5 & 8.2 & 52.8 & 65.2 & 6.5 & 40.5 & 25.8 & 12.2 & 38.5 & 20.5 & 9.5 & \textbf{58.2} & \textbf{83.5} & \textbf{4.0} \\
+& MinMax & 30.8 & 43.5 & 40.2 & 8.8 & 51.5 & 63.5 & 7.0 & 38.8 & 23.5 & 13.5 & 36.2 & 18.8 & 10.2 & \textbf{57.0} & \textbf{81.5} & \textbf{4.2} \\
+& Data Poisoning & 35.8 & 48.5 & 50.2 & 7.5 & 51.2 & 62.5 & 6.0 & 42.8 & 28.5 & 11.5 & 40.2 & 23.5 & 8.0 & \textbf{56.8} & \textbf{80.2} & \textbf{3.8} \\
+& Sybil & 28.5 & 42.5 & 30.5 & 9.0 & 44.8 & 32.8 & 8.8 & 45.2 & 40.2 & 8.5 & 52.5 & 72.5 & 6.2 & \textbf{60.5} & \textbf{91.2} & \textbf{2.8} \\
+\bottomrule
+\end{tabular}}
+\end{table*}

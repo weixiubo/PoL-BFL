@@ -1,0 +1,28 @@
+% Table 5: Composability with Robust Aggregation (multirow)
+% Data source: result.md §4
+
+\begin{table}[t]
+\centering
+\caption{PoL-BFL + Robust Aggregation on CIFAR-10. }
+\label{tab:composability}
+\small
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{ll|ccc|ccc}
+\toprule
+\textbf{Aggregation} & \textbf{Attack} & \multicolumn{3}{c|}{\textbf{Standalone}} & \multicolumn{3}{c}{\textbf{+ PoL-BFL}} \\
+& & MA & DR & FPR & MA & DR & FPR \\
+\midrule
+\multirow{2}{*}{Krum} 
+& ALIE & 68.2 & 45.2 & 7.5 & \textbf{73.5} & \textbf{85.6} & \textbf{3.5} \\
+& Free-riding & 72.5 & 15.2 & 8.5 & \textbf{85.2} & \textbf{96.5} & \textbf{2.1} \\
+\cmidrule{1-8}
+\multirow{2}{*}{Trimmed Mean} 
+& ALIE & 72.5 & 52.8 & 5.8 & \textbf{77.8} & \textbf{87.2} & \textbf{3.2} \\
+& Free-riding & 74.5 & 18.5 & 6.5 & \textbf{86.0} & \textbf{97.0} & \textbf{2.0} \\
+\cmidrule{1-8}
+\multirow{2}{*}{Median} 
+& ALIE & 70.2 & 48.5 & 6.5 & \textbf{75.5} & \textbf{86.0} & \textbf{3.4} \\
+& Free-riding & 73.2 & 16.8 & 7.2 & \textbf{85.5} & \textbf{96.8} & \textbf{2.1} \\
+\bottomrule
+\end{tabular}}
+\end{table}

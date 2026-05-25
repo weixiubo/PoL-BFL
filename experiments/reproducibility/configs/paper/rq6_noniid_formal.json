@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "runner": "experiments/scripts/runners/run_rq6_noniid.py",
+  "output_root": "experiments/results/reproduction/formal/rq6_noniid",
+  "protocol": {
+    "pol_integrity": 1,
+    "pol_remote_mode": "strict_replay"
+  },
+  "execution": {
+    "rounds": 200,
+    "num_clients": 50,
+    "clients_per_round": 10,
+    "local_epochs": 5,
+    "seeds": [42]
+  },
+  "dataset": "CIFAR10",
+  "model": "ResNet18",
+  "dirichlet_alphas": [0.1, 0.5, 1.0, "IID"],
+  "attacks": ["free_riding_no_training", "byzantine_alie"],
+  "baselines": ["Vanilla_FL", "PoL_FL"]
+}

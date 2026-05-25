@@ -1,0 +1,86 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.pytest_cache/
+.hypothesis/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Notebooks and local IDE files
+.ipynb_checkpoints/
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Datasets and generated experiment artifacts
+data/
+datasets/
+downloads/
+pol_data/
+experiments/results/
+experiments/logs/
+experiments/checkpoints/
+experiments/plots/
+results/
+logs/
+checkpoints/
+*.log
+*.out
+nohup.out
+*.tmp
+*.pt
+*.pth
+*.ckpt
+*.pkl
+*.parquet
+
+# Blockchain build outputs
+chainEnv/build/
+chainEnv/reports/
+chainEnv/.ganache/
+chainEnv/.hypothesis/
+chainEnv/interfaces/
+
+# ZKP generated artifacts
+circuits/build/
+circuits/ptau/
+*.r1cs
+*.zkey
+*.wasm
+*.sym
+*.wtns
+proof_*.json
+public_*.json
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Local configuration and secrets
+.env
+.env.*
+config.local.py
+*.pem
+*.key
+
+# Backups
+*.bak
+*.backup.*
+*_backup_*/
+backup_*/

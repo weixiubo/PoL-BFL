@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "runner": "experiments/scripts/runners/run_rq4_incentive.py",
+  "output_root": "experiments/results/reproduction/formal/rq4_incentive",
+  "protocol": {
+    "pol_integrity": 1,
+    "enable_incentives": true
+  },
+  "execution": {
+    "rounds": 50,
+    "num_clients": 20,
+    "clients_per_round": 10,
+    "seeds": [42]
+  },
+  "dataset": "CIFAR10",
+  "model": "ResNet18",
+  "attacks": ["free_riding_no_training", "byzantine_random_noise"],
+  "metrics": ["reward", "penalty", "reputation", "stake_slash", "utility"]
+}

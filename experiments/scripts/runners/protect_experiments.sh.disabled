@@ -1,0 +1,63 @@
+#!/bin/bash
+
+# Protect running experiments - restart if they die
+# Usage: nohup bash protect_experiments.sh &
+
+LOG_FILE="/tmp/experiment_protection.log"
+
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
+}
+
+log "=========================================="
+log "Experiment Protection Script Started"
+log "=========================================="
+
+# Experiments to protect
+declare -A EXPERIMENTS
+EXPERIMENTS["/tmp/rq1_cifar10_byzantine_random_noise.log"]="cd /home/wxb/PoL引入区块链联邦学习/PoL-BFL/Code && CUDA_VISIBLE_DEVICES=0 CUBLAS_WORKSPACE_CONFIG=:4096:8 /home/wxb/miniconda3/envs/wxb__veryfl_pol/bin/python experiments/scripts/runners/run_rq1_security.py --dataset CIFAR10 --num_rounds 20 --attacks byzantine_random_noise --baselines PoL_FL"
+EXPERIMENTS["/tmp/rq1_cifar100_byzantine_random_noise.log"]="cd /home/wxb/PoL引入区块链联邦学习/PoL-BFL/Code && CUDA_VISIBLE_DEVICES=1 CUBLAS_WORKSPACE_CONFIG=:4096:8 /home/wxb/miniconda3/envs/wxb__veryfl_pol/bin/python experiments/scripts/runners/run_rq1_security.py --dataset CIFAR100 --num_rounds 20 --attacks byzantine_random_noise --baselines PoL_FL"
+
+# Check interval (seconds)
+CHECK_INTERVAL=300  # 5 minutes
+
+while true; do
+    for LOG_PATH in "${!EXPERIMENTS[@]}"; do
+        CMD="${EXPERIMENTS[$LOG_PATH]}"
+        EXP_NAME=$(basename "$LOG_PATH" .log)
+        
+        # Check if experiment is complete
+        if grep -q "Experiment completed successfully" "$LOG_PATH" 2>/dev/null; then
+            log "$EXP_NAME: Completed successfully"
+            unset EXPERIMENTS["$LOG_PATH"]
+            continue
+        fi
+        
+        # Check if process is running
+        if pgrep -f "$CMD" > /dev/null; then
+            # Get current round
+            ROUND=$(grep "Round " "$LOG_PATH" | tail -1 | grep -oP "Round \d+/\d+" || echo "Unknown")
+            log "$EXP_NAME: Running ($ROUND)"
+        else
+            log "$EXP_NAME: Process died! Restarting..."
+            
+            # Restart experiment
+            nohup bash -c "$CMD >> $LOG_PATH 2>&1" &
+            NEW_PID=$!
+            log "$EXP_NAME: Restarted with PID $NEW_PID"
+        fi
+    done
+    
+    # Exit if all experiments are done
+    if [ ${#EXPERIMENTS[@]} -eq 0 ]; then
+        log "All experiments completed. Exiting."
+        break
+    fi
+    
+    sleep $CHECK_INTERVAL
+done
+
+log "=========================================="
+log "Experiment Protection Script Ended"
+log "=========================================="
+

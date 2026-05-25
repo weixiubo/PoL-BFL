@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "runner": "experiments/scripts/runners/run_rq5_composability.py",
+  "output_root": "experiments/results/reproduction/formal/rq5_composability",
+  "protocol": {
+    "pol_integrity": 1,
+    "pol_remote_mode": "strict_replay"
+  },
+  "execution": {
+    "rounds": 200,
+    "num_clients": 50,
+    "clients_per_round": 10,
+    "local_epochs": 5,
+    "seeds": [42],
+    "data_distribution": "IID"
+  },
+  "dataset": "CIFAR10",
+  "model": "ResNet18",
+  "aggregations": ["Krum", "Trimmed Mean", "Median"],
+  "modes": ["Standalone", "+ PoL-BFL"],
+  "attacks": ["byzantine_alie", "free_riding_no_training"],
+  "baselines": ["Krum", "PoL_Krum", "Trimmed_Mean", "PoL_Trimmed_Mean", "Median", "PoL_Median"]
+}

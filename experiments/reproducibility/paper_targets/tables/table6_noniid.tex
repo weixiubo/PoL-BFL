@@ -1,0 +1,33 @@
+% Table 6: Non-IID Sensitivity (multirow)
+% Data source: result.md §7.1
+
+\begin{table}[h]
+\centering
+\caption{Non-IID Sensitivity using Dirichlet distribution $\alpha$.}
+\label{tab:noniid}
+\small
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{ll|cccc}
+\toprule
+\textbf{Dataset} & \textbf{Metric} & $\alpha$\textbf{=0.1} & $\alpha$\textbf{=0.5} & $\alpha$\textbf{=1.0} & \textbf{IID} \\
+\midrule
+\multirow{4}{*}{CIFAR-10} 
+& No Attack MA (\%) & 82.5 & 88.2 & 89.5 & 91.2 \\
+& Free-riding DR (\%) & 94.2 & 96.5 & 97.2 & 98.0 \\
+& ALIE DR (\%) & 80.5 & 85.6 & 86.8 & 88.2 \\
+& FPR (\%) & 4.8 & 2.5 & 2.0 & 1.5 \\
+\cmidrule{1-6}
+\multirow{4}{*}{FEMNIST} 
+& No Attack MA (\%) & 85.2 & 89.5 & 91.2 & 92.8 \\
+& Free-riding DR (\%) & 95.5 & 96.8 & 97.5 & 98.2 \\
+& ALIE DR (\%) & 82.8 & 87.5 & 88.5 & 89.5 \\
+& FPR (\%) & 4.2 & 2.2 & 1.8 & 1.2 \\
+\cmidrule{1-6}
+\multirow{4}{*}{CIFAR-100} 
+& No Attack MA (\%) & 52.5 & 58.2 & 60.5 & 62.5 \\
+& Free-riding DR (\%) & 92.5 & 95.8 & 96.5 & 97.2 \\
+& ALIE DR (\%) & 78.2 & 83.5 & 85.2 & 86.8 \\
+& FPR (\%) & 5.5 & 3.2 & 2.5 & 2.0 \\
+\bottomrule
+\end{tabular}}
+\end{table}

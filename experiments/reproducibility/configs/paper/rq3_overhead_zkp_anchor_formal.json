@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "runner": "experiments/scripts/runners/run_rq3_overhead.py",
+  "output_root": "experiments/results/reproduction/formal/rq3_overhead",
+  "protocol": {
+    "pol_integrity": 1,
+    "zkp_simulation": false,
+    "anchor_onchain": true
+  },
+  "execution": {
+    "rounds": 20,
+    "num_clients": 20,
+    "clients_per_round": 10,
+    "seeds": [42]
+  },
+  "measurements": [
+    "verification_latency",
+    "communication_overhead",
+    "zkp_prove_time",
+    "zkp_verify_time",
+    "gas_breakdown"
+  ],
+  "datasets": ["CIFAR10"],
+  "models": ["ResNet18"]
+}

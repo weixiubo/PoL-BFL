@@ -1,0 +1,17 @@
+{
+  "dataset": "CIFAR10",
+  "model": "ResNet18",
+  "rounds": 200,
+  "num_clients": 50,
+  "clients_per_round": 10,
+  "data_distribution": "IID",
+  "local_epochs": 5,
+  "attacks": [
+    "free_riding_no_training"
+  ],
+  "baselines": [
+    "Vanilla_FL"
+  ],
+  "gpu": "0",
+  "output_root": "experiments/results/reproduction/formal/rq1_table1"
+}

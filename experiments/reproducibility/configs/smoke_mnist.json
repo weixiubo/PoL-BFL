@@ -1,0 +1,16 @@
+{
+  "dataset": "MNIST",
+  "model": "SimpleCNN",
+  "rounds": 1,
+  "num_clients": 5,
+  "clients_per_round": 5,
+  "attacks": [
+    "no_attack",
+    "free_riding_no_training"
+  ],
+  "baselines": [
+    "Vanilla_FL",
+    "PoL_FL"
+  ],
+  "gpu": "cpu"
+}

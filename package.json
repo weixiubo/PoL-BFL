@@ -1,0 +1,15 @@
+{
+  "name": "pol-bfl",
+  "version": "1.0.0",
+  "description": "Blockchain-assisted federated learning with Proof-of-Learning verification, ZKP support, robust aggregation, and Sybil defense.",
+  "license": "MIT",
+  "private": false,
+  "devDependencies": {
+    "big-integer": "^1.6.52",
+    "circomlib": "^2.0.5",
+    "circomlibjs": "^0.0.8",
+    "ganache": "^7.9.2",
+    "ganache-cli": "^6.12.2",
+    "snarkjs": "^0.7.5"
+  }
+}

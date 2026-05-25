@@ -1,0 +1,23 @@
+% Table 11: ZK Proof Technical Specifications (with kaizen comparison)
+% Data source: result.md §2.2 + §9.4
+
+\begin{table}[t]
+\centering
+\caption{ZK Proof Technical Specifications on CIFAR-10.}
+\label{tab:zk_details}
+\small
+\begin{tabular}{l|cc|c}
+\toprule
+\textbf{Metric} & \textbf{PoL-BFL} & \textbf{kaizen} & \textbf{Ratio} \\
+\midrule
+Proof Gen Time & 4.2 s & 12.5 s & \textbf{3.0$\times$} \\
+Circuit Size & $\sim$1.1M & $\sim$4.5M & \textbf{4.1$\times$} \\
+Witness Computation & 1.8 s & 5.2 s & \textbf{2.9$\times$} \\
+Prover Memory & 2.5 GB & 8.2 GB & \textbf{3.3$\times$} \\
+Proof Size & 192 B & 192 B & 1$\times$ \\
+Verification Time & 8.5 ms & 8.5 ms & 1$\times$ \\
+Merkle Proof Size & 1.2 KB & -- & -- \\
+Total Verification & 52 ms & 8.5 ms & 0.16$\times$ \\
+\bottomrule
+\end{tabular}
+\end{table}

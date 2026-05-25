@@ -1,0 +1,30 @@
+% Table 2: Layer Contribution Analysis (ablation study, multirow)
+% Data source: result.md §1.4
+
+\begin{table}[t]
+\centering
+\caption{Layer Contribution Analysis (DR \%).}
+\label{tab:layer_contribution}
+\small
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{ll|cccc|c}
+\toprule
+\textbf{Dataset} & \textbf{Attack} & \textbf{L1 Only} & \textbf{L1+L2} & \textbf{L1+L3} & \textbf{Full} & \textbf{Dominant} \\
+\midrule
+\multirow{3}{*}{CIFAR-10}
+& Free-riding (NT) & 96.0 & 96.2 & 96.2 & 96.5 & L1 \\
+& ALIE & 78.2 & 85.0 & 78.5 & 85.6 & L2 \\
+& Sybil & 82.5 & 83.0 & 92.2 & 92.8 & L3 \\
+\cmidrule{1-7}
+\multirow{3}{*}{FEMNIST}
+& Free-riding (NT) & 96.5 & 96.6 & 96.6 & 96.8 & L1 \\
+& ALIE & 80.5 & 87.0 & 80.8 & 87.5 & L2 \\
+& Sybil & 84.2 & 84.5 & 93.2 & 93.8 & L3 \\
+\cmidrule{1-7}
+\multirow{3}{*}{CIFAR-100}
+& Free-riding (NT) & 95.2 & 95.5 & 95.5 & 95.8 & L1 \\
+& ALIE & 76.5 & 83.0 & 77.0 & 83.5 & L2 \\
+& Sybil & 80.5 & 81.0 & 90.8 & 91.2 & L3 \\
+\bottomrule
+\end{tabular}}
+\end{table}
