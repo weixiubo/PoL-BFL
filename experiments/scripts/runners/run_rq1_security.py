@@ -706,6 +706,173 @@ class SecurityExperiment:
         return clients, benign_updates
 
     @staticmethod
+    def _cpu_state_dict(model):
+        return OrderedDict(
+            (k, v.detach().cpu().clone())
+            for k, v in model.state_dict().items()
+        )
+
+    def _train_baseline_client_for_round(
+        self,
+        *,
+        idx: int,
+        round_num: int,
+        attack_type: str,
+        attack_params: dict,
+        malicious_set: set,
+        global_state: dict,
+        train_device: str,
+    ):
+        device = torch.device(train_device)
+        if device.type == 'cuda':
+            try:
+                torch.cuda.set_device(device)
+            except Exception:
+                pass
+
+        client_model = self.create_model().to(device)
+        client_model.load_state_dict(global_state)
+        is_malicious = int(idx) in malicious_set
+        train_loader = self.train_loaders[int(idx)]
+
+        def thread_loader(loader, tag='baseline'):
+            if str(os.getenv('POL_ENABLE_PARALLEL_CLIENT_TRAINING', '0')).strip().lower() in ('1', 'true', 'yes', 'on'):
+                try:
+                    base_seed = int(os.getenv('SEED', '42'))
+                except Exception:
+                    base_seed = 42
+                return self._thread_local_loader(
+                    loader,
+                    shuffle_seed=_stable_seed32(base_seed, round_num, tag, idx),
+                )
+            return loader
+
+        if is_malicious:
+            if 'byzantine' in attack_type:
+                attack_name = attack_type.replace('byzantine_', '')
+                if attack_name not in ['random_noise', 'model_replacement', 'alie', 'ipm', 'minmax']:
+                    mal_loader = self._wrap_loader_with_label_flipping(
+                        train_loader,
+                        flip_prob=attack_params.get('flip_probability', 1.0),
+                    )
+                    self._train_client(client_model, thread_loader(mal_loader, 'label_flip'), round_num=round_num)
+                elif attack_name in ['alie', 'ipm', 'minmax']:
+                    self._train_client(client_model, thread_loader(train_loader), round_num=round_num)
+            elif 'free_riding' in attack_type:
+                attack_name = attack_type.replace('free_riding_', '')
+                attack = create_free_riding_attack(
+                    attack_name,
+                    **{k: v for k, v in attack_params.items() if k != 'malicious_ratios'}
+                )
+                if attack.should_train():
+                    num_epochs = attack.get_training_epochs() if hasattr(attack, 'get_training_epochs') else FL_CONFIG['local_epochs']
+                    logger.info(f"[Malicious] client_{int(idx)} lazy training ({num_epochs} epochs)")
+                    self._train_client(client_model, thread_loader(train_loader), num_epochs=num_epochs, round_num=round_num)
+            elif attack_type == 'data_poisoning':
+                poisoned_loader = self._wrap_loader_with_data_poisoning(
+                    train_loader,
+                    poison_ratio=attack_params.get('poison_ratio', 0.1),
+                )
+                self._train_client(client_model, thread_loader(poisoned_loader, 'data_poison'), round_num=round_num)
+            elif 'sybil' in attack_type:
+                self._train_client(client_model, thread_loader(train_loader), round_num=round_num)
+        else:
+            self._train_client(client_model, thread_loader(train_loader), round_num=round_num)
+
+        state = self._cpu_state_dict(client_model)
+        benign_update = state if not is_malicious else None
+        try:
+            client_model.to('cpu')
+        except Exception:
+            pass
+        return state, benign_update
+
+    def _train_baseline_clients_for_round(
+        self,
+        *,
+        selected_indices,
+        round_num: int,
+        attack_type: str,
+        attack_params: dict,
+        malicious_indices,
+        global_state: dict,
+    ):
+        malicious_set = {int(i) for i in malicious_indices}
+        slots = self._client_train_slots()
+        if len(slots) <= 1:
+            device = slots[0] if slots else str(self.device)
+            client_models = []
+            benign_updates = []
+            for idx in selected_indices:
+                state, benign_update = self._train_baseline_client_for_round(
+                    idx=int(idx),
+                    round_num=round_num,
+                    attack_type=attack_type,
+                    attack_params=attack_params,
+                    malicious_set=malicious_set,
+                    global_state=global_state,
+                    train_device=device,
+                )
+                client_models.append(state)
+                if benign_update is not None:
+                    benign_updates.append(benign_update)
+            return client_models, benign_updates
+
+        indexed = list(enumerate([int(i) for i in selected_indices]))
+        chunks = [[] for _ in slots]
+        for pos, item in enumerate(indexed):
+            chunks[pos % len(slots)].append(item)
+
+        logger.info(
+            "Parallel baseline client training enabled: %d slot(s), devices=%s, clients=%d",
+            len(slots),
+            slots,
+            len(indexed),
+        )
+        results = [None] * len(indexed)
+
+        def run_chunk(slot_id, device_name, chunk):
+            out = []
+            for original_pos, client_idx in chunk:
+                state, benign_update = self._train_baseline_client_for_round(
+                    idx=int(client_idx),
+                    round_num=round_num,
+                    attack_type=attack_type,
+                    attack_params=attack_params,
+                    malicious_set=malicious_set,
+                    global_state=global_state,
+                    train_device=device_name,
+                )
+                out.append((original_pos, state, benign_update))
+                if str(device_name).startswith('cuda') and torch.cuda.is_available():
+                    try:
+                        torch.cuda.empty_cache()
+                    except Exception:
+                        pass
+            return out
+
+        with ThreadPoolExecutor(max_workers=len(slots)) as pool:
+            futures = [
+                pool.submit(run_chunk, slot_id, slots[slot_id], chunk)
+                for slot_id, chunk in enumerate(chunks)
+                if chunk
+            ]
+            for fut in as_completed(futures):
+                for original_pos, state, benign_update in fut.result():
+                    results[original_pos] = (state, benign_update)
+
+        client_models = []
+        benign_updates = []
+        for item in results:
+            if item is None:
+                continue
+            state, benign_update = item
+            client_models.append(state)
+            if benign_update is not None:
+                benign_updates.append(benign_update)
+        return client_models, benign_updates
+
+    @staticmethod
     def _round_csv_fieldnames():
         return [
             'round', 'test_accuracy', 'verification_pass_rate',
@@ -950,50 +1117,15 @@ class SecurityExperiment:
                         blocked_client_ids.add(str(cid))
             else:
                 # Non-PoL baselines: Two-phase training for Blades attacks
-                client_models = []
-                benign_updates = []  # Collect benign client updates for Blades attacks
-                pre_global_state = {k: v.clone().detach() for k, v in global_model.state_dict().items()}
-
-                # Phase 1: Train all clients
-                for idx in selected_indices:
-                    client_id = f"client_{idx}"
-                    # per-client model
-                    client_model = self.create_model().to(self.device)
-                    client_model.load_state_dict(global_model.state_dict())
-
-                    if idx in malicious_indices:
-                        if 'byzantine' in attack_type:
-                            attack_name = attack_type.replace('byzantine_', '')
-                            if attack_name not in ['random_noise', 'model_replacement', 'alie', 'ipm', 'minmax']:
-                                # For label flipping and gradient inversion, train before applying attack
-                                mal_loader = self._wrap_loader_with_label_flipping(self.train_loaders[idx], flip_prob=attack_params.get('flip_probability', 1.0))
-                                self._train_client(client_model, mal_loader, round_num=round_num)
-                            elif attack_name in ['alie', 'ipm', 'minmax']:
-                                # For Blades attacks, train first (will apply attack in Phase 2)
-                                self._train_client(client_model, self.train_loaders[idx], round_num=round_num)
-                        elif 'free_riding' in attack_type:
-                            attack_name = attack_type.replace('free_riding_', '')
-                            attack = create_free_riding_attack(attack_name, **{k: v for k, v in attack_params.items() if k != 'malicious_ratios'})
-                            if attack.should_train():
-                                # FIX: Use attack.get_training_epochs() for lazy training
-                                num_epochs = attack.get_training_epochs() if hasattr(attack, 'get_training_epochs') else FL_CONFIG['local_epochs']
-                                logger.info(f"[Malicious] client_{int(idx)} lazy training ({num_epochs} epochs)")
-                                self._train_client(client_model, self.train_loaders[idx], num_epochs=num_epochs, round_num=round_num)
-                        elif attack_type == 'data_poisoning':
-                            poisoned_loader = self._wrap_loader_with_data_poisoning(
-                                self.train_loaders[idx],
-                                poison_ratio=attack_params.get('poison_ratio', 0.1),
-                            )
-                            self._train_client(client_model, poisoned_loader, round_num=round_num)
-                        elif 'sybil' in attack_type:
-                            # Sybil attack: train normally (will be detected by trajectory similarity)
-                            self._train_client(client_model, self.train_loaders[idx], round_num=round_num)
-                    else:
-                        # Honest client: train normally and collect update
-                        self._train_client(client_model, self.train_loaders[idx], round_num=round_num)
-                        benign_updates.append(client_model.state_dict())
-
-                    client_models.append(client_model.state_dict())
+                pre_global_state = self._cpu_state_dict(global_model)
+                client_models, benign_updates = self._train_baseline_clients_for_round(
+                    selected_indices=selected_indices,
+                    round_num=round_num,
+                    attack_type=attack_type,
+                    attack_params=attack_params,
+                    malicious_indices=malicious_indices,
+                    global_state=pre_global_state,
+                )
 
                 # Phase 2: Apply Blades attacks with benign_updates
                 if 'free_riding' in attack_type:
