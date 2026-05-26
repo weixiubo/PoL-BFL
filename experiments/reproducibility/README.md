@@ -34,13 +34,13 @@ python experiments/reproducibility/run_paper_config.py \
   --validate-after-job
 ```
 
-Each job records a `run_manifest.json`, raw result JSON, runner log, and optional validation gate report under `experiments/results/reproduction/`.
+Each job records a `run_manifest.json`, raw result JSON, runner log, and optional validation gate report under `experiments/results/repro_recovery/`.
 
 ## Validation
 
 ```bash
 python experiments/reproducibility/validate_reproduction.py \
-  --results-root experiments/results/reproduction/formal
+  --results-root experiments/results/repro_recovery/formal
 ```
 
 The validator compares normalized outputs against paper targets and records whether each target is passing, failing, missing, measurement-only, or protocol-incompatible.

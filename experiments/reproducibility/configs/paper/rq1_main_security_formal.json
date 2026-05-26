@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "runner": "experiments/scripts/runners/run_rq1_security.py",
-  "output_root": "experiments/results/reproduction/formal/rq1_main_security",
+  "output_root": "experiments/results/repro_recovery/formal/rq1_main_security",
   "protocol": {
     "pol_remote_mode": "strict_replay",
     "pol_integrity": 1,

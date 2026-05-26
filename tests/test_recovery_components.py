@@ -2,7 +2,7 @@ import json
 
 import torch
 
-from experiments.attacks.byzantine_attacks import RandomNoiseAttack
+from experiments.attacks.byzantine_attacks import ModelReplacementAttack, RandomNoiseAttack
 from experiments.scripts.utils.baselines import create_aggregator
 from experiments.scripts.utils.data_utils import LEAFFEMNISTDataset, partition_data_by_user
 from experiments.scripts.utils.models import create_model
@@ -29,7 +29,49 @@ def test_sdea_filters_far_update():
     assert torch.allclose(out["w"], torch.tensor([0.1]))
 
 
-def test_random_noise_attack_uses_parameter_scale_not_unit_replacement():
+def test_krum_uses_squared_distance_scores():
+    models = [{"w": torch.tensor([float(x)])} for x in [0, 1, 4, 6, 8]]
+
+    agg = create_aggregator("Krum", num_byzantine=1)
+    out = agg.aggregate(models)
+
+    assert agg.selected_index == 3
+    assert agg.selected_indices == [3]
+    assert agg.scores == [17.0, 10.0, 13.0, 8.0, 20.0]
+    assert torch.allclose(out["w"], torch.tensor([6.0]))
+
+
+def test_multi_krum_averages_lowest_score_safe_set():
+    models = [{"w": torch.tensor([float(x)])} for x in [0, 1, 4, 6, 8]]
+
+    agg = create_aggregator("Krum", num_byzantine=1, multi_krum=True)
+    out = agg.aggregate(models)
+
+    assert agg.selected_index == 3
+    assert agg.selected_indices == [3, 1]
+    assert sorted(agg.rejected_indices) == [0, 2, 4]
+    assert torch.allclose(out["w"], torch.tensor([3.5]))
+
+
+def test_sdea_records_method_specific_detector_evidence():
+    models = [
+        {"w": torch.tensor([0.0])},
+        {"w": torch.tensor([0.2])},
+        {"w": torch.tensor([50.0])},
+        {"w": torch.tensor([51.0])},
+    ]
+
+    agg = create_aggregator("SDEA", num_byzantine=2)
+    agg.aggregate(models)
+
+    assert sorted(agg.selected_indices) == [0, 1]
+    assert sorted(agg.rejected_indices) == [2, 3]
+    assert len(agg.scores) == 4
+    assert agg.client_weights[0] > 0.0
+    assert agg.client_weights[2] == 0.0
+
+
+def test_random_noise_attack_uses_absolute_noise_by_default():
     state = {
         "w": torch.full((128,), 0.01),
         "bn.running_var": torch.ones(8),
@@ -39,9 +81,45 @@ def test_random_noise_attack_uses_parameter_scale_not_unit_replacement():
     torch.manual_seed(0)
     attacked = RandomNoiseAttack(noise_scale=1.0).apply(state, global_model=state)
 
+    assert attacked["w"].std(unbiased=False) > 0.5
+    assert torch.all(attacked["bn.running_var"] > 0.0)
+    assert attacked["bn.num_batches_tracked"].item() == 5
+
+
+def test_random_noise_attack_keeps_legacy_parameter_scaled_mode_explicit():
+    state = {
+        "w": torch.full((128,), 0.01),
+        "bn.running_var": torch.ones(8),
+        "bn.num_batches_tracked": torch.tensor(5, dtype=torch.long),
+    }
+
+    torch.manual_seed(0)
+    attacked = RandomNoiseAttack(noise_scale=1.0, scale_mode="parameter_scaled").apply(state, global_model=state)
+
     assert attacked["w"].abs().max() < 0.05
     assert torch.all(attacked["bn.running_var"] > 0.0)
     assert attacked["bn.num_batches_tracked"].item() == 5
+
+
+def test_model_replacement_random_uses_initialization_scale():
+    state = {
+        "conv.weight": torch.zeros(16, 3, 3, 3),
+        "bn.weight": torch.zeros(16),
+        "bn.bias": torch.full((16,), 3.0),
+        "bn.running_mean": torch.full((16,), 3.0),
+        "bn.running_var": torch.full((16,), 3.0),
+        "bn.num_batches_tracked": torch.tensor(5, dtype=torch.long),
+    }
+
+    torch.manual_seed(0)
+    attacked = ModelReplacementAttack().apply(state)
+
+    assert attacked["conv.weight"].std(unbiased=False) < 0.5
+    assert torch.allclose(attacked["bn.weight"], torch.ones_like(attacked["bn.weight"]))
+    assert torch.allclose(attacked["bn.bias"], torch.zeros_like(attacked["bn.bias"]))
+    assert torch.allclose(attacked["bn.running_mean"], torch.zeros_like(attacked["bn.running_mean"]))
+    assert torch.allclose(attacked["bn.running_var"], torch.ones_like(attacked["bn.running_var"]))
+    assert attacked["bn.num_batches_tracked"].item() == 0
 
 
 def test_leaf_femnist_loader_and_writer_partition(tmp_path):

@@ -13,5 +13,5 @@
     "Vanilla_FL"
   ],
   "gpu": "0",
-  "output_root": "experiments/results/reproduction/formal/rq1_table1"
+  "output_root": "experiments/results/repro_recovery/formal/rq1_table1"
 }

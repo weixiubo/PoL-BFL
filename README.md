@@ -68,7 +68,7 @@ bash experiments/scripts/run_repro_smoke.sh \
 
 ## Paper-Scale Reproduction
 
-Formal experiment configs live under `experiments/reproducibility/configs/paper/`. The main launcher expands a paper matrix into resumable jobs and writes raw outputs, runner logs, and manifests under `experiments/results/reproduction/`.
+Formal experiment configs live under `experiments/reproducibility/configs/paper/`. The main launcher expands a paper matrix into resumable jobs and writes raw outputs, runner logs, and manifests under `experiments/results/repro_recovery/`.
 
 ```bash
 python experiments/reproducibility/run_paper_config.py \
@@ -86,7 +86,7 @@ Validate generated outputs against the paper targets:
 
 ```bash
 python experiments/reproducibility/validate_reproduction.py \
-  --results-root experiments/results/reproduction/formal
+  --results-root experiments/results/repro_recovery/formal
 ```
 
 The validator enforces protocol compatibility before treating a result as a paper-scale claim. Short smoke runs are reported as protocol mismatches, not as successful reproductions.

@@ -45,6 +45,10 @@ class BaselineAggregator:
     
     def __init__(self, method_name: str):
         self.method_name = method_name
+        self.selected_indices = []
+        self.rejected_indices = []
+        self.scores = []
+        self.client_weights = []
         logger.info(f"Initialized {method_name}")
     
     def aggregate(self, models: List[ODict], weights: List[float] = None) -> ODict:
@@ -84,6 +88,9 @@ class VanillaFLAggregator(BaselineAggregator):
         """
         if not models:
             raise ValueError("No models to aggregate")
+        self.selected_indices = list(range(len(models)))
+        self.rejected_indices = []
+        self.scores = []
         
         # Default to equal weights
         if weights is None:
@@ -92,6 +99,7 @@ class VanillaFLAggregator(BaselineAggregator):
         # Normalize weights
         total_weight = sum(weights)
         weights = [w / total_weight for w in weights]
+        self.client_weights = [float(w) for w in weights]
         
         # Initialize aggregated model
         aggregated_model = ODict()
@@ -114,16 +122,37 @@ class KrumAggregator(BaselineAggregator):
     Reference: Blanchard et al., "Machine Learning with Adversaries: Byzantine Tolerant Gradient Descent"
     """
     
-    def __init__(self, num_byzantine: int = 0):
+    def __init__(
+        self,
+        num_byzantine: int = 0,
+        multi_krum: bool = False,
+        multi_krum_count: int = None,
+    ):
         super().__init__("Krum")
         self.num_byzantine = num_byzantine
+        self.multi_krum = bool(multi_krum)
+        self.multi_krum_count = multi_krum_count
     
-    def _compute_distance(self, model1: ODict, model2: ODict) -> float:
-        """Compute L2 distance between two models"""
+    def _compute_squared_distance(self, model1: ODict, model2: ODict) -> float:
+        """Compute squared L2 distance between two model updates.
+
+        Krum scores are defined as sums of squared Euclidean distances to the
+        closest neighbors.  Taking the square root per pair before summing can
+        change the selected client because sqrt is nonlinear.
+        """
         distance = 0.0
         for key in model1.keys():
-            distance += torch.sum((model1[key] - model2[key]) ** 2).item()
-        return np.sqrt(distance)
+            tensor1 = model1[key]
+            tensor2 = model2[key]
+            if not torch.is_tensor(tensor1) or not torch.is_tensor(tensor2):
+                continue
+            if not tensor1.is_floating_point() or not tensor2.is_floating_point():
+                continue
+            diff = tensor1.detach().float().cpu() - tensor2.detach().float().cpu()
+            if not torch.isfinite(diff).all():
+                diff = torch.nan_to_num(diff, nan=0.0, posinf=0.0, neginf=0.0)
+            distance += torch.sum(diff ** 2).item()
+        return float(distance)
     
     def aggregate(self, models: List[ODict], weights: List[float] = None) -> ODict:
         """
@@ -146,22 +175,69 @@ class KrumAggregator(BaselineAggregator):
         distances = np.zeros((n, n))
         for i in range(n):
             for j in range(i + 1, n):
-                dist = self._compute_distance(models[i], models[j])
+                dist = self._compute_squared_distance(models[i], models[j])
                 distances[i, j] = dist
                 distances[j, i] = dist
         
-        # For each model, compute sum of distances to n-f-2 closest models
+        # For each model, compute sum of squared distances to n-f-2 closest models.
+        # Krum is formally defined for n > 2f + 2; small smoke tests may violate
+        # this, so clamp the neighbor count instead of silently producing all-zero
+        # scores from an empty slice.
+        neighbor_count = max(1, min(n - 1, n - f - 2))
         scores = []
         for i in range(n):
             # Sort distances for this model
             sorted_distances = np.sort(distances[i])
-            # Sum of n-f-2 smallest distances (excluding self)
-            score = np.sum(sorted_distances[1:n-f-1])
+            # Sum of closest distances (excluding self)
+            score = np.sum(sorted_distances[1:1 + neighbor_count])
             scores.append(score)
         
-        # Select model with smallest score
-        selected_idx = np.argmin(scores)
-        
+        # Select model with smallest score.  In Multi-Krum mode, aggregate the
+        # lowest-scoring safe set instead of using a single client update; this
+        # is the common stable FL variant of Krum for large client cohorts.
+        selected_idx = int(np.argmin(scores))
+        self.selected_index = int(selected_idx)
+        self.scores = [float(score) for score in scores]
+
+        if self.multi_krum:
+            if self.multi_krum_count is None:
+                keep_count = max(1, min(n - f - 2, n - 1))
+            else:
+                keep_count = max(1, min(int(self.multi_krum_count), n))
+            selected = np.argsort(scores)[:keep_count].tolist()
+            self.selected_indices = [int(i) for i in selected]
+            selected_set = set(self.selected_indices)
+            self.rejected_indices = [i for i in range(n) if i not in selected_set]
+            if weights is not None:
+                selected_weights = [float(weights[i]) for i in self.selected_indices]
+                total = sum(selected_weights)
+                if total <= 0.0:
+                    selected_weights = [1.0 / len(self.selected_indices)] * len(self.selected_indices)
+                else:
+                    selected_weights = [w / total for w in selected_weights]
+            else:
+                selected_weights = [1.0 / len(self.selected_indices)] * len(self.selected_indices)
+            self.client_weights = [0.0] * n
+            for pos, idx in enumerate(self.selected_indices):
+                self.client_weights[idx] = float(selected_weights[pos])
+
+            aggregated_model = ODict()
+            for key in models[0].keys():
+                aggregated_model[key] = sum(
+                    selected_weights[pos] * models[idx][key]
+                    for pos, idx in enumerate(self.selected_indices)
+                )
+            logger.debug(
+                f"Multi-Krum selected {len(self.selected_indices)}/{n} models "
+                f"(best={selected_idx}, score={scores[selected_idx]:.4f})"
+            )
+            return aggregated_model
+
+        self.selected_indices = [int(selected_idx)]
+        self.rejected_indices = [i for i in range(n) if i != int(selected_idx)]
+        self.client_weights = [0.0] * n
+        self.client_weights[int(selected_idx)] = 1.0
+
         logger.debug(f"Krum selected model {selected_idx} (score={scores[selected_idx]:.4f})")
         return models[selected_idx]
 
@@ -191,6 +267,9 @@ class TrimmedMeanAggregator(BaselineAggregator):
         """
         if not models:
             raise ValueError("No models to aggregate")
+        self.selected_indices = list(range(len(models)))
+        self.rejected_indices = []
+        self.scores = []
 
         n = len(models)
         # 修复: 确保至少trim 1个值，避免trim_ratio太小时num_trim=0
@@ -247,6 +326,9 @@ class MedianAggregator(BaselineAggregator):
         """
         if not models:
             raise ValueError("No models to aggregate")
+        self.selected_indices = list(range(len(models)))
+        self.rejected_indices = []
+        self.scores = []
 
         aggregated_model = ODict()
 
@@ -294,6 +376,9 @@ class BulyanAggregator(BaselineAggregator):
         """
         if not models:
             raise ValueError("No models to aggregate")
+        self.selected_indices = list(range(len(models)))
+        self.rejected_indices = []
+        self.scores = []
         
         n = len(models)
         f = self.num_byzantine
@@ -363,6 +448,10 @@ class ShapleyFLAggregator(BaselineAggregator):
         # Check for NaN/Inf in mean vector
         if np.any(np.isnan(mean_vec)) or np.any(np.isinf(mean_vec)):
             logger.warning(f"ShapleyFL: NaN/Inf detected in mean vector, falling back to FedAvg")
+            self.selected_indices = list(range(len(models)))
+            self.rejected_indices = []
+            self.scores = [0.0] * len(models)
+            self.client_weights = [1.0 / len(models)] * len(models)
             # Fallback to simple averaging
             aggregated_model = ODict()
             for key in models[0].keys():
@@ -373,6 +462,10 @@ class ShapleyFLAggregator(BaselineAggregator):
             similarities = cosine_similarity(model_matrix, mean_vec).flatten()
         except (ValueError, RuntimeError) as e:
             logger.warning(f"ShapleyFL: Failed to compute cosine similarity ({e}), falling back to FedAvg")
+            self.selected_indices = list(range(len(models)))
+            self.rejected_indices = []
+            self.scores = [0.0] * len(models)
+            self.client_weights = [1.0 / len(models)] * len(models)
             # Fallback to simple averaging
             aggregated_model = ODict()
             for key in models[0].keys():
@@ -382,6 +475,10 @@ class ShapleyFLAggregator(BaselineAggregator):
         # Check for NaN/Inf in similarities
         if np.any(np.isnan(similarities)) or np.any(np.isinf(similarities)):
             logger.warning(f"ShapleyFL: NaN/Inf detected in similarities, falling back to FedAvg")
+            self.selected_indices = list(range(len(models)))
+            self.rejected_indices = []
+            self.scores = [0.0] * len(models)
+            self.client_weights = [1.0 / len(models)] * len(models)
             # Fallback to simple averaging
             aggregated_model = ODict()
             for key in models[0].keys():
@@ -399,6 +496,10 @@ class ShapleyFLAggregator(BaselineAggregator):
         if len(selected_indices) == 0:
             logger.warning("ShapleyFL: No clients selected, using all")
             selected_indices = list(range(len(models)))
+        self.selected_indices = [int(i) for i in selected_indices]
+        selected_set = set(self.selected_indices)
+        self.rejected_indices = [i for i in range(len(models)) if i not in selected_set]
+        self.scores = [float(score) for score in similarities]
 
         # Aggregate selected models with similarity weights
         selected_sims = np.array([similarities[i] for i in selected_indices])
@@ -406,6 +507,10 @@ class ShapleyFLAggregator(BaselineAggregator):
             selected_weights = selected_sims / np.sum(selected_sims)
         else:
             selected_weights = np.ones(len(selected_indices)) / len(selected_indices)
+        full_weights = np.zeros(len(models), dtype=float)
+        for pos, idx in enumerate(selected_indices):
+            full_weights[int(idx)] = float(selected_weights[pos])
+        self.client_weights = full_weights.tolist()
 
         aggregated_model = ODict()
         for key in models[0].keys():
@@ -509,6 +614,12 @@ class FoolsGoldAggregator(BaselineAggregator):
                 wv = np.ones(n) / n
 
         # Aggregate
+        self.client_weights = [float(w) for w in wv]
+        self.scores = self.client_weights.copy()
+        self.selected_indices = [i for i, w in enumerate(self.client_weights) if w > 0.0]
+        selected_set = set(self.selected_indices)
+        self.rejected_indices = [i for i in range(n) if i not in selected_set]
+
         aggregated_model = ODict()
         for key in models[0].keys():
             aggregated_model[key] = sum(
@@ -542,6 +653,9 @@ class SDEAAggregator(BaselineAggregator):
             raise ValueError("No models to aggregate")
         if len(models) == 1:
             self.selected_indices = [0]
+            self.rejected_indices = []
+            self.scores = [0.0]
+            self.client_weights = [1.0]
             return models[0]
 
         vectors = torch.stack([self._flatten_model(model) for model in models], dim=0)
@@ -552,6 +666,9 @@ class SDEAAggregator(BaselineAggregator):
         keep = max(1, n - min(self.num_byzantine, n - 1))
         selected = torch.argsort(distances)[:keep].tolist()
         self.selected_indices = [int(i) for i in selected]
+        selected_set = set(self.selected_indices)
+        self.rejected_indices = [i for i in range(n) if i not in selected_set]
+        self.scores = [float(x) for x in distances.detach().cpu().tolist()]
 
         if weights is not None:
             selected_weights = [float(weights[i]) for i in self.selected_indices]
@@ -562,6 +679,10 @@ class SDEAAggregator(BaselineAggregator):
                 selected_weights = [w / total for w in selected_weights]
         else:
             selected_weights = [1.0 / len(self.selected_indices)] * len(self.selected_indices)
+        full_weights = np.zeros(n, dtype=float)
+        for pos, idx in enumerate(self.selected_indices):
+            full_weights[int(idx)] = float(selected_weights[pos])
+        self.client_weights = full_weights.tolist()
 
         aggregated_model = ODict()
         for key in models[0].keys():

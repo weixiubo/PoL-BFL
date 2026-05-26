@@ -3,6 +3,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -55,7 +57,7 @@ def test_run_paper_config_rq1_training_hyperparams_are_explicit():
     config_path = ROOT / "experiments" / "reproducibility" / "configs" / "paper" / "rq1_main_security_formal.json"
     config = {
         "runner": "experiments/scripts/runners/run_rq1_security.py",
-        "output_root": "experiments/results/reproduction/formal/unit_hparams",
+        "output_root": "experiments/results/repro_recovery/formal/unit_hparams",
         "protocol": {"pol_integrity": 1},
         "execution": {
             "rounds": 3,
@@ -105,6 +107,38 @@ def test_run_paper_config_only_filter_does_not_select_cifar100():
     assert all(job.config["baseline"] == "PoL_FL" for job in selected)
 
 
+def test_run_paper_config_rejects_unknown_gpu(monkeypatch):
+    from argparse import Namespace
+
+    from experiments.reproducibility import run_paper_config
+
+    monkeypatch.setattr(run_paper_config, "_gpu_name", lambda gpu: None)
+    monkeypatch.setattr(run_paper_config, "_gpu_free_memory_mb", lambda gpu: None)
+
+    try:
+        run_paper_config._validate_gpu_inventory(Namespace(gpus=["0"], require_gpu_name="4090"))
+    except RuntimeError as exc:
+        assert "not visible" in str(exc)
+    else:
+        raise AssertionError("unknown GPU inventory should block formal launch")
+
+
+def test_run_paper_config_rejects_wrong_gpu_name(monkeypatch):
+    from argparse import Namespace
+
+    from experiments.reproducibility import run_paper_config
+
+    monkeypatch.setattr(run_paper_config, "_gpu_name", lambda gpu: "NVIDIA GeForce RTX 4060 Laptop GPU")
+    monkeypatch.setattr(run_paper_config, "_gpu_free_memory_mb", lambda gpu: 24000)
+
+    try:
+        run_paper_config._validate_gpu_inventory(Namespace(gpus=["0"], require_gpu_name="4090"))
+    except RuntimeError as exc:
+        assert "does not match" in str(exc)
+    else:
+        raise AssertionError("wrong GPU name should block formal launch when required")
+
+
 def test_rq1_sybil_uses_fixed_run_anchor_not_per_round_subset():
     runner = ROOT / "experiments" / "scripts" / "runners" / "run_rq1_security.py"
     source = runner.read_text(encoding="utf-8")
@@ -112,6 +146,29 @@ def test_rq1_sybil_uses_fixed_run_anchor_not_per_round_subset():
     assert "sybil_anchor_idx = min(malicious_population)" in source
     assert "sybil_anchor_idx=sybil_anchor_idx" in source
     assert "anchor_idx = int(sybil_anchor_idx) if sybil_anchor_idx is not None else min(malicious_set)" in source
+
+
+def test_collect_recovery_evidence_no_remote(tmp_path):
+    script = ROOT / "experiments" / "reproducibility" / "collect_recovery_evidence.py"
+    if not script.exists():
+        pytest.skip("optional recovery evidence collector is not included in this distribution")
+
+    proc = subprocess.run(
+        [sys.executable, str(script), "--no-remote", "--output-dir", str(tmp_path)],
+        cwd=str(ROOT),
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=60,
+    )
+    assert proc.returncode == 0, proc.stderr
+    manifest = tmp_path / "evidence_manifest.json"
+    report = tmp_path / "gap_report.md"
+    assert manifest.exists()
+    assert report.exists()
+    payload = json.loads(manifest.read_text(encoding="utf-8"))
+    assert "table1_main_security" in payload["target_status"]
+    assert payload["local"]["paper_targets"]["tables"]["table1_main_security"]["exists"] is True
 
 
 def test_run_repro_smoke_dry_run(tmp_path):

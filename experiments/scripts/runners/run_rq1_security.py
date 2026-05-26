@@ -54,6 +54,19 @@ def _stable_seed32(*parts) -> int:
     return int.from_bytes(digest[:8], byteorder="big", signed=False) % (2**31 - 1)
 
 
+def _parse_attack_param_value(raw: str):
+    text = str(raw).strip()
+    lower = text.lower()
+    if lower in {"true", "false"}:
+        return lower == "true"
+    try:
+        if "." not in text and "e" not in lower:
+            return int(text)
+        return float(text)
+    except ValueError:
+        return text
+
+
 # Ensure deterministic cuBLAS workspace to avoid runtime error when torch.use_deterministic_algorithms(True)
 if 'CUBLAS_WORKSPACE_CONFIG' not in os.environ:
     os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
@@ -74,9 +87,9 @@ RQ1_CONFIG = {
     'attacks': {
         'no_attack': {'malicious_ratios': [0.0]},
         # Original Byzantine attacks
-        'byzantine_random_noise': {'malicious_ratios': [0.2], 'noise_scale': 1.0},
+        'byzantine_random_noise': {'malicious_ratios': [0.2], 'noise_scale': 1.0, 'scale_mode': 'parameter_scaled'},
         'byzantine_label_flipping': {'malicious_ratios': [0.2]},
-        'byzantine_model_replacement': {'malicious_ratios': [0.2]},
+        'byzantine_model_replacement': {'malicious_ratios': [0.2], 'replacement_mix': 0.1},
         'byzantine_gradient_inversion': {'malicious_ratios': [0.2]},
         # Blades framework attacks (A-class conferences)
         'byzantine_alie': {'malicious_ratios': [0.2], 'z_max': 2.5},  # NeurIPS 2019
@@ -351,15 +364,53 @@ class SecurityExperiment:
             parts.append(vec)
         return torch.cat(parts) if parts else torch.empty(0)
 
-    def _robust_baseline_suspects(self, client_models, selected_indices, num_malicious):
-        """Infer baseline detector decisions from robust update-distance scores."""
-        if num_malicious <= 0 or not client_models:
+    @classmethod
+    def _state_l2_distance(cls, left, right):
+        left_vec = cls._flatten_model_state(left)
+        right_vec = cls._flatten_model_state(right)
+        if left_vec.numel() == 0 or right_vec.numel() == 0 or left_vec.numel() != right_vec.numel():
+            return 0.0
+        return float(torch.norm(left_vec - right_vec, p=2).item())
+
+    def _baseline_suspects(self, baseline_method, aggregator, client_models, selected_indices, expected_num_suspects):
+        """Infer baseline detector decisions from each method's own evidence.
+
+        The older recovery path used one shared median-distance detector and
+        the realized malicious count for every baseline.  That made baseline
+        DR/FPR look artificially good and decoupled the metric from the method
+        being evaluated.  This keeps the clean-room implementation honest by
+        deriving suspects from Krum scores, SDEA rejections, ShapleyFL scores,
+        or FoolsGold weights.
+        """
+        if expected_num_suspects <= 0 or not client_models:
             return set()
-        vectors = torch.stack([self._flatten_model_state(model) for model in client_models], dim=0)
-        center = torch.median(vectors, dim=0).values
-        scores = torch.norm(vectors - center.unsqueeze(0), p=2, dim=1)
-        k = min(int(num_malicious), len(client_models))
-        suspect_positions = torch.argsort(scores, descending=True)[:k].tolist()
+        k = min(int(expected_num_suspects), len(client_models))
+        method = str(baseline_method)
+        suspect_positions = []
+
+        if method == "SDEA" and getattr(aggregator, "rejected_indices", None):
+            suspect_positions = [int(i) for i in aggregator.rejected_indices]
+        elif method == "Krum" and getattr(aggregator, "scores", None):
+            scores = np.array(getattr(aggregator, "scores"), dtype=float)
+            suspect_positions = np.argsort(scores)[-k:].tolist()
+        elif method == "ShapleyFL" and getattr(aggregator, "scores", None):
+            scores = np.array(getattr(aggregator, "scores"), dtype=float)
+            suspect_positions = np.argsort(scores)[:k].tolist()
+        elif method == "FoolsGold" and getattr(aggregator, "client_weights", None):
+            weights = np.array(getattr(aggregator, "client_weights"), dtype=float)
+            suspect_positions = np.argsort(weights)[:k].tolist()
+        elif getattr(aggregator, "rejected_indices", None):
+            suspect_positions = [int(i) for i in aggregator.rejected_indices]
+        elif getattr(aggregator, "selected_indices", None):
+            selected = {int(i) for i in aggregator.selected_indices}
+            suspect_positions = [i for i in range(len(client_models)) if i not in selected]
+
+        if not suspect_positions:
+            vectors = torch.stack([self._flatten_model_state(model) for model in client_models], dim=0)
+            center = torch.median(vectors, dim=0).values
+            scores = torch.norm(vectors - center.unsqueeze(0), p=2, dim=1)
+            suspect_positions = torch.argsort(scores, descending=True)[:k].tolist()
+        suspect_positions = [int(i) for i in suspect_positions[:k]]
         return {f"client_{int(selected_indices[pos])}" for pos in suspect_positions}
 
     @staticmethod
@@ -876,6 +927,8 @@ class SecurityExperiment:
     def _round_csv_fieldnames():
         return [
             'round', 'test_accuracy', 'verification_pass_rate',
+            'num_selected_clients', 'num_malicious_in_round',
+            'attack_l2_mean', 'attack_l2_max',
             'detection_tpr', 'detection_tpr_e2e', 'detection_tpr_conditional',
             'detection_fpr', 'precision', 'recall', 'f1', 'participation_rate',
             'external_agg_success', 'external_agg_latency_s',
@@ -981,7 +1034,13 @@ class SecurityExperiment:
                 pol_config=pol_config,
                 device=str(self.device)
             )
-        elif baseline_method in ('Krum', 'SDEA'):
+        elif baseline_method == 'Krum':
+            aggregator = create_aggregator(
+                baseline_method,
+                num_byzantine=expected_malicious_per_round,
+                multi_krum=True,
+            )
+        elif baseline_method == 'SDEA':
             aggregator = create_aggregator(baseline_method, num_byzantine=expected_malicious_per_round)
         elif baseline_method == 'Trimmed_Mean':
             aggregator = create_aggregator(baseline_method, trim_ratio=0.1)
@@ -1014,6 +1073,7 @@ class SecurityExperiment:
         for round_num in range(self.config['num_rounds']):
             logger.info(f"Round {round_num + 1}/{self.config['num_rounds']}")
             det = None
+            round_attack_l2 = []
 
             # Select clients for this round
             num_selected = self.config['clients_per_round']
@@ -1091,11 +1151,13 @@ class SecurityExperiment:
                             if idx in malicious_indices:
                                 client = clients[i]
                                 # Apply Blades attack with benign_updates
+                                original_state = client.model.state_dict()
                                 attacked_state = attack.apply(
-                                    client.model.state_dict(),
+                                    original_state,
                                     global_model=pre_global_state,
                                     benign_updates=benign_updates
                                 )
+                                round_attack_l2.append(self._state_l2_distance(attacked_state, original_state))
                                 client.model.load_state_dict(attacked_state)
                                 logger.info(f"Applied {attack_name} attack to {client.client_id} with {len(benign_updates)} benign updates")
                     else:
@@ -1104,7 +1166,9 @@ class SecurityExperiment:
                         for i, idx in enumerate(selected_indices):
                             if idx in malicious_indices:
                                 client = clients[i]
-                                attacked_state = attack.apply(client.model.state_dict(), global_model=pre_global_state)
+                                original_state = client.model.state_dict()
+                                attacked_state = attack.apply(original_state, global_model=pre_global_state)
+                                round_attack_l2.append(self._state_l2_distance(attacked_state, original_state))
                                 client.model.load_state_dict(attacked_state)
                                 logger.info(f"Applied {attack_name} attack to {client.client_id}")
 
@@ -1145,11 +1209,13 @@ class SecurityExperiment:
                         for i, idx in enumerate(selected_indices):
                             if idx in malicious_indices:
                                 # Apply Blades attack with benign_updates
+                                original_state = client_models[i]
                                 attacked_state = attack.apply(
-                                    client_models[i],
+                                    original_state,
                                     global_model=pre_global_state,
                                     benign_updates=benign_updates
                                 )
+                                round_attack_l2.append(self._state_l2_distance(attacked_state, original_state))
                                 client_models[i] = attacked_state
                                 logger.info(f"Applied {attack_name} attack to client_{int(idx)} with {len(benign_updates)} benign updates")
                     else:
@@ -1157,8 +1223,11 @@ class SecurityExperiment:
                         attack = create_attack(attack_name, **{k: v for k, v in attack_params.items() if k != 'malicious_ratios'})
                         for i, idx in enumerate(selected_indices):
                             if idx in malicious_indices:
-                                attacked_state = attack.apply(client_models[i], global_model=pre_global_state)
+                                original_state = client_models[i]
+                                attacked_state = attack.apply(original_state, global_model=pre_global_state)
+                                round_attack_l2.append(self._state_l2_distance(attacked_state, original_state))
                                 client_models[i] = attacked_state
+                                logger.info(f"Applied {attack_name} attack to client_{int(idx)}")
 
                 # Use dataset-size weighted FedAvg for fairness with PoL aggregator
                 weights = [float(len(self.train_loaders[idx].dataset)) for idx in selected_indices]
@@ -1172,7 +1241,13 @@ class SecurityExperiment:
                 global_model.load_state_dict(aggregated_state)
 
                 if baseline_method != 'Vanilla_FL':
-                    detected_ids = self._robust_baseline_suspects(client_models, selected_indices, len(malicious_indices))
+                    detected_ids = self._baseline_suspects(
+                        baseline_method,
+                        aggregator,
+                        client_models,
+                        selected_indices,
+                        expected_malicious_per_round,
+                    )
                     all_client_ids = [f"client_{int(i)}" for i in selected_indices]
                     malicious_client_ids = [f"client_{int(i)}" for i in malicious_indices]
                     baseline_verification = {cid: (cid not in detected_ids) for cid in all_client_ids}
@@ -1216,7 +1291,11 @@ class SecurityExperiment:
             row = {
                 'round': round_num + 1,
                 'test_accuracy': float(test_acc),
-                'verification_pass_rate': float(vpass_rate)
+                'verification_pass_rate': float(vpass_rate),
+                'num_selected_clients': int(len(selected_indices)),
+                'num_malicious_in_round': int(len(malicious_indices)),
+                'attack_l2_mean': float(np.mean(round_attack_l2)) if round_attack_l2 else 0.0,
+                'attack_l2_max': float(np.max(round_attack_l2)) if round_attack_l2 else 0.0,
             }
             if isinstance(det, dict):
                 row.update({
@@ -1526,6 +1605,12 @@ def main():
     ap.add_argument('--weight_decay', type=float, default=None)
     ap.add_argument('--attacks', type=str, default='', help='Comma-separated subset of attacks to run')
     ap.add_argument('--baselines', type=str, default='', help='Comma-separated subset of baselines to run')
+    ap.add_argument(
+        '--attack_param',
+        action='append',
+        default=[],
+        help='Override selected attack parameter as key=value. Can be repeated for calibration runs.',
+    )
     # Minimal PoL overrides for quick diagnostics
     ap.add_argument('--pol_delta', type=float, default=None, help='Override PoL L2 distance threshold (delta)')
     ap.add_argument('--verification_rate', type=float, default=None, help='Override PoL verification_rate (0-1)')
@@ -1605,6 +1690,18 @@ def main():
         if unknown:
             raise ValueError(f"Unknown attacks: {unknown}. Allowed: {sorted(allowed)}")
         cfg['attacks'] = {k: cfg['attacks'][k] for k in chosen}
+    if args.attack_param:
+        overrides = {}
+        for item in args.attack_param:
+            if '=' not in item:
+                raise ValueError(f"--attack_param must be key=value, got {item!r}")
+            key, value = item.split('=', 1)
+            key = key.strip()
+            if not key:
+                raise ValueError(f"--attack_param has empty key: {item!r}")
+            overrides[key] = _parse_attack_param_value(value)
+        for attack_cfg in cfg['attacks'].values():
+            attack_cfg.update(overrides)
     if args.baselines:
         allowed_b = {'Vanilla_FL', 'Krum', 'Trimmed_Mean', 'Median', 'ShapleyFL', 'FoolsGold', 'SDEA', 'PoL_FL'}
         chosen_b = [b.strip() for b in args.baselines.split(',') if b.strip()]

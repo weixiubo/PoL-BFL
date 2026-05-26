@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "runner": "experiments/scripts/runners/run_rq3_overhead.py",
-  "output_root": "experiments/results/reproduction/formal/rq3_overhead",
+  "output_root": "experiments/results/repro_recovery/formal/rq3_overhead",
   "protocol": {
     "pol_integrity": 1,
     "zkp_simulation": false,

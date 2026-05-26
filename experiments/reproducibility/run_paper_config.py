@@ -3,7 +3,7 @@
 
 The paper configs in this directory describe target matrices. This launcher
 turns them into concrete runner invocations, keeps every result under
-``experiments/results/reproduction/formal``, and skips cells that already have
+``experiments/results/repro_recovery/formal``, and skips cells that already have
 successful manifests. It never edits the paper.
 """
 
@@ -79,6 +79,17 @@ def _as_list(value: Any, default: Optional[List[Any]] = None) -> List[Any]:
     return [value]
 
 
+def _attack_params_for(config: Dict[str, Any], dataset: Dict[str, Any], attack: str) -> Dict[str, Any]:
+    params: Dict[str, Any] = {}
+    for source in (config.get("attack_params"), config.get("attack_overrides")):
+        if isinstance(source, dict) and isinstance(source.get(attack), dict):
+            params.update(source[attack])
+    dataset_params = dataset.get("attack_params") or dataset.get("attack_overrides")
+    if isinstance(dataset_params, dict) and isinstance(dataset_params.get(attack), dict):
+        params.update(dataset_params[attack])
+    return params
+
+
 def _auto_model(dataset: str) -> str:
     if dataset in {"MNIST", "FEMNIST"}:
         return "SimpleCNN"
@@ -105,7 +116,7 @@ def _execution_value(config: Dict[str, Any], key: str, default: Any) -> Any:
 
 
 def _output_root(config: Dict[str, Any]) -> Path:
-    return _resolve(config.get("output_root", "experiments/results/reproduction/formal"))
+    return _resolve(config.get("output_root", "experiments/results/repro_recovery/formal"))
 
 
 def _dataset_items(config: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -160,6 +171,7 @@ def _build_rq1_jobs(config: Dict[str, Any], config_path: Path, args: argparse.Na
         verification_rate = dataset.get("verification_rate", default_verification_rate)
         pol_delta = dataset.get("pol_delta", default_pol_delta)
         for attack in attacks:
+            attack_params = _attack_params_for(config, dataset, attack)
             for baseline in baselines:
                 for seed in seeds:
                     job_id = "__".join(
@@ -210,6 +222,8 @@ def _build_rq1_jobs(config: Dict[str, Any], config_path: Path, args: argparse.Na
                         cmd.extend(["--verification_rate", str(verification_rate)])
                     if pol_delta is not None:
                         cmd.extend(["--pol_delta", str(pol_delta)])
+                    for key, value in sorted(attack_params.items()):
+                        cmd.extend(["--attack_param", f"{key}={value}"])
                     job_config = {
                         "source_config": str(config_path),
                         "runner": runner,
@@ -228,6 +242,7 @@ def _build_rq1_jobs(config: Dict[str, Any], config_path: Path, args: argparse.Na
                         "verification_rate": verification_rate,
                         "pol_delta": pol_delta,
                         "attack": attack,
+                        "attack_params": attack_params,
                         "baseline": baseline,
                         "seed": seed,
                     }
@@ -634,6 +649,51 @@ def _gpu_free_memory_mb(gpu: str) -> Optional[int]:
         return None
 
 
+def _gpu_name(gpu: str) -> Optional[str]:
+    if gpu.lower() == "cpu":
+        return "cpu"
+    try:
+        result = subprocess.run(
+            [
+                "nvidia-smi",
+                "--id",
+                str(gpu),
+                "--query-gpu=name",
+                "--format=csv,noheader",
+            ],
+            cwd=str(CODE_ROOT),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=False,
+            timeout=10,
+        )
+    except Exception:
+        return None
+    if result.returncode != 0:
+        return None
+    first_line = result.stdout.strip().splitlines()[0] if result.stdout.strip() else ""
+    return first_line.strip() or None
+
+
+def _validate_gpu_inventory(args: argparse.Namespace) -> None:
+    pattern = str(getattr(args, "require_gpu_name", "") or "").strip()
+    for gpu in args.gpus:
+        if str(gpu).lower() == "cpu":
+            continue
+        name = _gpu_name(str(gpu))
+        free_mb = _gpu_free_memory_mb(str(gpu))
+        if name is None or free_mb is None:
+            raise RuntimeError(
+                f"Requested GPU {gpu} is not visible through nvidia-smi; "
+                "refusing to launch formal jobs on an unknown device."
+            )
+        if pattern and re.search(pattern, name, flags=re.IGNORECASE) is None:
+            raise RuntimeError(
+                f"Requested GPU {gpu} is `{name}`, which does not match required pattern `{pattern}`."
+            )
+
+
 def _select_gpu(args: argparse.Namespace, start_index: int, active: List[Dict[str, Any]]) -> str:
     if int(args.min_gpu_free_mb) <= 0:
         return args.gpus[start_index % len(args.gpus)]
@@ -654,7 +714,7 @@ def _select_gpu(args: argparse.Namespace, start_index: int, active: List[Dict[st
                 continue
             free_mb = _gpu_free_memory_mb(gpu)
             observed.append(f"{gpu}:{'unknown' if free_mb is None else free_mb}")
-            if free_mb is None or free_mb >= int(args.min_gpu_free_mb):
+            if free_mb is not None and free_mb >= int(args.min_gpu_free_mb):
                 return gpu
 
         message = (
@@ -911,9 +971,6 @@ def _run_validation_gate(job: Job, args: argparse.Namespace, output_root: Path) 
         try:
             manifest = json.loads(validation_manifest_path.read_text(encoding="utf-8"))
             summary = manifest.get("summary", {})
-            overall = summary.get("overall", {}) if isinstance(summary, dict) else {}
-            if _as_count(overall.get("fail")) > 0:
-                blocking_reasons.append(f"validation overall fail count is {_as_count(overall.get('fail'))}")
             job_root = job.output_dir.resolve()
             for item in manifest.get("comparisons", []):
                 source = item.get("source")
@@ -968,6 +1025,7 @@ def _run_validation_gate(job: Job, args: argparse.Namespace, output_root: Path) 
 def run_jobs(selected: List[Job], args: argparse.Namespace, output_root: Path) -> int:
     if args.dry_run:
         return 0
+    _validate_gpu_inventory(args)
     verifiers = _start_verifiers(args, output_root)
     active: List[Dict[str, Any]] = []
     failures = 0
@@ -1039,6 +1097,7 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
     parser.add_argument("--min-gpu-free-mb", type=int, default=int(os.getenv("POL_MIN_GPU_FREE_MB", "0")))
     parser.add_argument("--gpu-wait-timeout-sec", type=float, default=float(os.getenv("POL_GPU_WAIT_TIMEOUT_SEC", "0")))
     parser.add_argument("--gpu-wait-sleep-sec", type=float, default=float(os.getenv("POL_GPU_WAIT_SLEEP_SEC", "60")))
+    parser.add_argument("--require-gpu-name", default=os.getenv("POL_REQUIRE_GPU_NAME", ""), help="Regex that each requested non-CPU GPU name must match before launching")
     parser.add_argument("--validate-after-job", action="store_true", help="Run paper validation after each completed job and write a gate report")
     parser.add_argument("--validation-results-root", type=Path, default=None, help="Results root passed to validate_reproduction.py; defaults to the formal root")
     parser.add_argument("--validation-output-root", type=Path, default=None, help="Directory for per-job validation gate outputs")

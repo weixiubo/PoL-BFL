@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "runner": "experiments/scripts/runners/run_rq4_incentive.py",
-  "output_root": "experiments/results/reproduction/formal/rq4_incentive",
+  "output_root": "experiments/results/repro_recovery/formal/rq4_incentive",
   "protocol": {
     "pol_integrity": 1,
     "enable_incentives": true
