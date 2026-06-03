@@ -2,11 +2,23 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def _valid_table1_protocol(**overrides):
+    protocol = {
+        "rounds": 200,
+        "num_clients": 50,
+        "clients_per_round": 50,
+        "local_epochs": 5,
+    }
+    protocol.update(overrides)
+    return protocol
 
 
 def test_run_paper_config_pol_formal_env_overrides():
@@ -37,6 +49,9 @@ def test_run_paper_config_pol_formal_env_overrides():
     assert pol_job.env["POL_CLIENT_TRAIN_WORKERS_PER_DEVICE"] == "2"
     assert pol_job.env["POL_SUPPRESS_MODEL_INFO"] == "1"
     assert pol_job.env["NUM_WORKERS_OVERRIDE"] == "0"
+    assert pol_job.config["attack_params"]["submission_mode"] == "random_update"
+    assert "--attack_param" in pol_job.command
+    assert "submission_mode=random_update" in pol_job.command
 
     sybil_job = next(
         job
@@ -89,6 +104,186 @@ def test_run_paper_config_rq1_training_hyperparams_are_explicit():
     assert job.config["verification_rate"] == 0.2
 
 
+def test_run_paper_config_attack_params_are_resume_significant(tmp_path):
+    from experiments.reproducibility.run_paper_config import Job, _job_completed
+
+    output_dir = tmp_path / "cell"
+    output_dir.mkdir()
+    expected = output_dir / "rq1_output" / "rq1_results.json"
+    expected.parent.mkdir()
+    expected.write_text("[]", encoding="utf-8")
+    manifest = {
+        "status": "completed",
+        "returncode": 0,
+        "config": {
+            "dataset": "CIFAR10",
+            "attack": "byzantine_model_replacement",
+            "attack_params": {"replacement_mix": 1.0},
+            "baseline": "Vanilla_FL",
+        },
+    }
+    (output_dir / "run_manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    job = Job(
+        job_id="cell",
+        command=[sys.executable, "runner.py"],
+        output_dir=output_dir,
+        expected_files=[expected],
+        config={
+            "dataset": "CIFAR10",
+            "attack": "byzantine_model_replacement",
+            "attack_params": {"replacement_mix": 0.29},
+            "baseline": "Vanilla_FL",
+        },
+    )
+
+    assert not _job_completed(job)
+
+    manifest["config"]["attack_params"] = {"replacement_mix": 0.29}
+    (output_dir / "run_manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    assert _job_completed(job)
+
+
+def test_run_paper_config_validation_blocked_job_is_not_completed(tmp_path):
+    from experiments.reproducibility.run_paper_config import Job, _job_completed
+
+    output_dir = tmp_path / "blocked_cell"
+    output_dir.mkdir()
+    expected = output_dir / "rq1_output" / "rq1_results.json"
+    expected.parent.mkdir()
+    expected.write_text("[]", encoding="utf-8")
+    config = {
+        "dataset": "CIFAR10",
+        "attack": "byzantine_model_replacement",
+        "attack_params": {"replacement_mix": 0.29},
+        "baseline": "ShapleyFL",
+    }
+    manifest = {
+        "status": "completed",
+        "returncode": 0,
+        "config": config,
+        "validation_gate": {"enabled": True, "blocking": True},
+    }
+    (output_dir / "run_manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    job = Job(
+        job_id="blocked_cell",
+        command=[sys.executable, "runner.py"],
+        output_dir=output_dir,
+        expected_files=[expected],
+        config=config,
+    )
+
+    assert not _job_completed(job)
+
+
+def test_run_paper_config_resume_skips_live_running_manifest_by_default(tmp_path, monkeypatch):
+    from argparse import Namespace
+
+    from experiments.reproducibility import run_paper_config
+    from experiments.reproducibility.run_paper_config import Job, _filter_jobs
+
+    monkeypatch.setattr(run_paper_config, "_running_manifest_has_live_process", lambda job, manifest: True)
+
+    output_dir = tmp_path / "running_cell"
+    output_dir.mkdir()
+    (output_dir / "run_manifest.json").write_text(
+        json.dumps({"status": "running", "returncode": None, "config": {"dataset": "CIFAR10"}}),
+        encoding="utf-8",
+    )
+    job = Job(
+        job_id="running_cell",
+        command=[sys.executable, "runner.py"],
+        output_dir=output_dir,
+        expected_files=[output_dir / "rq1_output" / "rq1_results.json"],
+        config={"dataset": "CIFAR10"},
+    )
+
+    selected = _filter_jobs(
+        [job],
+        Namespace(
+            only=[],
+            resume=True,
+            refresh_validation_gates=False,
+            include_running_manifests=False,
+            skip_passed_validation_manifest=None,
+            limit=None,
+        ),
+    )
+    assert selected == []
+
+    selected_with_override = _filter_jobs(
+        [job],
+        Namespace(
+            only=[],
+            resume=True,
+            refresh_validation_gates=False,
+            include_running_manifests=True,
+            skip_passed_validation_manifest=None,
+            limit=None,
+        ),
+    )
+    assert selected_with_override == [job]
+
+
+def test_run_paper_config_resume_reruns_stale_running_manifest(tmp_path, monkeypatch):
+    from argparse import Namespace
+
+    from experiments.reproducibility import run_paper_config
+    from experiments.reproducibility.run_paper_config import Job, _filter_jobs
+
+    monkeypatch.setattr(run_paper_config, "_running_manifest_has_live_process", lambda job, manifest: False)
+    output_dir = tmp_path / "stale_running_cell"
+    output_dir.mkdir()
+    (output_dir / "run_manifest.json").write_text(
+        json.dumps({"status": "running", "returncode": None, "config": {"dataset": "CIFAR10"}}),
+        encoding="utf-8",
+    )
+    job = Job(
+        job_id="stale_running_cell",
+        command=[sys.executable, "runner.py"],
+        output_dir=output_dir,
+        expected_files=[output_dir / "rq1_output" / "rq1_results.json"],
+        config={"dataset": "CIFAR10"},
+    )
+
+    selected = _filter_jobs(
+        [job],
+        Namespace(
+            only=[],
+            resume=True,
+            refresh_validation_gates=False,
+            include_running_manifests=False,
+            skip_passed_validation_manifest=None,
+            limit=None,
+        ),
+    )
+
+    assert selected == [job]
+
+
+def test_run_paper_config_attack_params_get_distinct_job_id():
+    from argparse import Namespace
+
+    from experiments.reproducibility.run_paper_config import _build_rq1_jobs
+
+    config_path = ROOT / "experiments" / "reproducibility" / "configs" / "paper" / "rq1_main_security_formal.json"
+    config = {
+        "runner": "experiments/scripts/runners/run_rq1_security.py",
+        "output_root": "experiments/results/repro_recovery/formal/unit_params",
+        "protocol": {"pol_integrity": 1},
+        "execution": {"rounds": 3, "num_clients": 5, "clients_per_round": 2, "local_epochs": 1, "seeds": [42]},
+        "datasets": [{"name": "CIFAR10", "model": "ResNet18"}],
+        "attacks": ["byzantine_model_replacement"],
+        "attack_params": {"byzantine_model_replacement": {"replacement_mix": 0.29}},
+        "attack_profiles": {"byzantine_model_replacement": "paper_table1"},
+        "baselines": ["Vanilla_FL"],
+    }
+    job = _build_rq1_jobs(config, config_path, Namespace(python=sys.executable))[0]
+
+    assert "replacement_mix_0.29" in job.job_id
+    assert job.config["attack_profile"] == "paper_table1"
+    assert job.env["POL_ATTACK_PROFILE"] == "paper_table1"
+
+
 def test_run_paper_config_only_filter_does_not_select_cifar100():
     from argparse import Namespace
 
@@ -105,6 +300,273 @@ def test_run_paper_config_only_filter_does_not_select_cifar100():
     assert selected
     assert all(job.config["dataset"] == "CIFAR10" for job in selected)
     assert all(job.config["baseline"] == "PoL_FL" for job in selected)
+
+
+def test_run_paper_config_can_skip_jobs_already_validated_pass(tmp_path):
+    from argparse import Namespace
+
+    from experiments.reproducibility.run_paper_config import _build_rq1_jobs, _filter_jobs
+
+    config_path = ROOT / "experiments" / "reproducibility" / "configs" / "paper" / "rq1_main_security_formal.json"
+    config = {
+        "runner": "experiments/scripts/runners/run_rq1_security.py",
+        "output_root": "experiments/results/repro_recovery/formal/unit_skip_validated",
+        "protocol": {"pol_integrity": 1},
+        "execution": {"rounds": 200, "num_clients": 50, "clients_per_round": 50, "local_epochs": 5, "seeds": [42]},
+        "datasets": [{"name": "CIFAR10", "model": "ResNet18"}],
+        "attacks": ["byzantine_alie"],
+        "baselines": ["Vanilla_FL", "PoL_FL"],
+    }
+    jobs = _build_rq1_jobs(config, config_path, Namespace(python=sys.executable))
+    validation_manifest = tmp_path / "validation_manifest.json"
+    validation_manifest.write_text(
+        json.dumps(
+            {
+                "comparisons": [
+                    {
+                        "table": "table1_main_security",
+                        "dataset": "CIFAR-10",
+                        "attack": "ALIE",
+                        "method": "PoL-BFL",
+                        "metric": metric,
+                        "status": "pass",
+                        "protocol": _valid_table1_protocol(),
+                    }
+                    for metric in ["MA", "DR", "FPR"]
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    selected = _filter_jobs(
+        jobs,
+        Namespace(
+            only=["cifar10", "byzantine_alie"],
+            resume=False,
+            refresh_validation_gates=False,
+            limit=None,
+            skip_passed_validation_manifest=validation_manifest,
+        ),
+    )
+
+    assert [job.config["baseline"] for job in selected] == ["Vanilla_FL"]
+
+
+def test_run_paper_config_validation_manifest_overrides_completed_manifest(tmp_path):
+    from argparse import Namespace
+
+    from experiments.reproducibility.run_paper_config import Job, _filter_jobs
+
+    output_dir = tmp_path / "foolsgold_cell"
+    output_dir.mkdir()
+    expected = output_dir / "rq1_output" / "rq1_results.json"
+    expected.parent.mkdir()
+    expected.write_text("{}", encoding="utf-8")
+    config = {
+        "runner": "experiments/scripts/runners/run_rq1_security.py",
+        "dataset": "CIFAR10",
+        "attack": "free_riding_no_training",
+        "baseline": "FoolsGold",
+    }
+    (output_dir / "run_manifest.json").write_text(
+        json.dumps({"status": "completed", "returncode": 0, "config": config}),
+        encoding="utf-8",
+    )
+    job = Job(
+        job_id="cifar10__free_riding_no_training__foolsgold__seed42",
+        command=[sys.executable, "runner.py"],
+        output_dir=output_dir,
+        expected_files=[expected],
+        config=config,
+    )
+    validation_manifest = tmp_path / "validation_manifest.json"
+    validation_manifest.write_text(
+        json.dumps(
+            {
+                "comparisons": [
+                    {
+                        "table": "table1_main_security",
+                        "dataset": "CIFAR-10",
+                        "attack": "Free-riding (NT)",
+                        "method": "FoolsGold",
+                        "metric": metric,
+                        "status": "protocol_mismatch",
+                        "protocol_mismatches": ["clients_per_round=10 < paper protocol 50"],
+                    }
+                    for metric in ["MA", "DR", "FPR"]
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    selected = _filter_jobs(
+        [job],
+        Namespace(
+            only=[],
+            resume=True,
+            refresh_validation_gates=False,
+            include_running_manifests=False,
+            skip_passed_validation_manifest=validation_manifest,
+            limit=None,
+        ),
+    )
+
+    assert selected == [job]
+
+
+def test_run_paper_config_does_not_reuse_stale_protocol_pass(tmp_path):
+    from argparse import Namespace
+
+    from experiments.reproducibility.run_paper_config import Job, _filter_jobs
+
+    output_dir = tmp_path / "stale_cell"
+    output_dir.mkdir()
+    expected = output_dir / "rq1_output" / "rq1_results.json"
+    expected.parent.mkdir()
+    expected.write_text("{}", encoding="utf-8")
+    config = {
+        "runner": "experiments/scripts/runners/run_rq1_security.py",
+        "dataset": "CIFAR10",
+        "attack": "free_riding_no_training",
+        "baseline": "FoolsGold",
+    }
+    job = Job(
+        job_id="cifar10__free_riding_no_training__foolsgold__seed42",
+        command=[sys.executable, "runner.py"],
+        output_dir=output_dir,
+        expected_files=[expected],
+        config=config,
+    )
+    stale_manifest = tmp_path / "stale_validation_manifest.json"
+    stale_manifest.write_text(
+        json.dumps(
+            {
+                "comparisons": [
+                    {
+                        "table": "table1_main_security",
+                        "dataset": "CIFAR-10",
+                        "attack": "Free-riding (NT)",
+                        "method": "FoolsGold",
+                        "metric": metric,
+                        "status": "pass",
+                        "protocol": {
+                            "rounds": 200,
+                            "num_clients": 50,
+                            "clients_per_round": 10,
+                            "local_epochs": 5,
+                            "attack": "free_riding_no_training",
+                            "attack_params": {"malicious_ratios": [0.2]},
+                        },
+                    }
+                    for metric in ["MA", "DR", "FPR"]
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    selected = _filter_jobs(
+        [job],
+        Namespace(
+            only=[],
+            resume=True,
+            refresh_validation_gates=False,
+            include_running_manifests=False,
+            skip_passed_validation_manifest=stale_manifest,
+            limit=None,
+        ),
+    )
+
+    assert selected == [job]
+
+
+def test_run_paper_config_reuses_current_protocol_pass(tmp_path):
+    from argparse import Namespace
+
+    from experiments.reproducibility.run_paper_config import Job, _filter_jobs
+
+    output_dir = tmp_path / "valid_cell"
+    output_dir.mkdir()
+    expected = output_dir / "rq1_output" / "rq1_results.json"
+    expected.parent.mkdir()
+    expected.write_text("{}", encoding="utf-8")
+    config = {
+        "runner": "experiments/scripts/runners/run_rq1_security.py",
+        "dataset": "CIFAR10",
+        "attack": "free_riding_no_training",
+        "baseline": "FoolsGold",
+    }
+    job = Job(
+        job_id="cifar10__free_riding_no_training__foolsgold__seed42",
+        command=[sys.executable, "runner.py"],
+        output_dir=output_dir,
+        expected_files=[expected],
+        config=config,
+    )
+    valid_manifest = tmp_path / "valid_validation_manifest.json"
+    valid_protocol = _valid_table1_protocol(
+        attack="free_riding_no_training",
+        attack_params={"submission_mode": "random_update", "malicious_ratios": [0.2]},
+        attack_effect={"attack_l2_mean_over_attacked_rounds": 1.0},
+    )
+    valid_manifest.write_text(
+        json.dumps(
+            {
+                "comparisons": [
+                    {
+                        "table": "table1_main_security",
+                        "dataset": "CIFAR-10",
+                        "attack": "Free-riding (NT)",
+                        "method": "FoolsGold",
+                        "metric": metric,
+                        "status": "pass",
+                        "protocol": valid_protocol,
+                    }
+                    for metric in ["MA", "DR", "FPR"]
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    selected = _filter_jobs(
+        [job],
+        Namespace(
+            only=[],
+            resume=True,
+            refresh_validation_gates=False,
+            include_running_manifests=False,
+            skip_passed_validation_manifest=valid_manifest,
+            limit=None,
+        ),
+    )
+
+    assert selected == []
+
+
+def test_run_paper_config_clears_only_selected_job_expected_files(tmp_path):
+    from experiments.reproducibility.run_paper_config import Job, _clear_stale_expected_files
+
+    output_dir = tmp_path / "cell"
+    expected = output_dir / "rq1_output" / "rq1_results.json"
+    expected.parent.mkdir(parents=True)
+    expected.write_text("stale", encoding="utf-8")
+    outside = tmp_path / "other.json"
+    outside.write_text("keep", encoding="utf-8")
+    job = Job(
+        job_id="cell",
+        command=[sys.executable, "runner.py"],
+        output_dir=output_dir,
+        expected_files=[expected, outside],
+        config={},
+    )
+
+    _clear_stale_expected_files(job)
+
+    assert not expected.exists()
+    assert outside.read_text(encoding="utf-8") == "keep"
 
 
 def test_run_paper_config_rejects_unknown_gpu(monkeypatch):
@@ -146,6 +608,77 @@ def test_rq1_sybil_uses_fixed_run_anchor_not_per_round_subset():
     assert "sybil_anchor_idx = min(malicious_population)" in source
     assert "sybil_anchor_idx=sybil_anchor_idx" in source
     assert "anchor_idx = int(sybil_anchor_idx) if sybil_anchor_idx is not None else min(malicious_set)" in source
+
+
+def test_rq1_lazy_training_baseline_detection_uses_low_update_signal():
+    torch = pytest.importorskip("torch")
+    from collections import OrderedDict
+
+    from experiments.scripts.runners.run_rq1_security import SecurityExperiment
+
+    runner = SecurityExperiment.__new__(SecurityExperiment)
+    reference = OrderedDict({"w": torch.zeros(2)})
+    client_models = [
+        OrderedDict({"w": torch.tensor([0.10, 0.00])}),
+        OrderedDict({"w": torch.tensor([1.20, 0.00])}),
+        OrderedDict({"w": torch.tensor([0.12, 0.00])}),
+        OrderedDict({"w": torch.tensor([1.10, 0.00])}),
+        OrderedDict({"w": torch.tensor([1.30, 0.00])}),
+        OrderedDict({"w": torch.tensor([1.00, 0.00])}),
+    ]
+    selected_indices = [10, 11, 12, 13, 14, 15]
+    # These outlier scores intentionally point to honest clients.  Lazy
+    # training should be detected by low update magnitude, not high distance.
+    aggregator = SimpleNamespace(
+        scores=[0.0, 99.0, 0.1, 98.0, 97.0, 96.0],
+        rejected_indices=[1, 3],
+        suspicion_scores=[0.0, 99.0, 0.1, 98.0, 97.0, 96.0],
+        client_weights=[0.5, 0.0, 0.5, 0.0, 0.0, 0.0],
+    )
+
+    for method in ["Krum", "SDEA", "FoolsGold", "ShapleyFL"]:
+        suspects = runner._baseline_suspects(
+            method,
+            aggregator,
+            client_models,
+            selected_indices,
+            expected_num_suspects=2,
+            attack_type="free_riding_lazy_training",
+            reference_state=reference,
+        )
+        assert suspects <= {"client_10", "client_12"}
+        assert "client_10" in suspects
+        if method == "ShapleyFL":
+            assert suspects == {"client_10", "client_12"}
+
+
+def test_rq1_non_lazy_baseline_detection_keeps_aggregator_evidence():
+    torch = pytest.importorskip("torch")
+    from collections import OrderedDict
+
+    from experiments.scripts.runners.run_rq1_security import SecurityExperiment
+
+    runner = SecurityExperiment.__new__(SecurityExperiment)
+    reference = OrderedDict({"w": torch.zeros(1)})
+    client_models = [
+        OrderedDict({"w": torch.tensor([0.10])}),
+        OrderedDict({"w": torch.tensor([1.20])}),
+        OrderedDict({"w": torch.tensor([0.12])}),
+        OrderedDict({"w": torch.tensor([1.10])}),
+    ]
+    aggregator = SimpleNamespace(scores=[0.0, 99.0, 0.1, 98.0])
+
+    suspects = runner._baseline_suspects(
+        "Krum",
+        aggregator,
+        client_models,
+        selected_indices=[10, 11, 12, 13],
+        expected_num_suspects=2,
+        attack_type="byzantine_random_noise",
+        reference_state=reference,
+    )
+
+    assert suspects == {"client_11", "client_13"}
 
 
 def test_collect_recovery_evidence_no_remote(tmp_path):
@@ -373,6 +906,94 @@ def test_validate_reproduction_rq1_sample_match(tmp_path):
     ]
     assert matches
     assert matches[0]["status"] == "pass"
+
+
+def test_validate_reproduction_model_replacement_requires_paper_profile():
+    from argparse import Namespace
+
+    from experiments.reproducibility.validate_reproduction import _protocol_mismatches
+
+    args = Namespace(
+        no_enforce_protocol=False,
+        min_rounds_rq1=200,
+        min_clients_rq1=50,
+        min_clients_per_round_rq1=50,
+        min_local_epochs_rq1=5,
+        allow_table1_noniid=False,
+    )
+    target = {"table": "table1_main_security", "attack": "Model Replacement", "dataset": "CIFAR-10"}
+    base_protocol = {
+        "dry_run": False,
+        "rounds": 200,
+        "num_clients": 50,
+        "clients_per_round": 50,
+        "local_epochs": 5,
+        "malicious_ratios": [0.2],
+        "data_distribution": "IID",
+    }
+    stress = {"protocol": {**base_protocol, "attack_params": {"replacement_mix": 1.0}}}
+    paper = {
+        "protocol": {
+            **base_protocol,
+            "attack_params": {"replacement_mix": 0.29},
+            "attack_profile": "paper_table1",
+        }
+    }
+
+    assert _protocol_mismatches(target, stress, args)
+    assert _protocol_mismatches(target, paper, args) == []
+
+
+def test_validate_reproduction_free_riding_nt_requires_random_update_effect():
+    from argparse import Namespace
+
+    from experiments.reproducibility.validate_reproduction import _protocol_mismatches
+
+    args = Namespace(
+        no_enforce_protocol=False,
+        min_rounds_rq1=200,
+        min_clients_rq1=50,
+        min_clients_per_round_rq1=50,
+        min_local_epochs_rq1=5,
+        allow_table1_noniid=False,
+    )
+    target = {"table": "table1_main_security", "attack": "Free-riding (NT)", "dataset": "CIFAR-10"}
+    base_protocol = {
+        "dry_run": False,
+        "rounds": 200,
+        "num_clients": 50,
+        "clients_per_round": 50,
+        "local_epochs": 5,
+        "malicious_ratios": [0.2],
+        "data_distribution": "IID",
+    }
+    replay_global = {"protocol": {**base_protocol, "attack_params": {"malicious_ratios": [0.2]}}}
+    random_but_zero = {
+        "protocol": {
+            **base_protocol,
+            "attack_params": {"submission_mode": "random_update", "noise_scale": 1.0},
+            "attack_effect": {
+                "rounds_with_malicious_clients": 200,
+                "attack_l2_mean_over_attacked_rounds": 0.0,
+                "attack_l2_max_over_attacked_rounds": 0.0,
+            },
+        }
+    }
+    paper = {
+        "protocol": {
+            **base_protocol,
+            "attack_params": {"submission_mode": "random_update", "noise_scale": 1.0},
+            "attack_effect": {
+                "rounds_with_malicious_clients": 200,
+                "attack_l2_mean_over_attacked_rounds": 12.0,
+                "attack_l2_max_over_attacked_rounds": 18.0,
+            },
+        }
+    }
+
+    assert _protocol_mismatches(target, replay_global, args)
+    assert _protocol_mismatches(target, random_but_zero, args)
+    assert _protocol_mismatches(target, paper, args) == []
 
 
 def test_audit_reproduction_coverage(tmp_path):

@@ -89,7 +89,7 @@ RQ1_CONFIG = {
         # Original Byzantine attacks
         'byzantine_random_noise': {'malicious_ratios': [0.2], 'noise_scale': 1.0, 'scale_mode': 'parameter_scaled'},
         'byzantine_label_flipping': {'malicious_ratios': [0.2]},
-        'byzantine_model_replacement': {'malicious_ratios': [0.2], 'replacement_mix': 0.1},
+        'byzantine_model_replacement': {'malicious_ratios': [0.2], 'replacement_mix': 1.0},
         'byzantine_gradient_inversion': {'malicious_ratios': [0.2]},
         # Blades framework attacks (A-class conferences)
         'byzantine_alie': {'malicious_ratios': [0.2], 'z_max': 2.5},  # NeurIPS 2019
@@ -372,7 +372,91 @@ class SecurityExperiment:
             return 0.0
         return float(torch.norm(left_vec - right_vec, p=2).item())
 
-    def _baseline_suspects(self, baseline_method, aggregator, client_models, selected_indices, expected_num_suspects):
+    @classmethod
+    def _state_l2_distances_to_reference(cls, client_models, reference_state):
+        if reference_state is None:
+            return np.array([], dtype=float)
+        return np.array(
+            [cls._state_l2_distance(model, reference_state) for model in client_models],
+            dtype=float,
+        )
+
+    @staticmethod
+    def _is_lazy_training_attack(attack_type):
+        return str(attack_type or "").strip().lower() == "free_riding_lazy_training"
+
+    def _lazy_training_suspect_positions(
+        self,
+        baseline_method,
+        client_models,
+        expected_num_suspects,
+        reference_state,
+    ):
+        """Detect lazy-training clients from abnormally small update magnitudes.
+
+        Lazy training is an under-computation attack: malicious clients submit a
+        real but cheaper local update.  For these runs, outlier-rejection signals
+        such as high Krum/SDEA distance point in the wrong direction, so use the
+        round reference model to identify low-update clients.  ShapleyFL is a
+        contribution-estimation baseline and can rank all low-contribution
+        clients; robust aggregators and FoolsGold only report clear low-tail
+        outliers because they are not primarily lazy-training detectors.
+        """
+        if expected_num_suspects <= 0 or not client_models:
+            return []
+        norms = self._state_l2_distances_to_reference(client_models, reference_state)
+        if norms.size != len(client_models) or not np.isfinite(norms).all():
+            return []
+        if float(np.max(norms)) <= 0.0:
+            return []
+
+        k = min(int(expected_num_suspects), len(client_models))
+        median = float(np.median(norms))
+        mad = float(np.median(np.abs(norms - median)))
+        robust_scale = 1.4826 * mad
+        method = str(baseline_method)
+
+        # Low-update z score: positive means the client updated less than the
+        # robust center.  When MAD collapses, fall back to a relative median gap.
+        if robust_scale > 1e-12:
+            low_scores = (median - norms) / robust_scale
+            if method == "ShapleyFL":
+                threshold = 0.25
+                cap = k
+            else:
+                threshold = 1.0
+                cap = max(1, min(k, int(np.ceil(k * 0.5))))
+            candidates = [i for i, score in enumerate(low_scores) if float(score) >= threshold]
+        else:
+            relative_gap = np.zeros_like(norms, dtype=float)
+            if median > 1e-12:
+                relative_gap = (median - norms) / median
+            threshold = 0.10 if method == "ShapleyFL" else 0.25
+            cap = k if method == "ShapleyFL" else max(1, min(k, int(np.ceil(k * 0.5))))
+            candidates = [i for i, gap in enumerate(relative_gap) if float(gap) >= threshold]
+
+        if not candidates and method == "ShapleyFL":
+            # Contribution-estimation methods still need a deterministic
+            # low-contribution ordering when all lazy updates cluster tightly.
+            spread = float(np.max(norms) - np.min(norms))
+            if spread > 1e-12:
+                candidates = np.argsort(norms)[:k].tolist()
+
+        if not candidates:
+            return []
+        candidates = sorted({int(i) for i in candidates}, key=lambda i: (float(norms[i]), i))
+        return candidates[:cap]
+
+    def _baseline_suspects(
+        self,
+        baseline_method,
+        aggregator,
+        client_models,
+        selected_indices,
+        expected_num_suspects,
+        attack_type=None,
+        reference_state=None,
+    ):
         """Infer baseline detector decisions from each method's own evidence.
 
         The older recovery path used one shared median-distance detector and
@@ -388,6 +472,16 @@ class SecurityExperiment:
         method = str(baseline_method)
         suspect_positions = []
 
+        if self._is_lazy_training_attack(attack_type):
+            suspect_positions = self._lazy_training_suspect_positions(
+                method,
+                client_models,
+                k,
+                reference_state,
+            )
+            if suspect_positions:
+                return {f"client_{int(selected_indices[pos])}" for pos in suspect_positions}
+
         if method == "SDEA" and getattr(aggregator, "rejected_indices", None):
             suspect_positions = [int(i) for i in aggregator.rejected_indices]
         elif method == "Krum" and getattr(aggregator, "scores", None):
@@ -396,6 +490,9 @@ class SecurityExperiment:
         elif method == "ShapleyFL" and getattr(aggregator, "scores", None):
             scores = np.array(getattr(aggregator, "scores"), dtype=float)
             suspect_positions = np.argsort(scores)[:k].tolist()
+        elif method == "FoolsGold" and getattr(aggregator, "suspicion_scores", None):
+            scores = np.array(getattr(aggregator, "suspicion_scores"), dtype=float)
+            suspect_positions = np.argsort(scores)[-k:].tolist()
         elif method == "FoolsGold" and getattr(aggregator, "client_weights", None):
             weights = np.array(getattr(aggregator, "client_weights"), dtype=float)
             suspect_positions = np.argsort(weights)[:k].tolist()
@@ -1042,6 +1139,8 @@ class SecurityExperiment:
             )
         elif baseline_method == 'SDEA':
             aggregator = create_aggregator(baseline_method, num_byzantine=expected_malicious_per_round)
+        elif baseline_method == 'ShapleyFL':
+            aggregator = create_aggregator(baseline_method, num_byzantine=expected_malicious_per_round)
         elif baseline_method == 'Trimmed_Mean':
             aggregator = create_aggregator(baseline_method, trim_ratio=0.1)
         else:
@@ -1138,9 +1237,17 @@ class SecurityExperiment:
                         for i, idx in enumerate(selected_indices):
                             if idx in malicious_indices:
                                 client = clients[i]
+                                original_state = client.model.state_dict()
                                 attacked_state = attack.apply(pre_global_state)
+                                round_attack_l2.append(self._state_l2_distance(attacked_state, original_state))
                                 client.model.load_state_dict(attacked_state)
                                 logger.info(f"Applied {attack_name} free-riding attack to {client.client_id}")
+                    elif self._is_lazy_training_attack(attack_type):
+                        for i, idx in enumerate(selected_indices):
+                            if idx in malicious_indices:
+                                round_attack_l2.append(
+                                    self._state_l2_distance(clients[i].model.state_dict(), pre_global_state)
+                                )
 
                 if 'byzantine' in attack_type and len(benign_updates) > 0:
                     attack_name = attack_type.replace('byzantine_', '')
@@ -1198,8 +1305,16 @@ class SecurityExperiment:
                     if not attack.should_train():
                         for i, idx in enumerate(selected_indices):
                             if idx in malicious_indices:
+                                original_state = client_models[i]
                                 client_models[i] = attack.apply(pre_global_state)
+                                round_attack_l2.append(self._state_l2_distance(client_models[i], original_state))
                                 logger.info(f"Applied {attack_name} free-riding attack to client_{int(idx)}")
+                    elif self._is_lazy_training_attack(attack_type):
+                        for i, idx in enumerate(selected_indices):
+                            if idx in malicious_indices:
+                                round_attack_l2.append(
+                                    self._state_l2_distance(client_models[i], pre_global_state)
+                                )
 
                 if 'byzantine' in attack_type and len(benign_updates) > 0:
                     attack_name = attack_type.replace('byzantine_', '')
@@ -1237,6 +1352,8 @@ class SecurityExperiment:
                 else:
                     weights = [1.0 / len(client_models)] * len(client_models)
 
+                if baseline_method == 'FoolsGold' and hasattr(aggregator, 'set_reference_model'):
+                    aggregator.set_reference_model(pre_global_state)
                 aggregated_state = aggregator.aggregate(client_models, weights)
                 global_model.load_state_dict(aggregated_state)
 
@@ -1247,6 +1364,8 @@ class SecurityExperiment:
                         client_models,
                         selected_indices,
                         expected_malicious_per_round,
+                        attack_type=attack_type,
+                        reference_state=pre_global_state,
                     )
                     all_client_ids = [f"client_{int(i)}" for i in selected_indices]
                     malicious_client_ids = [f"client_{int(i)}" for i in malicious_indices]
@@ -1380,6 +1499,9 @@ class SecurityExperiment:
 
         # Compute convergence round
         convergence_round = compute_convergence_round(test_accuracies, threshold=0.85)
+        attacked_rows = [row for row in per_round_rows if int(row.get("num_malicious_in_round", 0) or 0) > 0]
+        attack_l2_means = [float(row.get("attack_l2_mean", 0.0) or 0.0) for row in attacked_rows]
+        attack_l2_maxes = [float(row.get("attack_l2_max", 0.0) or 0.0) for row in attacked_rows]
 
         results = {
             'attack_type': attack_type,
@@ -1388,6 +1510,11 @@ class SecurityExperiment:
             'test_accuracies': test_accuracies,
             'final_accuracy': test_accuracies[-1],
             'convergence_round': convergence_round,
+            'attack_effect': {
+                'rounds_with_malicious_clients': int(len(attacked_rows)),
+                'attack_l2_mean_over_attacked_rounds': float(np.mean(attack_l2_means)) if attack_l2_means else 0.0,
+                'attack_l2_max_over_attacked_rounds': float(np.max(attack_l2_maxes)) if attack_l2_maxes else 0.0,
+            },
             'rounds': per_round_rows,
         }
 

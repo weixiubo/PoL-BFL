@@ -32,12 +32,30 @@ class FreeRidingAttack:
 class NoTrainingAttack(FreeRidingAttack):
     """
     No Training Attack
-    
-    Malicious clients don't train at all and submit the global model.
+
+    Malicious clients do not train.  For legacy diagnostics they may replay
+    the global model; for paper reproduction they submit a random update
+    without a valid local-training trace.
     """
-    
-    def __init__(self):
+
+    def __init__(
+        self,
+        submission_mode: str = "global",
+        noise_scale: float = 1.0,
+        min_scale: float = 1e-4,
+        scale_mode: str = "parameter_scaled",
+    ):
         super().__init__("NoTrainingAttack")
+        self.submission_mode = str(submission_mode or "global").lower()
+        self.noise_scale = float(noise_scale)
+        self.min_scale = float(min_scale)
+        self.scale_mode = str(scale_mode or "parameter_scaled").lower()
+        valid_modes = {"global", "replay_global", "random_update", "random", "random_model"}
+        valid_scales = {"absolute", "parameter_scaled", "replace"}
+        if self.submission_mode not in valid_modes:
+            raise ValueError(f"Unknown no-training submission_mode: {submission_mode}")
+        if self.scale_mode not in valid_scales:
+            raise ValueError(f"Unknown no-training scale_mode: {scale_mode}")
     
     def should_train(self) -> bool:
         """Don't train at all"""
@@ -45,16 +63,50 @@ class NoTrainingAttack(FreeRidingAttack):
     
     def apply(self, global_model: OrderedDict) -> OrderedDict:
         """
-        Return global model without training
+        Return the submitted model for a no-training attacker.
         
         Args:
             global_model: Global model state
         
         Returns:
-            model: Same as global model (no training)
+            model: Replayed global model or random update, depending on mode
         """
-        logger.debug("No training attack: returning global model")
-        return global_model
+        if self.submission_mode in {"global", "replay_global"}:
+            logger.debug("No training attack: replaying global model")
+            return OrderedDict(
+                (key, value.detach().clone() if torch.is_tensor(value) else value)
+                for key, value in global_model.items()
+            )
+
+        attacked_state = OrderedDict()
+        for key, param in global_model.items():
+            if not (torch.is_tensor(param) and param.is_floating_point()):
+                attacked_state[key] = param.detach().clone() if torch.is_tensor(param) else param
+                continue
+
+            if self.submission_mode == "random_model" or self.scale_mode == "replace":
+                attacked = torch.randn_like(param) * self.noise_scale
+            elif self.scale_mode == "absolute":
+                attacked = param + torch.randn_like(param) * self.noise_scale
+            else:
+                scale_source = param.detach().float()
+                scale_value = float(scale_source.std(unbiased=False).item()) if scale_source.numel() > 1 else 0.0
+                if not torch.isfinite(torch.tensor(scale_value)) or scale_value < self.min_scale:
+                    mean_abs = float(scale_source.abs().mean().item()) if scale_source.numel() > 0 else 0.0
+                    scale_value = max(mean_abs, self.min_scale)
+                attacked = param + torch.randn_like(param) * (self.noise_scale * scale_value)
+
+            if key.endswith("running_var"):
+                attacked = attacked.clamp_min(self.min_scale)
+            attacked_state[key] = attacked
+
+        logger.debug(
+            "No training attack: submitted %s update (scale=%s, scale_mode=%s)",
+            self.submission_mode,
+            self.noise_scale,
+            self.scale_mode,
+        )
+        return attacked_state
 
 
 class LazyTrainingAttack(FreeRidingAttack):

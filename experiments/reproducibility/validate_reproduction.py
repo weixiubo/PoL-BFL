@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import datetime as _dt
 import json
+import os
 import re
 import subprocess
 from pathlib import Path
@@ -21,21 +22,34 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 CODE_ROOT = Path(__file__).resolve().parents[2]
 WORKSPACE_ROOT = CODE_ROOT.parent
 DEFAULT_RESULTS_ROOT = CODE_ROOT / "experiments" / "results"
-DEFAULT_OUTPUT_ROOT = CODE_ROOT / "experiments" / "results" / "reproduction" / "validation"
+DEFAULT_OUTPUT_ROOT = CODE_ROOT / "experiments" / "results" / "repro_recovery" / "validation"
 
 
 def _default_paper_root() -> Path:
-    candidates = [
-        CODE_ROOT / "experiments" / "reproducibility" / "paper_targets",
-        WORKSPACE_ROOT / "Paper",
-        WORKSPACE_ROOT / "Project V7" / "Paper",
-        WORKSPACE_ROOT / "Project V7" / "Paper_origin",
-        WORKSPACE_ROOT / "Project V7" / "Paper_orig",
-    ]
+    env_root = os.getenv("POL_BFL_PAPER_ROOT")
+    candidates = []
+    if env_root:
+        candidates.append(Path(env_root).expanduser())
+    candidates.extend(
+        [
+            CODE_ROOT / "experiments" / "reproducibility" / "paper_targets",
+            WORKSPACE_ROOT / "Paper_now",
+            WORKSPACE_ROOT / "Paper",
+            WORKSPACE_ROOT / "Project V7" / "Paper",
+            WORKSPACE_ROOT / "Project V7" / "Paper_origin",
+            WORKSPACE_ROOT / "Project V7" / "Paper_orig",
+        ]
+    )
+    dated_papers = sorted(
+        (p for p in WORKSPACE_ROOT.glob("Paper20*") if p.is_dir()),
+        key=lambda p: p.stat().st_mtime,
+        reverse=True,
+    )
+    candidates.extend(dated_papers)
     for candidate in candidates:
         if (candidate / "tables" / "table1_main_security.tex").exists():
             return candidate
-    return candidates[0]
+    return candidates[0] if candidates else WORKSPACE_ROOT / "Paper"
 
 
 def _target_table_files(paper_root: Path) -> Dict[str, Path]:
@@ -426,6 +440,9 @@ def _source_protocol(path: Path) -> Dict[str, Any]:
         "clients_per_round": None,
         "data_distribution": None,
         "local_epochs": None,
+        "attack": None,
+        "attack_params": {},
+        "attack_profile": None,
     }
     run_manifest = _find_ancestor_file(path, "run_manifest.json")
     if run_manifest:
@@ -439,6 +456,9 @@ def _source_protocol(path: Path) -> Dict[str, Any]:
             protocol["num_clients"] = cfg.get("num_clients", protocol["num_clients"])
             protocol["clients_per_round"] = cfg.get("clients_per_round", protocol["clients_per_round"])
             protocol["local_epochs"] = cfg.get("local_epochs", protocol["local_epochs"])
+            protocol["attack"] = cfg.get("attack", protocol["attack"])
+            protocol["attack_params"] = cfg.get("attack_params", protocol["attack_params"]) or {}
+            protocol["attack_profile"] = cfg.get("attack_profile", protocol["attack_profile"])
         except Exception:
             pass
 
@@ -459,6 +479,16 @@ def _source_protocol(path: Path) -> Dict[str, Any]:
                     if isinstance(params, dict) and params.get("malicious_ratios")
                 }
             )
+            attacks_cfg = cfg.get("attacks") or {}
+            if isinstance(attacks_cfg, dict) and len(attacks_cfg) == 1:
+                attack_name, attack_params = next(iter(attacks_cfg.items()))
+                protocol["attack"] = protocol.get("attack") or attack_name
+                if isinstance(attack_params, dict) and not protocol.get("attack_params"):
+                    protocol["attack_params"] = dict(attack_params)
+                profile = cfg.get("attack_profile")
+                if not profile and isinstance(cfg.get("attack_profiles"), dict):
+                    profile = cfg["attack_profiles"].get(attack_name)
+                protocol["attack_profile"] = protocol.get("attack_profile") or profile
         except Exception:
             pass
 
@@ -497,6 +527,42 @@ def _observed(table: str, metric: str, value: Optional[float], source: Path, **d
     return item
 
 
+def _attach_rq1_result_protocol(observation: Dict[str, Any], result: Dict[str, Any], raw_attack: str) -> Dict[str, Any]:
+    protocol = observation.setdefault("protocol", {})
+    protocol["attack"] = protocol.get("attack") or raw_attack
+    attack_params = result.get("attack_params")
+    if isinstance(attack_params, dict):
+        protocol["attack_params"] = dict(attack_params)
+    attack_effect = result.get("attack_effect")
+    if isinstance(attack_effect, dict):
+        protocol["attack_effect"] = dict(attack_effect)
+    elif isinstance(result.get("rounds"), list):
+        attacked_values = []
+        attacked_maxes = []
+        for row in result.get("rounds") or []:
+            if not isinstance(row, dict):
+                continue
+            try:
+                has_attacker = int(row.get("num_malicious_in_round", 0) or 0) > 0
+                l2_mean = float(row.get("attack_l2_mean", 0.0) or 0.0)
+                l2_max = float(row.get("attack_l2_max", 0.0) or 0.0)
+            except Exception:
+                continue
+            if has_attacker:
+                attacked_values.append(l2_mean)
+                attacked_maxes.append(l2_max)
+        if attacked_values:
+            protocol["attack_effect"] = {
+                "rounds_with_malicious_clients": len(attacked_values),
+                "attack_l2_mean_over_attacked_rounds": sum(attacked_values) / len(attacked_values),
+                "attack_l2_max_over_attacked_rounds": max(attacked_maxes) if attacked_maxes else 0.0,
+            }
+    profile = result.get("attack_profile")
+    if profile and not protocol.get("attack_profile"):
+        protocol["attack_profile"] = profile
+    return observation
+
+
 def load_rq1_observations(paths: List[Path]) -> List[Dict[str, Any]]:
     observations: List[Dict[str, Any]] = []
     for path in paths:
@@ -517,38 +583,50 @@ def load_rq1_observations(paths: List[Path]) -> List[Dict[str, Any]]:
             if not attack or not method or not dataset:
                 continue
             observations.append(
-                _observed(
-                    "table1_main_security",
-                    "MA",
-                    _as_percent(result.get("final_accuracy")),
-                    path,
-                    dataset=dataset,
-                    attack=attack,
-                    method=method,
+                _attach_rq1_result_protocol(
+                    _observed(
+                        "table1_main_security",
+                        "MA",
+                        _as_percent(result.get("final_accuracy")),
+                        path,
+                        dataset=dataset,
+                        attack=attack,
+                        method=method,
+                    ),
+                    result,
+                    raw_attack,
                 )
             )
             metrics = result.get("detection_metrics") or {}
             if method != "Vanilla" and isinstance(metrics, dict):
                 observations.append(
-                    _observed(
-                        "table1_main_security",
-                        "DR",
-                        _as_percent(metrics.get("TPR")),
-                        path,
-                        dataset=dataset,
-                        attack=attack,
-                        method=method,
+                    _attach_rq1_result_protocol(
+                        _observed(
+                            "table1_main_security",
+                            "DR",
+                            _as_percent(metrics.get("TPR")),
+                            path,
+                            dataset=dataset,
+                            attack=attack,
+                            method=method,
+                        ),
+                        result,
+                        raw_attack,
                     )
                 )
                 observations.append(
-                    _observed(
-                        "table1_main_security",
-                        "FPR",
-                        _as_percent(metrics.get("FPR")),
-                        path,
-                        dataset=dataset,
-                        attack=attack,
-                        method=method,
+                    _attach_rq1_result_protocol(
+                        _observed(
+                            "table1_main_security",
+                            "FPR",
+                            _as_percent(metrics.get("FPR")),
+                            path,
+                            dataset=dataset,
+                            attack=attack,
+                            method=method,
+                        ),
+                        result,
+                        raw_attack,
                     )
                 )
     return observations
@@ -783,6 +861,53 @@ def _protocol_mismatches(target: Dict[str, Any], obs: Dict[str, Any], args: argp
                 allowed_dist.update({"natural_writer", "femnist_natural", "leaf_natural"})
             if dist and str(dist).lower() not in allowed_dist:
                 mismatches.append(f"data_distribution={dist} but paper says IID unless noted")
+
+        if table == "table1_main_security" and str(target.get("attack")) == "Model Replacement":
+            profile = str(protocol.get("attack_profile") or "").strip().lower()
+            if profile not in {"paper", "paper_table1", "paper_reproduction"}:
+                mismatches.append(
+                    f"model replacement attack_profile={profile or None} is not a paper reproduction profile"
+                )
+            params = protocol.get("attack_params") or {}
+            mix = params.get("replacement_mix") if isinstance(params, dict) else None
+            if mix is None:
+                mismatches.append("model replacement replacement_mix missing from protocol metadata")
+            else:
+                try:
+                    mix_value = float(mix)
+                except Exception:
+                    mismatches.append(f"model replacement replacement_mix={mix!r} is not numeric")
+                else:
+                    if not (0.0 < mix_value < 1.0):
+                        mismatches.append(
+                            f"model replacement replacement_mix={mix_value} is a stress/diagnostic setting, not paper-calibrated"
+                        )
+
+        if table == "table1_main_security" and str(target.get("attack")) == "Free-riding (NT)":
+            params = protocol.get("attack_params") or {}
+            mode = str(params.get("submission_mode") or params.get("mode") or "").strip().lower()
+            if mode not in {"random_update", "random", "random_model"}:
+                mismatches.append(
+                    f"free-riding NT submission_mode={mode or None} is not the paper random-update threat model"
+                )
+            if mode in {"random_update", "random", "random_model"}:
+                try:
+                    noise_scale = float(params.get("noise_scale", 0.0))
+                except Exception:
+                    noise_scale = 0.0
+                if noise_scale <= 0.0:
+                    mismatches.append("free-riding NT noise_scale must be > 0 for paper random-update runs")
+            effect = protocol.get("attack_effect") or {}
+            try:
+                l2_mean = float(effect.get("attack_l2_mean_over_attacked_rounds", 0.0))
+                l2_max = float(effect.get("attack_l2_max_over_attacked_rounds", 0.0))
+            except Exception:
+                l2_mean = 0.0
+                l2_max = 0.0
+            if l2_mean <= 0.0 or l2_max <= 0.0:
+                mismatches.append(
+                    "free-riding NT attack_l2 is zero/missing; attack did not measurably change malicious submissions"
+                )
 
     return mismatches
 

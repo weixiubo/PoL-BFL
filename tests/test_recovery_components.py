@@ -1,8 +1,11 @@
 import json
 
-import torch
+import pytest
+
+torch = pytest.importorskip("torch")
 
 from experiments.attacks.byzantine_attacks import ModelReplacementAttack, RandomNoiseAttack
+from experiments.attacks.free_riding_attacks import NoTrainingAttack
 from experiments.scripts.utils.baselines import create_aggregator
 from experiments.scripts.utils.data_utils import LEAFFEMNISTDataset, partition_data_by_user
 from experiments.scripts.utils.models import create_model
@@ -69,6 +72,107 @@ def test_sdea_records_method_specific_detector_evidence():
     assert len(agg.scores) == 4
     assert agg.client_weights[0] > 0.0
     assert agg.client_weights[2] == 0.0
+
+
+def test_shapleyfl_filters_lowest_contribution_update():
+    models = [
+        {"w": torch.tensor([0.0])},
+        {"w": torch.tensor([0.2])},
+        {"w": torch.tensor([50.0])},
+    ]
+
+    agg = create_aggregator("ShapleyFL", num_byzantine=1)
+    out = agg.aggregate(models)
+
+    assert sorted(agg.selected_indices) == [0, 1]
+    assert agg.rejected_indices == [2]
+    assert agg.client_weights[2] == 0.0
+    assert torch.allclose(out["w"], torch.tensor([0.1]))
+
+
+def test_shapleyfl_keeps_original_fedavg_weights_after_filtering():
+    models = [
+        {"w": torch.tensor([0.0])},
+        {"w": torch.tensor([1.0])},
+        {"w": torch.tensor([50.0])},
+    ]
+
+    agg = create_aggregator("ShapleyFL", num_byzantine=1)
+    out = agg.aggregate(models, weights=[1.0, 3.0, 100.0])
+
+    assert sorted(agg.selected_indices) == [0, 1]
+    assert agg.rejected_indices == [2]
+    assert agg.client_weights == [0.25, 0.75, 0.0]
+    assert torch.allclose(out["w"], torch.tensor([0.75]))
+
+
+def test_foolsgold_uses_reference_update_vectors():
+    reference = {
+        "w": torch.tensor([1000.0, 1000.0]),
+        "bn.num_batches_tracked": torch.tensor(5, dtype=torch.long),
+    }
+    models = [
+        {"w": reference["w"] + torch.tensor([1.0, 0.0]), "bn.num_batches_tracked": torch.tensor(6)},
+        {"w": reference["w"] + torch.tensor([0.0, 1.0]), "bn.num_batches_tracked": torch.tensor(6)},
+        {"w": reference["w"] + torch.tensor([10.0, 10.0]), "bn.num_batches_tracked": torch.tensor(6)},
+        {"w": reference["w"] + torch.tensor([10.0, 10.0]), "bn.num_batches_tracked": torch.tensor(6)},
+    ]
+
+    agg = create_aggregator("FoolsGold")
+    agg.set_reference_model(reference)
+    out = agg.aggregate(models)
+
+    assert agg.suspicion_scores[2] > agg.suspicion_scores[0]
+    assert agg.suspicion_scores[3] > agg.suspicion_scores[1]
+    assert out["bn.num_batches_tracked"].item() == 6
+
+
+def test_foolsgold_center_distance_guard_marks_large_outlier_suspicious():
+    reference = {"w": torch.zeros(4)}
+    models = [
+        {"w": torch.tensor([0.10, 0.00, 0.00, 0.00])},
+        {"w": torch.tensor([0.00, 0.10, 0.00, 0.00])},
+        {"w": torch.tensor([0.00, 0.00, 0.10, 0.00])},
+        {"w": torch.tensor([10.0, 10.0, 10.0, 10.0])},
+    ]
+
+    agg = create_aggregator("FoolsGold")
+    agg.set_reference_model(reference)
+    agg.aggregate(models)
+
+    assert agg.suspicion_scores[3] == max(agg.suspicion_scores)
+    assert agg.client_weights[3] < max(agg.client_weights[:3])
+
+
+def test_no_training_paper_mode_submits_random_update():
+    state = {
+        "w": torch.ones(64),
+        "bn.running_var": torch.ones(8),
+        "bn.num_batches_tracked": torch.tensor(5, dtype=torch.long),
+    }
+
+    torch.manual_seed(0)
+    attack = NoTrainingAttack(
+        submission_mode="random_update",
+        noise_scale=1.0,
+        scale_mode="parameter_scaled",
+    )
+    attacked = attack.apply(state)
+
+    assert attack.should_train() is False
+    assert not torch.allclose(attacked["w"], state["w"])
+    assert torch.all(attacked["bn.running_var"] > 0.0)
+    assert attacked["bn.num_batches_tracked"].item() == 5
+    assert torch.allclose(state["w"], torch.ones(64))
+
+
+def test_no_training_legacy_global_mode_clones_submission():
+    state = {"w": torch.ones(4)}
+
+    attacked = NoTrainingAttack().apply(state)
+    attacked["w"][0] = 9.0
+
+    assert state["w"][0].item() == 1.0
 
 
 def test_random_noise_attack_uses_absolute_noise_by_default():

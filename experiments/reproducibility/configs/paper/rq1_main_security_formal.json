@@ -39,6 +39,40 @@
     "data_poisoning",
     "sybil"
   ],
+  "attack_profiles": {
+    "byzantine_model_replacement": "paper_table1"
+  },
+  "attack_params": {
+    "free_riding_no_training": {
+      "submission_mode": "random_update",
+      "noise_scale": 1.0,
+      "scale_mode": "parameter_scaled"
+    },
+    "free_riding_lazy_training": {
+      "lazy_epochs": 1,
+      "required_epochs": 5
+    },
+    "byzantine_random_noise": {
+      "noise_scale": 2,
+      "scale_mode": "parameter_scaled"
+    },
+    "byzantine_model_replacement": {
+      "replacement_mix": 0.29
+    },
+    "byzantine_alie": {
+      "z_max": 2.5
+    },
+    "byzantine_minmax": {
+      "lambda_init": 1.0
+    },
+    "data_poisoning": {
+      "poison_ratio": 0.1
+    },
+    "sybil": {
+      "num_identities": 5,
+      "shared_data_ratio": 1.0
+    }
+  },
   "baselines": ["Vanilla_FL", "Krum", "ShapleyFL", "FoolsGold", "SDEA", "PoL_FL"],
   "acceptance": {
     "ma_min_delta_pp": -1.0,

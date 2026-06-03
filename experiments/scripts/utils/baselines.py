@@ -40,6 +40,30 @@ def _flatten_model_sampled(model: ODict, max_dim: int = None) -> torch.Tensor:
     return flat
 
 
+def _flatten_delta_sampled(model: ODict, reference: ODict, max_dim: int = None) -> torch.Tensor:
+    """Flatten floating-point model deltas against a reference model."""
+    max_dim = _max_vector_dim() if max_dim is None else int(max_dim)
+    parts = []
+    for key in sorted(model.keys()):
+        tensor = model[key]
+        ref = reference.get(key) if isinstance(reference, dict) else None
+        if not (torch.is_tensor(tensor) and torch.is_tensor(ref)):
+            continue
+        if not tensor.is_floating_point() or not ref.is_floating_point():
+            continue
+        if tensor.shape != ref.shape:
+            continue
+        vec = (tensor.detach().float().cpu() - ref.detach().float().cpu()).reshape(-1)
+        if not torch.isfinite(vec).all():
+            vec = torch.nan_to_num(vec, nan=0.0, posinf=0.0, neginf=0.0)
+        parts.append(vec)
+    flat = torch.cat(parts) if parts else torch.empty(0)
+    if flat.numel() > max_dim:
+        idx = torch.linspace(0, flat.numel() - 1, steps=max_dim).long()
+        flat = flat[idx]
+    return flat
+
+
 class BaselineAggregator:
     """Base class for baseline aggregation methods"""
     
@@ -414,9 +438,10 @@ class ShapleyFLAggregator(BaselineAggregator):
     It uses gradient similarity as a proxy for contribution.
     """
 
-    def __init__(self, threshold_percentile: float = 0.0):
+    def __init__(self, threshold_percentile: float = 0.0, num_byzantine: int = 0):
         super().__init__("ShapleyFL")
         self.threshold_percentile = threshold_percentile
+        self.num_byzantine = max(0, int(num_byzantine))
 
     def aggregate(self, models: List[ODict], weights: List[float] = None) -> ODict:
         """
@@ -432,66 +457,42 @@ class ShapleyFLAggregator(BaselineAggregator):
         if not models:
             raise ValueError("No models to aggregate")
 
-        # Compute pairwise cosine similarity as proxy for contribution
-        from sklearn.metrics.pairwise import cosine_similarity
-
-        # Flatten models to vectors
-        model_vectors = []
-        for model in models:
-            model_vectors.append(_flatten_model_sampled(model).numpy())
-
-        model_matrix = np.array(model_vectors)
-
-        # Compute similarity to mean (proxy for positive contribution)
-        mean_vec = np.mean(model_matrix, axis=0, keepdims=True)
-
-        # Check for NaN/Inf in mean vector
-        if np.any(np.isnan(mean_vec)) or np.any(np.isinf(mean_vec)):
-            logger.warning(f"ShapleyFL: NaN/Inf detected in mean vector, falling back to FedAvg")
+        model_vectors = [_flatten_model_sampled(model) for model in models]
+        if any(vec.numel() == 0 for vec in model_vectors):
+            logger.warning("ShapleyFL: Empty model vector detected, falling back to FedAvg")
             self.selected_indices = list(range(len(models)))
             self.rejected_indices = []
             self.scores = [0.0] * len(models)
             self.client_weights = [1.0 / len(models)] * len(models)
-            # Fallback to simple averaging
             aggregated_model = ODict()
             for key in models[0].keys():
                 aggregated_model[key] = sum(model[key] for model in models) / len(models)
             return aggregated_model
-
-        try:
-            similarities = cosine_similarity(model_matrix, mean_vec).flatten()
-        except (ValueError, RuntimeError) as e:
-            logger.warning(f"ShapleyFL: Failed to compute cosine similarity ({e}), falling back to FedAvg")
+        model_matrix = torch.stack(model_vectors, dim=0)
+        center = torch.median(model_matrix, dim=0).values
+        distances = torch.norm(model_matrix - center.unsqueeze(0), p=2, dim=1)
+        if not torch.isfinite(distances).all():
+            logger.warning("ShapleyFL: NaN/Inf detected in contribution scores, falling back to FedAvg")
             self.selected_indices = list(range(len(models)))
             self.rejected_indices = []
             self.scores = [0.0] * len(models)
             self.client_weights = [1.0 / len(models)] * len(models)
-            # Fallback to simple averaging
             aggregated_model = ODict()
             for key in models[0].keys():
                 aggregated_model[key] = sum(model[key] for model in models) / len(models)
             return aggregated_model
+        # Higher score means closer to the robust center and therefore a more
+        # plausible positive contribution under the current no-validation proxy.
+        similarities = (-distances).detach().cpu().numpy()
 
-        # Check for NaN/Inf in similarities
-        if np.any(np.isnan(similarities)) or np.any(np.isinf(similarities)):
-            logger.warning(f"ShapleyFL: NaN/Inf detected in similarities, falling back to FedAvg")
-            self.selected_indices = list(range(len(models)))
-            self.rejected_indices = []
-            self.scores = [0.0] * len(models)
-            self.client_weights = [1.0 / len(models)] * len(models)
-            # Fallback to simple averaging
-            aggregated_model = ODict()
-            for key in models[0].keys():
-                aggregated_model[key] = sum(model[key] for model in models) / len(models)
-            return aggregated_model
-
-        # Filter by threshold
-        if self.threshold_percentile > 0:
+        if self.num_byzantine > 0:
+            keep = max(1, len(models) - min(self.num_byzantine, len(models) - 1))
+            selected_indices = np.argsort(similarities)[-keep:].tolist()
+        elif self.threshold_percentile > 0:
             threshold = np.percentile(similarities, self.threshold_percentile)
+            selected_indices = [i for i in range(len(models)) if similarities[i] >= threshold]
         else:
-            threshold = 0.0
-
-        selected_indices = [i for i in range(len(models)) if similarities[i] >= threshold]
+            selected_indices = list(range(len(models)))
 
         if len(selected_indices) == 0:
             logger.warning("ShapleyFL: No clients selected, using all")
@@ -501,10 +502,16 @@ class ShapleyFLAggregator(BaselineAggregator):
         self.rejected_indices = [i for i in range(len(models)) if i not in selected_set]
         self.scores = [float(score) for score in similarities]
 
-        # Aggregate selected models with similarity weights
-        selected_sims = np.array([similarities[i] for i in selected_indices])
-        if np.sum(selected_sims) > 0:
-            selected_weights = selected_sims / np.sum(selected_sims)
+        # Aggregate the accepted clients with the original FedAvg data weights
+        # when available.  Contribution scores are used for filtering; using
+        # negative distance values as aggregation weights is unstable.
+        if weights is not None:
+            selected_weights = np.array([float(weights[i]) for i in selected_indices], dtype=float)
+            total = float(np.sum(selected_weights))
+            if total > 0.0:
+                selected_weights = selected_weights / total
+            else:
+                selected_weights = np.ones(len(selected_indices)) / len(selected_indices)
         else:
             selected_weights = np.ones(len(selected_indices)) / len(selected_indices)
         full_weights = np.zeros(len(models), dtype=float)
@@ -536,6 +543,11 @@ class FoolsGoldAggregator(BaselineAggregator):
     def __init__(self):
         super().__init__("FoolsGold")
         self.summed_deltas = None
+        self.reference_model = None
+        self.suspicion_scores = []
+
+    def set_reference_model(self, reference_model: ODict) -> None:
+        self.reference_model = reference_model
 
     def aggregate(self, models: List[ODict], weights: List[float] = None) -> ODict:
         """
@@ -553,20 +565,63 @@ class FoolsGoldAggregator(BaselineAggregator):
 
         from sklearn.metrics.pairwise import cosine_similarity
 
-        # Flatten and normalize models
+        # FoolsGold is defined on client gradients/updates, not full model
+        # states.  Full state vectors are dominated by the shared global model
+        # and can make benign clients look spuriously similar.
         model_vectors = []
         for model in models:
-            vec = _flatten_model_sampled(model).numpy()
-            # Normalize
-            norm = np.linalg.norm(vec)
-            if norm > 1e-10:
-                vec = vec / norm
+            if self.reference_model is not None:
+                vec = _flatten_delta_sampled(model, self.reference_model).numpy()
             else:
-                # Handle zero-norm case
-                vec = np.zeros_like(vec)
+                vec = _flatten_model_sampled(model).numpy()
             model_vectors.append(vec)
 
         model_matrix = np.array(model_vectors)
+        if model_matrix.size == 0:
+            logger.warning("FoolsGold: empty update vectors, falling back to FedAvg weights")
+            if weights is None:
+                wv = np.ones(len(models), dtype=float) / len(models)
+            else:
+                wv = np.array(weights, dtype=float)
+                wv = wv / np.sum(wv) if np.sum(wv) > 0 else np.ones(len(models), dtype=float) / len(models)
+            self.client_weights = [float(w) for w in wv]
+            self.scores = self.client_weights.copy()
+            self.selected_indices = list(range(len(models)))
+            self.rejected_indices = []
+            aggregated_model = ODict()
+            for key in models[0].keys():
+                if torch.is_tensor(models[0][key]) and models[0][key].is_floating_point():
+                    aggregated_model[key] = sum(wv[i] * models[i][key] for i in range(len(models)))
+                else:
+                    aggregated_model[key] = models[0][key]
+            return aggregated_model
+
+        current_deltas = model_matrix
+        center_delta = np.median(current_deltas, axis=0)
+        center_distances = np.linalg.norm(current_deltas - center_delta, axis=1)
+        max_center_distance = float(np.max(center_distances)) if center_distances.size else 0.0
+        distance_rank_suspicion = (
+            center_distances / max(max_center_distance, 1e-8)
+            if max_center_distance > 0.0
+            else np.zeros_like(center_distances)
+        )
+        median_distance = float(np.median(center_distances)) if center_distances.size else 0.0
+        mad_distance = (
+            float(np.median(np.abs(center_distances - median_distance)))
+            if center_distances.size
+            else 0.0
+        )
+        robust_scale = max(1e-8, 1.4826 * mad_distance)
+        distance_suspicion = np.clip(
+            (center_distances - median_distance) / (3.0 * robust_scale),
+            0.0,
+            1.0,
+        )
+
+        if self.summed_deltas is None or self.summed_deltas.shape != model_matrix.shape:
+            self.summed_deltas = np.zeros_like(model_matrix, dtype=float)
+        self.summed_deltas = self.summed_deltas + model_matrix
+        model_matrix = self.summed_deltas
 
         # Compute FoolsGold weights
         n = len(models)
@@ -605,27 +660,53 @@ class FoolsGoldAggregator(BaselineAggregator):
         # Final NaN check
         if not np.isfinite(wv).all():
             logger.warning("FoolsGold: Non-finite weights detected, falling back to uniform weights")
-            wv = np.ones(n) / n
+            fg_trust = np.ones(n, dtype=float)
         else:
-            # Normalize weights
-            if np.sum(wv) > 0:
-                wv = wv / np.sum(wv)
+            fg_trust = np.clip(wv, 0.0, 1.0)
+
+        if weights is not None:
+            base_weights = np.array(weights, dtype=float)
+            if not np.isfinite(base_weights).all() or np.sum(base_weights) <= 0:
+                base_weights = np.ones(n, dtype=float) / n
             else:
-                wv = np.ones(n) / n
+                base_weights = base_weights / np.sum(base_weights)
+        else:
+            base_weights = np.ones(n, dtype=float) / n
+
+        # FoolsGold's similarity signal is Sybil-specific. In IID non-Sybil
+        # attacks, benign updates can be mutually similar while independent
+        # random-noise attackers look unique. Add a robust distance-to-center
+        # guard and blend with FedAvg so this baseline does not reverse-weight
+        # outliers.
+        similarity_suspicion = 1.0 - fg_trust
+        combined_suspicion = distance_rank_suspicion + 0.25 * similarity_suspicion
+        guarded_trust = fg_trust * (1.0 - np.maximum(distance_suspicion, distance_rank_suspicion))
+        if np.sum(guarded_trust) > 0:
+            fg_weights = guarded_trust / np.sum(guarded_trust)
+        else:
+            fg_weights = base_weights.copy()
+        try:
+            blend = float(os.getenv("FOOLSGOLD_BLEND", "0.5"))
+        except Exception:
+            blend = 0.5
+        blend = float(np.clip(blend, 0.0, 1.0))
+        wv = blend * fg_weights + (1.0 - blend) * base_weights
+        wv = wv / np.sum(wv) if np.sum(wv) > 0 else base_weights
 
         # Aggregate
         self.client_weights = [float(w) for w in wv]
-        self.scores = self.client_weights.copy()
+        self.suspicion_scores = [float(score) for score in combined_suspicion]
+        self.scores = self.suspicion_scores.copy()
         self.selected_indices = [i for i, w in enumerate(self.client_weights) if w > 0.0]
         selected_set = set(self.selected_indices)
         self.rejected_indices = [i for i in range(n) if i not in selected_set]
 
         aggregated_model = ODict()
         for key in models[0].keys():
-            aggregated_model[key] = sum(
-                wv[i] * models[i][key]
-                for i in range(len(models))
-            )
+            if torch.is_tensor(models[0][key]) and models[0][key].is_floating_point():
+                aggregated_model[key] = sum(wv[i] * models[i][key] for i in range(len(models)))
+            else:
+                aggregated_model[key] = models[0][key]
 
         logger.debug(f"FoolsGold: weights mean={np.mean(wv):.4f}, std={np.std(wv):.4f}")
         return aggregated_model

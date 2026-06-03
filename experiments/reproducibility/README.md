@@ -36,6 +36,23 @@ python experiments/reproducibility/run_paper_config.py \
 
 Each job records a `run_manifest.json`, raw result JSON, runner log, and optional validation gate report under `experiments/results/repro_recovery/`.
 
+When extending a partially completed matrix, plan from the latest strict
+validation manifest so already substantiated paper cells are not rerun just
+because a non-claimed launch parameter changed:
+
+```bash
+python experiments/reproducibility/run_paper_config.py \
+  --config-file experiments/reproducibility/configs/paper/rq1_main_security_formal.json \
+  --only cifar10 \
+  --resume \
+  --skip-passed-validation-manifest experiments/results/repro_recovery/validation_snapshots/current_strict/validation_manifest.json \
+  --dry-run
+```
+
+`--resume` also skips cells whose `run_manifest.json` is still marked
+`running`. Use `--include-running-manifests` only after confirming that such a
+manifest is stale and safe to supersede.
+
 ## Validation
 
 ```bash

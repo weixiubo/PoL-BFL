@@ -33,6 +33,25 @@ VALIDATION_RESULT_NAMES = {
     "table6_noniid_summary.json",
     "table9_adaptive_summary.json",
 }
+TABLE1_DATASET_LABELS = {"CIFAR10": "CIFAR-10", "CIFAR100": "CIFAR-100", "FEMNIST": "FEMNIST"}
+TABLE1_ATTACK_LABELS = {
+    "free_riding_no_training": "Free-riding (NT)",
+    "free_riding_lazy_training": "Free-riding (LT)",
+    "byzantine_random_noise": "Byzantine (Random)",
+    "byzantine_model_replacement": "Model Replacement",
+    "byzantine_alie": "ALIE",
+    "byzantine_minmax": "MinMax",
+    "data_poisoning": "Data Poisoning",
+    "sybil": "Sybil",
+}
+TABLE1_METHOD_LABELS = {
+    "Vanilla_FL": "Vanilla",
+    "Krum": "Krum",
+    "SDEA": "SDEA",
+    "ShapleyFL": "ShapleyFL",
+    "FoolsGold": "FoolsGold",
+    "PoL_FL": "PoL-BFL",
+}
 
 
 @dataclass
@@ -46,7 +65,7 @@ class Job:
 
 
 def _stamp() -> str:
-    return _dt.datetime.now().strftime("%Y%m%d_%H%M%S")
+    return _dt.datetime.now().strftime("%Y%m%d_%H%M%S_%f")
 
 
 def _sha256(path: Path) -> str:
@@ -79,6 +98,48 @@ def _as_list(value: Any, default: Optional[List[Any]] = None) -> List[Any]:
     return [value]
 
 
+def _stable_json(value: Any) -> str:
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
+def _resume_config(config: Dict[str, Any]) -> Dict[str, Any]:
+    def drop_empty(value: Any) -> Any:
+        if isinstance(value, dict):
+            return {
+                key: drop_empty(item)
+                for key, item in value.items()
+                if item is not None and item != {}
+            }
+        if isinstance(value, list):
+            return [drop_empty(item) for item in value]
+        return value
+
+    normalized = drop_empty(dict(config or {}))
+    normalized.pop("source_config", None)
+    return normalized
+
+
+def _value_slug(value: Any) -> str:
+    if isinstance(value, float):
+        return f"{value:.6g}"
+    if isinstance(value, (list, tuple)):
+        return "-".join(_value_slug(item) for item in value)
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    return str(value)
+
+
+def _params_slug(params: Dict[str, Any]) -> str:
+    if not params:
+        return ""
+    parts = [f"{key}_{_value_slug(value)}" for key, value in sorted(params.items())]
+    slug = _slug("p_" + "__".join(parts))
+    if len(slug) > 96:
+        digest = hashlib.sha256(_stable_json(params).encode("utf-8")).hexdigest()[:10]
+        slug = f"{slug[:80]}_{digest}"
+    return slug
+
+
 def _attack_params_for(config: Dict[str, Any], dataset: Dict[str, Any], attack: str) -> Dict[str, Any]:
     params: Dict[str, Any] = {}
     for source in (config.get("attack_params"), config.get("attack_overrides")):
@@ -88,6 +149,13 @@ def _attack_params_for(config: Dict[str, Any], dataset: Dict[str, Any], attack: 
     if isinstance(dataset_params, dict) and isinstance(dataset_params.get(attack), dict):
         params.update(dataset_params[attack])
     return params
+
+
+def _attack_profile_for(config: Dict[str, Any], dataset: Dict[str, Any], attack: str) -> Optional[str]:
+    for source in (config.get("attack_profiles"), dataset.get("attack_profiles")):
+        if isinstance(source, dict) and source.get(attack) is not None:
+            return str(source[attack])
+    return None
 
 
 def _auto_model(dataset: str) -> str:
@@ -172,16 +240,22 @@ def _build_rq1_jobs(config: Dict[str, Any], config_path: Path, args: argparse.Na
         pol_delta = dataset.get("pol_delta", default_pol_delta)
         for attack in attacks:
             attack_params = _attack_params_for(config, dataset, attack)
+            attack_profile = _attack_profile_for(config, dataset, attack)
             for baseline in baselines:
                 for seed in seeds:
-                    job_id = "__".join(
-                        [
-                            _slug(ds_name),
-                            _slug(attack),
-                            _slug(baseline),
-                            f"seed{seed}",
-                        ]
+                    job_id_parts = [_slug(ds_name), _slug(attack)]
+                    param_slug = _params_slug(attack_params)
+                    parametrize_attack_params = bool(
+                        config.get("parametrize_attack_params")
+                        or dataset.get("parametrize_attack_params")
+                        or attack_profile
                     )
+                    if param_slug and parametrize_attack_params:
+                        job_id_parts.append(param_slug)
+                    if attack_profile and attack_profile.lower() not in {"paper", "paper_table1", "paper_reproduction"}:
+                        job_id_parts.append(_slug(f"profile_{attack_profile}"))
+                    job_id_parts.extend([_slug(baseline), f"seed{seed}"])
+                    job_id = "__".join(job_id_parts)
                     output_dir = output_root / job_id
                     result_dir = output_dir / "rq1_output"
                     cmd = [
@@ -243,6 +317,7 @@ def _build_rq1_jobs(config: Dict[str, Any], config_path: Path, args: argparse.Na
                         "pol_delta": pol_delta,
                         "attack": attack,
                         "attack_params": attack_params,
+                        "attack_profile": attack_profile,
                         "baseline": baseline,
                         "seed": seed,
                     }
@@ -252,7 +327,14 @@ def _build_rq1_jobs(config: Dict[str, Any], config_path: Path, args: argparse.Na
                         "CUBLAS_WORKSPACE_CONFIG": ":4096:8",
                         "POL_INTEGRITY": str((config.get("protocol") or {}).get("pol_integrity", 1)),
                         "POL_ATTACK_CONTEXT": attack,
+                        "POL_ENABLE_PARALLEL_CLIENT_TRAINING": os.getenv("POL_ENABLE_PARALLEL_CLIENT_TRAINING", "1"),
+                        "POL_CLIENT_TRAIN_WORKERS_PER_DEVICE": os.getenv("POL_CLIENT_TRAIN_WORKERS_PER_DEVICE", "2"),
+                        "POL_CLIENT_TRAIN_MAX_WORKERS": os.getenv("POL_CLIENT_TRAIN_MAX_WORKERS", "0"),
+                        "POL_SUPPRESS_MODEL_INFO": "1",
+                        "NUM_WORKERS_OVERRIDE": os.getenv("NUM_WORKERS_OVERRIDE", "0"),
                     }
+                    if attack_profile:
+                        env["POL_ATTACK_PROFILE"] = attack_profile
                     if baseline == "PoL_FL":
                         env["POL_DETERMINISTIC_AUG"] = "1"
                         env["POL_SAVE_CHECKPOINTS_TO_DISK"] = "0"
@@ -263,11 +345,6 @@ def _build_rq1_jobs(config: Dict[str, Any], config_path: Path, args: argparse.Na
                         env["POL_RANDOM_Q"] = "0"
                         env["POL_COMPRESS_CHECKPOINTS"] = "0"
                         env["POL_COMPACT_REMOTE_RESPONSE"] = os.getenv("POL_COMPACT_REMOTE_RESPONSE", "1")
-                        env["POL_ENABLE_PARALLEL_CLIENT_TRAINING"] = os.getenv("POL_ENABLE_PARALLEL_CLIENT_TRAINING", "1")
-                        env["POL_CLIENT_TRAIN_WORKERS_PER_DEVICE"] = os.getenv("POL_CLIENT_TRAIN_WORKERS_PER_DEVICE", "2")
-                        env["POL_CLIENT_TRAIN_MAX_WORKERS"] = os.getenv("POL_CLIENT_TRAIN_MAX_WORKERS", "0")
-                        env["POL_SUPPRESS_MODEL_INFO"] = "1"
-                        env["NUM_WORKERS_OVERRIDE"] = os.getenv("NUM_WORKERS_OVERRIDE", "0")
                         sybil_active = "sybil" in attack.lower()
                         env["POL_ENABLE_SYBIL_DETECTOR"] = "1" if sybil_active else "0"
                         env["POL_SYBIL_TRAJECTORY_ONLY"] = "0"
@@ -549,7 +626,166 @@ def _job_completed(job: Job) -> bool:
         return False
     if manifest.get("returncode") != 0 or manifest.get("status") != "completed":
         return False
+    validation_gate = manifest.get("validation_gate") or {}
+    if validation_gate.get("enabled") and validation_gate.get("blocking"):
+        return False
+    if _stable_json(_resume_config(manifest.get("config") or {})) != _stable_json(_resume_config(job.config)):
+        return False
     return all(path.exists() for path in job.expected_files)
+
+
+def _job_marked_running(job: Job) -> bool:
+    manifest_path = _manifest_path(job)
+    if not manifest_path.exists():
+        return False
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except Exception:
+        return False
+    if manifest.get("status") != "running" or manifest.get("returncode") is not None:
+        return False
+    return _running_manifest_has_live_process(job, manifest)
+
+
+def _process_cmdline(pid: int) -> str:
+    try:
+        raw = Path(f"/proc/{pid}/cmdline").read_bytes()
+    except Exception:
+        return ""
+    return raw.replace(b"\x00", b" ").decode("utf-8", errors="replace")
+
+
+def _process_matches_job(pid: int, job: Job) -> bool:
+    cmdline = _process_cmdline(pid)
+    if not cmdline:
+        return False
+    needles = [str(job.output_dir), job.job_id]
+    return any(needle and needle in cmdline for needle in needles)
+
+
+def _running_manifest_has_live_process(job: Job, manifest: Dict[str, Any]) -> bool:
+    pid = manifest.get("process_pid")
+    if pid is not None:
+        try:
+            if _process_matches_job(int(pid), job):
+                return True
+        except (TypeError, ValueError):
+            pass
+
+    proc_root = Path("/proc")
+    if not proc_root.exists():
+        return False
+    for entry in proc_root.iterdir():
+        if not entry.name.isdigit():
+            continue
+        try:
+            if _process_matches_job(int(entry.name), job):
+                return True
+        except Exception:
+            continue
+    return False
+
+
+def _number_at_least(value: Any, minimum: int) -> bool:
+    try:
+        return int(value) >= minimum
+    except (TypeError, ValueError):
+        return False
+
+
+def _positive_number(value: Any) -> bool:
+    try:
+        return float(value) > 0
+    except (TypeError, ValueError):
+        return False
+
+
+def _validation_pass_is_reusable(item: Dict[str, Any]) -> bool:
+    if item.get("status") != "pass":
+        return False
+    if item.get("protocol_mismatches"):
+        return False
+
+    if item.get("table") != "table1_main_security":
+        return True
+
+    protocol = item.get("protocol")
+    if not isinstance(protocol, dict) or not protocol:
+        return False
+    minimums = {
+        "rounds": 200,
+        "num_clients": 50,
+        "clients_per_round": 50,
+        "local_epochs": 5,
+    }
+    if any(not _number_at_least(protocol.get(key), minimum) for key, minimum in minimums.items()):
+        return False
+
+    attack = str(item.get("attack") or "")
+    if attack == "Free-riding (NT)" or protocol.get("attack") == "free_riding_no_training":
+        attack_params = protocol.get("attack_params") or {}
+        if attack_params.get("submission_mode") != "random_update":
+            return False
+        attack_effect = protocol.get("attack_effect") or {}
+        if not (
+            _positive_number(attack_effect.get("attack_l2_max_over_attacked_rounds"))
+            or _positive_number(attack_effect.get("attack_l2_mean_over_attacked_rounds"))
+        ):
+            return False
+
+    return True
+
+
+def _load_validation_pass_index(path: Optional[Path]) -> Optional[set[tuple[str, str, str, str, str]]]:
+    if not path:
+        return None
+    manifest_path = path.expanduser().resolve()
+    payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    passed: set[tuple[str, str, str, str, str]] = set()
+    for item in payload.get("comparisons", []):
+        if not _validation_pass_is_reusable(item):
+            continue
+        passed.add(
+            (
+                str(item.get("table", "")),
+                str(item.get("dataset", "")),
+                str(item.get("attack", "")),
+                str(item.get("method", item.get("variant", item.get("aggregation", "")))),
+                str(item.get("metric", "")),
+            )
+        )
+    return passed
+
+
+def _validation_keys_for_job(job: Job) -> List[tuple[str, str, str, str, str]]:
+    cfg = job.config or {}
+    if str(cfg.get("runner", "")).endswith("run_rq1_security.py") or {"dataset", "attack", "baseline"} <= set(cfg):
+        dataset = TABLE1_DATASET_LABELS.get(str(cfg.get("dataset", "")))
+        attack = TABLE1_ATTACK_LABELS.get(str(cfg.get("attack", "")))
+        method = TABLE1_METHOD_LABELS.get(str(cfg.get("baseline", "")))
+        if not dataset or not attack or not method:
+            return []
+        metrics = ["MA"] if method == "Vanilla" else ["MA", "DR", "FPR"]
+        return [("table1_main_security", dataset, attack, method, metric) for metric in metrics]
+    return []
+
+
+def _job_has_validation_pass(job: Job, pass_index: set[tuple[str, str, str, str, str]]) -> bool:
+    keys = _validation_keys_for_job(job)
+    return bool(keys) and all(key in pass_index for key in keys)
+
+
+def _job_needs_run_with_validation_index(
+    job: Job,
+    pass_index: set[tuple[str, str, str, str, str]],
+    *,
+    include_running: bool,
+) -> bool:
+    if not include_running and _job_marked_running(job):
+        return False
+    if _validation_keys_for_job(job):
+        return not _job_has_validation_pass(job, pass_index)
+    return not _job_completed(job)
 
 
 def _filter_jobs(jobs: List[Job], args: argparse.Namespace) -> List[Job]:
@@ -557,8 +793,23 @@ def _filter_jobs(jobs: List[Job], args: argparse.Namespace) -> List[Job]:
     if args.only:
         needles = [item.lower() for item in args.only]
         selected = [job for job in selected if all(_job_id_matches_filter(job.job_id, needle) for needle in needles)]
-    if args.resume:
-        selected = [job for job in selected if not _job_completed(job)]
+    pass_index = _load_validation_pass_index(getattr(args, "skip_passed_validation_manifest", None))
+    if args.resume and not getattr(args, "refresh_validation_gates", False):
+        include_running = bool(getattr(args, "include_running_manifests", False))
+        if pass_index is None:
+            selected = [
+                job
+                for job in selected
+                if not _job_completed(job) and (include_running or not _job_marked_running(job))
+            ]
+        else:
+            selected = [
+                job
+                for job in selected
+                if _job_needs_run_with_validation_index(job, pass_index, include_running=include_running)
+            ]
+    elif pass_index is not None:
+        selected = [job for job in selected if not _job_has_validation_pass(job, pass_index)]
     if args.limit is not None:
         selected = selected[: int(args.limit)]
     return selected
@@ -727,6 +978,18 @@ def _select_gpu(args: argparse.Namespace, start_index: int, active: List[Dict[st
         time.sleep(float(args.gpu_wait_sleep_sec))
 
 
+def _clear_stale_expected_files(job: Job) -> None:
+    root = job.output_dir.resolve()
+    for path in job.expected_files:
+        try:
+            resolved = path.resolve()
+            resolved.relative_to(root)
+        except Exception:
+            continue
+        if resolved.exists() and resolved.is_file():
+            resolved.unlink()
+
+
 def _write_plan(config_path: Path, config: Dict[str, Any], jobs: List[Job], selected: List[Job], output_root: Path) -> Path:
     output_root.mkdir(parents=True, exist_ok=True)
     payload = {
@@ -757,6 +1020,7 @@ def _write_plan(config_path: Path, config: Dict[str, Any], jobs: List[Job], sele
 
 def _start_job(job: Job, args: argparse.Namespace, gpu: str, verifier: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     job.output_dir.mkdir(parents=True, exist_ok=True)
+    _clear_stale_expected_files(job)
     env = os.environ.copy()
     env.update(job.env)
     env["PYTHONPATH"] = f"{CODE_ROOT}{os.pathsep}{env.get('PYTHONPATH', '')}"
@@ -780,12 +1044,16 @@ def _start_job(job: Job, args: argparse.Namespace, gpu: str, verifier: Optional[
         "config": job.config,
         "expected_files": [str(path) for path in job.expected_files],
         "assigned_gpu": gpu,
+        "launcher_host": socket.gethostname(),
+        "launcher_pid": os.getpid(),
         "gpu_free_memory_mb_at_start": _gpu_free_memory_mb(gpu),
-        "environment_overrides": {key: env.get(key) for key in sorted(set(job.env) | {"CUDA_VISIBLE_DEVICES", "POL_DECENT_MODE", "POL_REQUIRE_REMOTE_VERIFIER", "POL_REMOTE_MODE", "POL_VERIFIER_ENDPOINTS", "POL_INTEGRITY", "POL_DETERMINISTIC_AUG", "POL_ENABLE_SYBIL_DETECTOR", "POL_SYBIL_TRAJECTORY_ONLY", "POL_ATTACK_CONTEXT", "POL_REMOTE_TIMEOUT_SEC", "POL_SAVE_CHECKPOINTS_TO_DISK", "POL_SAVE_FREQ", "POL_MEMORY_CHECKPOINT_LIMIT", "POL_CHALLENGE_SELECTED_PAIRS", "POL_ALWAYS_VERIFY_LAST_K", "POL_RANDOM_Q", "POL_COMPRESS_CHECKPOINTS", "POL_COMPACT_REMOTE_RESPONSE", "POL_ENABLE_PARALLEL_CLIENT_TRAINING", "POL_CLIENT_TRAIN_WORKERS_PER_DEVICE", "POL_CLIENT_TRAIN_MAX_WORKERS", "POL_SUPPRESS_MODEL_INFO", "NUM_WORKERS_OVERRIDE"})},
+        "environment_overrides": {key: env.get(key) for key in sorted(set(job.env) | {"CUDA_VISIBLE_DEVICES", "POL_DECENT_MODE", "POL_REQUIRE_REMOTE_VERIFIER", "POL_REMOTE_MODE", "POL_VERIFIER_ENDPOINTS", "POL_INTEGRITY", "POL_DETERMINISTIC_AUG", "POL_ENABLE_SYBIL_DETECTOR", "POL_SYBIL_TRAJECTORY_ONLY", "POL_ATTACK_CONTEXT", "POL_ATTACK_PROFILE", "POL_REMOTE_TIMEOUT_SEC", "POL_SAVE_CHECKPOINTS_TO_DISK", "POL_SAVE_FREQ", "POL_MEMORY_CHECKPOINT_LIMIT", "POL_CHALLENGE_SELECTED_PAIRS", "POL_ALWAYS_VERIFY_LAST_K", "POL_RANDOM_Q", "POL_COMPRESS_CHECKPOINTS", "POL_COMPACT_REMOTE_RESPONSE", "POL_ENABLE_PARALLEL_CLIENT_TRAINING", "POL_CLIENT_TRAIN_WORKERS_PER_DEVICE", "POL_CLIENT_TRAIN_MAX_WORKERS", "POL_SUPPRESS_MODEL_INFO", "NUM_WORKERS_OVERRIDE"})},
     }
     _manifest_path(job).write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
     log_fh = log_path.open("a", encoding="utf-8")
     proc = subprocess.Popen(job.command, cwd=str(CODE_ROOT), env=env, stdout=log_fh, stderr=subprocess.STDOUT, text=True)
+    manifest["process_pid"] = proc.pid
+    _manifest_path(job).write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
     return {"job": job, "process": proc, "log_fh": log_fh, "log_path": log_path, "manifest": manifest}
 
 
@@ -1079,6 +1347,23 @@ def run_jobs(selected: List[Job], args: argparse.Namespace, output_root: Path) -
     return 0 if failures == 0 else 1
 
 
+def refresh_validation_gates(selected: List[Job], args: argparse.Namespace, output_root: Path) -> int:
+    if not args.validate_after_job:
+        raise RuntimeError("--refresh-validation-gates requires --validate-after-job")
+    failures = 0
+    for job in selected:
+        if not _job_completed(job):
+            print(f"Skipping incomplete job during validation refresh: {job.job_id}", flush=True)
+            failures += 1
+            continue
+        gate = _run_validation_gate(job, args, output_root)
+        if gate.get("blocking"):
+            failures += 1
+            if not args.continue_on_validation_fail:
+                break
+    return 0 if failures == 0 else 1
+
+
 def main(argv: Optional[Iterable[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config-file", required=True, type=Path)
@@ -1088,7 +1373,19 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--only", action="append", default=[], help="Keep jobs whose id contains all supplied substrings")
     parser.add_argument("--resume", action="store_true", help="Skip jobs with completed run_manifest.json and expected outputs")
+    parser.add_argument(
+        "--include-running-manifests",
+        action="store_true",
+        help="With --resume, do not skip jobs whose run_manifest.json is still marked running",
+    )
+    parser.add_argument(
+        "--skip-passed-validation-manifest",
+        type=Path,
+        default=None,
+        help="Skip jobs whose paper-table rows already pass in an existing validation_manifest.json",
+    )
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--refresh-validation-gates", action="store_true", help="Refresh validation gate reports for selected completed jobs without rerunning training")
     parser.add_argument("--start-verifiers", action="store_true", help="Start local strict replay VerifierNode processes for each GPU worker")
     parser.add_argument("--verifier-port-base", type=int, default=19088)
     parser.add_argument("--verifier-startup-sleep", type=float, default=3.0)
@@ -1125,6 +1422,8 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
     print(json.dumps({"plan": str(plan_path), "total_jobs": len(jobs), "selected_jobs": len(selected), "dry_run": args.dry_run}, indent=2))
     if not selected:
         return 0
+    if args.refresh_validation_gates:
+        return refresh_validation_gates(selected, args, output_root)
     return run_jobs(selected, args, output_root)
 
 
