@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "authority_pdf_sha256": "0b013e58d4f99f91470c61a891a4ee89dfd09eff58e131abbe730d1f6f91e6d4",
+  "scope": "Public baseline definitions only; PoL-BFL protocol choices remain governed solely by the final paper.",
+  "sources": {
+    "Krum": {
+      "paper": "Machine Learning with Adversaries: Byzantine Tolerant Gradient Descent",
+      "venue": "NeurIPS 2017",
+      "url": "https://proceedings.neurips.cc/paper_files/paper/2017/file/f4b9ec30ad9f68f89b29639786cb62ef-Paper.pdf"
+    },
+    "SDEA": {
+      "paper": "Self-Driven Entropy Aggregation for Byzantine-Robust Heterogeneous Federated Learning",
+      "venue": "ICML 2024",
+      "url": "https://proceedings.mlr.press/v235/huang24u.html",
+      "repository": "https://github.com/WenkeHuang/SDEA",
+      "commit": "c37f2d7dd5310203a680472d311bd0c865e4ac23"
+    },
+    "ShapleyFL": {
+      "paper": "ShapleyFL: Robust Federated Learning Based on Shapley Value",
+      "venue": "KDD 2023",
+      "repository": "https://github.com/ZJU-DIVER/ShapleyFL-Robust-Federated-Learning-Based-on-Shapley-Value",
+      "commit": "77a139c6c30d9949a0974ccf5b66ff339a16dfd4"
+    },
+    "FoolsGold": {
+      "paper": "The Limitations of Federated Learning in Sybil Settings",
+      "venue": "RAID 2020",
+      "url": "https://www.usenix.org/conference/raid2020/presentation/fung",
+      "repository": "https://github.com/DistributedML/FoolsGold",
+      "commit": "0aa55114296a2d3c2bcb6f544a6fae31e8e7b8b4"
+    },
+    "FedCoin": {
+      "paper": "FedCoin: A Peer-to-Peer Payment System for Federated Learning",
+      "venue": "Federated Learning: Privacy and Incentive, 2020",
+      "repository": "https://github.com/blockchain-neu/FedCoin",
+      "commit": "287ee7a97cd7f9c7663a7393046eb4d7a566947f",
+      "algorithm": "PoSap Monte Carlo marginal-accuracy contribution with 70% of task payment assigned to trainers"
+    },
+    "VeriblockFL": {
+      "paper": "Blockchain-based Federated Learning Utilizing Zero-Knowledge Proofs for Verifiable Training and Aggregation",
+      "venue": "IEEE Blockchain 2024",
+      "repository": "https://github.com/ElmiraEbrahimi/Veriblock-FL",
+      "commit": "e0a66df7b9ce89a3d42f39e2044d49e714736926",
+      "proof_system": "ZoKrates Groth16 full local-training and aggregation verification"
+    },
+    "Kaizen": {
+      "paper": "Kaizen: Practical Zero-Knowledge Proofs of Training for Deep Neural Networks",
+      "repository": "https://github.com/zkPoTs/kaizen",
+      "commit": "6d081bef53e9fe53870622813c3c9a01d5f2c7f5",
+      "classification": "The Table 12 cost circuit is an explicitly controlled construction, not a wire-compatible implementation of this repository."
+    }
+  }
+}

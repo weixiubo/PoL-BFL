@@ -1,0 +1,84 @@
+{
+  "authority_pdf_sha256": "0b013e58d4f99f91470c61a891a4ee89dfd09eff58e131abbe730d1f6f91e6d4",
+  "schema_version": 1,
+  "table_4_all_modes": {
+    "Krum": {
+      "ALIE": {
+        "PoLBFLPrefilter": {
+          "DR": 85.6,
+          "FPR": 3.5,
+          "MA": 73.5
+        },
+        "Standalone": {
+          "DR": 45.2,
+          "FPR": 7.5,
+          "MA": 68.2
+        }
+      },
+      "FreeRidingNT": {
+        "PoLBFLPrefilter": {
+          "DR": 96.5,
+          "FPR": 2.1,
+          "MA": 85.2
+        },
+        "Standalone": {
+          "DR": 15.2,
+          "FPR": 8.5,
+          "MA": 72.5
+        }
+      }
+    },
+    "Median": {
+      "ALIE": {
+        "PoLBFLPrefilter": {
+          "DR": 86.0,
+          "FPR": 3.4,
+          "MA": 75.5
+        },
+        "Standalone": {
+          "DR": 48.5,
+          "FPR": 6.5,
+          "MA": 70.2
+        }
+      },
+      "FreeRidingNT": {
+        "PoLBFLPrefilter": {
+          "DR": 96.8,
+          "FPR": 2.1,
+          "MA": 85.5
+        },
+        "Standalone": {
+          "DR": 16.8,
+          "FPR": 7.2,
+          "MA": 73.2
+        }
+      }
+    },
+    "TrimmedMean": {
+      "ALIE": {
+        "PoLBFLPrefilter": {
+          "DR": 87.2,
+          "FPR": 3.2,
+          "MA": 77.8
+        },
+        "Standalone": {
+          "DR": 52.8,
+          "FPR": 5.8,
+          "MA": 72.5
+        }
+      },
+      "FreeRidingNT": {
+        "PoLBFLPrefilter": {
+          "DR": 97.0,
+          "FPR": 2.0,
+          "MA": 86.0
+        },
+        "Standalone": {
+          "DR": 18.5,
+          "FPR": 6.5,
+          "MA": 74.5
+        }
+      }
+    }
+  }
+}

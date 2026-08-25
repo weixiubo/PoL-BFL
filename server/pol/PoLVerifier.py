@@ -238,6 +238,16 @@ class PoLVerifier:
             return total
 
         start_offset = consumed_samples_upto(curr_step)
+        expected_window = sum(
+            batch_size_for_step(curr_step + offset + 1)
+            for offset in range(steps_to_replay)
+        )
+        compact_window = len(data_indices) < start_offset + expected_window
+        if compact_window and len(data_indices) < steps_to_replay:
+            logger.warning(
+                "Recorded data_indices cannot provide one sample per replay step"
+            )
+            return False
 
         def _set_dataset_replay_context(dataset_obj, *, round_num=None, epoch=None):
             seen = set()
@@ -272,13 +282,21 @@ class PoLVerifier:
         # OPTIMIZATION: Use DataLoader for efficient batch loading instead of individual sample access
         total_consumed = 0
         for s in range(steps_to_replay):
-            need = batch_size_for_step(curr_step + s + 1)
             step_1based = curr_step + s + 1
             replay_epoch = int((step_1based - 1) // batches_per_epoch)
             replay_round = int(current_ckpt.get('data', {}).get('round', 0))
             _set_dataset_replay_context(dataset, round_num=replay_round, epoch=replay_epoch)
-            begin = start_offset + total_consumed
-            end = begin + need
+            if compact_window:
+                quotient, remainder = divmod(
+                    len(data_indices), steps_to_replay
+                )
+                need = quotient + (1 if s < remainder else 0)
+                begin = s * quotient + min(s, remainder)
+                end = begin + need
+            else:
+                need = batch_size_for_step(step_1based)
+                begin = start_offset + total_consumed
+                end = begin + need
             if end > len(data_indices):
                 logger.warning("Recorded data_indices shorter than required for replay window")
                 return False

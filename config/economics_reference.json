@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "status": "inferred-to-satisfy-final-paper-table-6",
+  "base_reward_usd": 0.025,
+  "beta_work": 0.1,
+  "beta_reputation": 5.78,
+  "reputation_decay": 0.9,
+  "challenge_probability": 0.2,
+  "detection_probability": 0.965,
+  "slashing_ratio": 1.0,
+  "minimum_stake_eth": 0.05,
+  "behaviors": {
+    "Honest": {"work": 1.0, "reputation": 1.0, "cost_usd": 0.022, "expected_slash_usd": 0.0},
+    "RationalLT": {"work": 0.3, "reputation": 0.5, "cost_usd": 0.016, "expected_slash_usd": 0.008},
+    "MaliciousNT": {"work": 0.0, "reputation": 0.0, "cost_usd": 0.015, "expected_slash_usd": 0.145}
+  },
+  "inference_note": "The paper publishes the reward equation and Table 6 outputs but not beta_work, beta_reputation, or behavior-normalization inputs. This deterministic solution reproduces all three published rewards exactly and is not represented as an explicit paper parameter."
+}

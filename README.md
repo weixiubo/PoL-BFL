@@ -1,127 +1,153 @@
 # PoL-BFL
 
-PoL-BFL is a reference implementation of blockchain-assisted federated learning with verifiable Proof-of-Learning, zero-knowledge proof support, robust aggregation, Sybil detection, and reproducible paper-scale experiment tooling.
+PoL-BFL is a paper-aligned implementation of trustworthy blockchain federated
+learning with sampled zero-knowledge Proof-of-Learning, robust aggregation,
+Sybil screening, verifiable incentives, and reproducible experiment gates.
 
-The codebase is designed for security-oriented federated learning research: it trains standard FL workloads, records client learning evidence, verifies submitted updates with strict replay or ZKP-backed paths, filters malicious clients before aggregation, and emits validation-ready experiment artifacts.
+The normative specification is the final submitted paper identified by
+SHA-256 `0b013e58d4f99f91470c61a891a4ee89dfd09eff58e131abbe730d1f6f91e6d4`.
+Machine-readable protocol choices and acceptance values live in
+`config/paper_protocol.json`, `config/paper_targets.json`, and
+`experiments/final/paper_matrix.json`. SHA-gated PDF extractors generate the
+complete Table 2/Table 4 and Figure 5 target files without manual transcription.
 
-## Highlights
+## Implemented protocol
 
-- Proof-of-Learning verification with checkpoint commitments, Merkle proofs, deterministic replay metadata, and strict verifier nodes.
-- Blockchain-facing committee components for verifier receipts, weighted aggregation, anchoring, incentive accounting, and challenge workflows.
-- ZKP circuits and snarkjs integration for parameter-update proof experiments.
-- Attack implementations for free-riding, Byzantine random noise, model replacement, ALIE, MinMax, data poisoning, and Sybil behaviors.
-- Baselines including Vanilla FL, Krum, FoolsGold, ShapleyFL, SDEA, and PoL-BFL.
-- Dataset/model support for MNIST, CIFAR-10 with ResNet-18, CIFAR-100 with ResNet-34, and FEMNIST writer partitions.
-- Reproduction tooling with manifests, validation reports, protocol checks, and paper-target comparison gates.
+- Canonical SHA-256 batch, model, index, checkpoint, hash-chain, and Merkle
+  commitments with commit-before-challenge ordering.
+- Five-step sampled SGD Groth16 relation with 1% committed gradient sampling,
+  fixed-point tolerance, data-index binding, update bounds, and 1,090,382 R1CS
+  constraints.
+- Dual-GPU ICICLE-Snark proof generation over the locked Circom `.zkey/.wtns`
+  artifacts. Every proof is independently checked by the locked Rapidsnark
+  verifier and encoded as 192 bytes.
+- Authenticated stake/reputation VRF committee selection, disjoint aggregator
+  and verifier roles, low-S ECDSA receipts, and strict 3-of-5 quorum handling.
+- Reputation-weighted Trimmed Mean, Krum, and Median after proof, Sybil, and
+  statistical prefiltering.
+- Stake, reward, reputation, timeout, verifier, slashing, and gas-responsive
+  economic transitions, including a real Ganache-tested Solidity protocol.
+- CIFAR-10/ResNet-18, CIFAR-100/ResNet-34, and FEMNIST/two-layer-CNN paper
+  workloads with exact dataset/partition/seed manifests.
+- Free-riding, Byzantine, model replacement, ALIE, MinMax, data poisoning, and
+  Sybil attack paths, plus checkpoint interpolation, gradient mimicry, partial
+  replay, and combined adaptive trajectories.
 
-## Repository Layout
+## Repository layout
 
 ```text
-client/                  FL clients, trainers, PoL managers, ZKP provers
-server/                  aggregators, verifier nodes, PoL verification, incentives
-dataset/                 dataset adapters
-model/                   CNN, ResNet, VGG, and watermark-capable models
-experiments/             attacks, runners, formal configs, validation tools
-chainEnv/contracts/      Solidity contracts used by the blockchain experiments
-circuits/                Circom circuits for ZKP experiments
-analysis/                measurement and plotting utilities
-tests/                   unit, integration, and smoke tests
+polbfl/                 protocol, crypto, ZK, aggregation, committee, economics
+client/                 client trainers and private evidence recording
+chainEnv/contracts/     Solidity protocol and settlement contracts
+circuits/final/         reference Circom relation and native input bridges
+experiments/final/      accepted experiment runner, matrix, manifests, validator
+config/                 paper protocol, targets, economics, and toolchain locks
+scripts/                preflight/build/supervision/benchmark helpers
+tests/                  unit, adversarial, real-ZK, contract, and integration tests
+docs/                   implementation, dataset, ZK, and reproduction guidance
 ```
 
-Datasets, trained checkpoints, experiment outputs, generated ZKP keys, Brownie build artifacts, and node modules are intentionally not included.
+Generated datasets, evidence, checkpoints, result matrices, proving artifacts,
+native build outputs, and Node modules are intentionally ignored by Git.
 
-## Installation
+## Reference environment
 
-Use Python 3.9 with a CUDA-enabled PyTorch build for GPU runs.
+The locked dual-RTX-4090 reference deployment uses:
+
+- Python 3.13.2;
+- PyTorch 2.9.1 with CUDA 12.8 and torchvision 0.24.1;
+- Node.js 24.14.0, snarkjs 0.7.5, Circom 2.2.2;
+- circomlib 2.0.5 and circomlibjs 0.1.7;
+- Rapidsnark at the commit recorded in `config/toolchain.lock.json`;
+- ICICLE-Snark 0.1.0 / ICICLE 3.8.0, built for CUDA 12.4 and sm_89;
+- Solidity 0.8.20 and Ganache 7.9.2.
+
+Install Python and Node dependencies:
 
 ```bash
-git clone https://github.com/weixiubo/PoL-BFL.git
-cd PoL-BFL
-
-python -m venv .venv
-source .venv/bin/activate
-pip install --upgrade pip
-pip install -r requirements.txt
-
-npm install
+python -m pip install -r requirements-final.txt
+npm ci
 ```
 
-For ZKP experiments, install Circom and snarkjs in the environment used to build the circuits. For blockchain experiments, install Brownie-compatible Solidity tooling and run a local test chain such as Ganache.
-
-## Quick Smoke Test
-
-Run a small dry-run first to confirm the launcher and manifest path:
+Build the pinned native helpers:
 
 ```bash
-python experiments/reproducibility/run_repro_smoke.py \
-  --config-file experiments/reproducibility/configs/smoke_mnist.json \
-  --dry-run
+cargo build --release --locked --manifest-path tools/poseidon_native/Cargo.toml
+install -d -m 0755 .tools/poseidon-native
+install -m 0755 \
+  tools/poseidon_native/target/release/polbfl-poseidon-native \
+  .tools/poseidon-native/polbfl-poseidon-native
+
+bash scripts/build_icicle_snark.sh
 ```
 
-Then run a minimal MNIST smoke:
+Reference circuit setup requires an explicit verified phase-2 Powers-of-Tau
+file; development CRS artifacts are rejected for formal results. See
+`circuits/final/README.md` and `docs/ZKP_AND_BLOCKCHAIN.md`.
+
+## Preflight and formal reproduction
+
+Preflight verifies the paper, datasets, GPUs, deterministic runtime, source,
+contracts, circuit, keys, native binaries, shared libraries, and all locked
+hashes:
 
 ```bash
-bash experiments/scripts/run_repro_smoke.sh \
-  --config-file experiments/reproducibility/configs/smoke_mnist.json \
-  --gpu 0
+POL_INTEGRITY=1 CUBLAS_WORKSPACE_CONFIG=:4096:8 \
+python -m experiments.final.preflight \
+  --paper /absolute/path/to/main.pdf \
+  --data-root /absolute/path/to/data \
+  --zk-build /absolute/path/to/circuits/final/build/production
 ```
 
-## Paper-Scale Reproduction
-
-Formal experiment configs live under `experiments/reproducibility/configs/paper/`. The main launcher expands a paper matrix into resumable jobs and writes raw outputs, runner logs, and manifests under `experiments/results/repro_recovery/`.
+Dry-run the 432-cell, six-method Table 2 security matrix:
 
 ```bash
-python experiments/reproducibility/run_paper_config.py \
-  --config-file experiments/reproducibility/configs/paper/rq1_main_security_formal.json \
-  --gpus 0,1 \
-  --parallel 2 \
-  --only cifar10 \
-  --only pol_bfl \
-  --resume \
-  --start-verifiers \
-  --validate-after-job
+python -m experiments.final.run_matrix
 ```
 
-Validate generated outputs against the paper targets:
+Run selected formal cells on shared dual-GPU hardware:
 
 ```bash
-python experiments/reproducibility/validate_reproduction.py \
-  --results-root experiments/results/repro_recovery/formal
+python -u -m experiments.final.run_matrix \
+  --dataset CIFAR10 \
+  --attack FreeRidingNT \
+  --execute \
+  --supervised \
+  --data-root /absolute/path/to/data \
+  --method PoLBFL \
+  --zk-build /absolute/path/to/circuits/final/build/production
 ```
 
-The validator enforces protocol compatibility before treating a result as a paper-scale claim. Short smoke runs are reported as protocol mismatches, not as successful reproductions.
+The supervisor waits for both GPUs to remain idle and resumes only a
+source-compatible atomic checkpoint. A cell can enter an aggregate only when
+its result contains `formal_accepted: true`. Shortened, proof-disabled,
+PoL-disabled, synthetic, replayed, or busy-GPU runs belong in the diagnostic
+namespace and are rejected by the aggregator.
 
-## Datasets
+Each accepted PoL round retains raw test predictions and labels, proof-set and
+individual proof digests, exact 192-byte proof sizes, three signed receipt
+digests, and hashes for every retained audited trace file. Formal evidence
+capture recomputes accuracy and all hashes. Non-audited scratch evidence and
+worker payloads are removed only after the atomic checkpoint and JSONL record
+are durable.
 
-The repository downloads or prepares datasets at runtime. By default, dataset files are stored under `data/`, which is ignored by git.
-
-FEMNIST uses LEAF-style writer shards. To prepare it from a public parquet mirror:
-
-```bash
-python experiments/scripts/tools/prepare_femnist_hf.py \
-  --data-root data/FEMNIST
-```
-
-See `docs/DATASETS.md` for dataset-specific details.
-
-## Validation Policy
-
-Experiment claims should be tied to raw outputs and a validation manifest. The formal validator compares MA/DR/FPR and related metrics against the paper targets with the configured acceptance gates, and records missing, failing, passing, and protocol-mismatched cells separately.
-
-This repository does not include generated result files. Recreate them with the formal configs above, then publish or archive the resulting manifests alongside your run environment.
+See `docs/REPRODUCING.md` for the complete workflow.
 
 ## Tests
 
-Focused unit and smoke tests:
+Run the final implementation suite without optional live toolchains:
 
 ```bash
-pytest tests/test_reproducibility_tools.py \
-       tests/test_deterministic_replay_data.py \
-       tests/test_sybil_detector.py
+pytest -q tests/test_final_*.py
 ```
 
-ZKP and blockchain tests require the corresponding local toolchains and test-chain services.
+Real reference proof tests require `POL_ZK_REFERENCE_BUILD`,
+`RAPIDSNARK_PROVER`, and `RAPIDSNARK_VERIFIER`. The ICICLE cross-check test also
+uses the locked worker/backend/library paths. The Solidity end-to-end test
+starts an isolated in-process Ganache provider and does not require publishing
+contracts to a network.
 
 ## License
 
-This project is released under the MIT License.
+This project is released under the MIT License. Third-party native dependencies
+retain their upstream licenses.

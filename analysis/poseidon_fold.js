@@ -4,22 +4,22 @@
 
 const cir = require('circomlibjs');
 
-function main() {
+async function main() {
   const arg = process.argv[2];
   if (!arg) {
     console.error('Usage: node scripts/poseidon_fold.js "[1,2,3]"');
     process.exit(1);
   }
   const arr = JSON.parse(arg);
-  const poseidon = cir.poseidon; // circomlibjs 0.0.8 legacy Poseidon
+  const poseidon = await cir.buildPoseidon();
 
-  let acc = 0n; // BigInt accumulator in Fr
+  let acc = 0n;
   for (const x of arr) {
     acc = poseidon([acc, BigInt(x)]);
   }
-  const out = acc.toString();
+  const out = poseidon.F.toString(acc);
   process.stdout.write(out);
 }
 
-try { main(); } catch (e) { console.error(e); process.exit(1); }
+main().catch((error) => { console.error(error); process.exit(1); });
 

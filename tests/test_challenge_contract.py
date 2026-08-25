@@ -1,5 +1,6 @@
 import time
 import pytest
+brownie = pytest.importorskip("brownie")
 from brownie import project, accounts, network
 
 

@@ -26,9 +26,12 @@ from zkp.hash import (
     flatten_first_n,
     quantize_to_field,
     poseidon_fold,
+    poseidon_fold_many,
 )
 
 logger = logging.getLogger(__name__)
+
+_MERKLE_ROOT_CACHE: Dict[Tuple[int, ...], str] = {}
 
 
 def compute_merkle_root(leaves: List[int]) -> str:
@@ -48,8 +51,11 @@ def compute_merkle_root(leaves: List[int]) -> str:
     # For Merkle tree, we need to hash pairs, so we'll use a simple approach
     # that's compatible with the existing infrastructure
 
-    # Convert to list of integers
-    current_layer = [int(x) for x in leaves]
+    key = tuple(int(x) for x in leaves)
+    cached = _MERKLE_ROOT_CACHE.get(key)
+    if cached is not None:
+        return cached
+    current_layer = list(key)
 
     # Pad to next power of 2
     n = len(current_layer)
@@ -62,18 +68,23 @@ def compute_merkle_root(leaves: List[int]) -> str:
     padded_size = 2 ** depth
     current_layer.extend([0] * (padded_size - n))
 
-    # Build tree bottom-up using poseidon_fold for pairs
+    # Build each Merkle level in one persistent bridge request.
     while len(current_layer) > 1:
-        next_layer = []
-        for i in range(0, len(current_layer), 2):
-            left = current_layer[i]
-            right = current_layer[i + 1]
-            # Use poseidon_fold to hash the pair
-            parent = poseidon_fold([left, right])
-            next_layer.append(int(parent))
-        current_layer = next_layer
+        current_layer = [
+            int(value)
+            for value in poseidon_fold_many(
+                [
+                    current_layer[index : index + 2]
+                    for index in range(0, len(current_layer), 2)
+                ]
+            )
+        ]
 
-    return str(current_layer[0])
+    result = str(current_layer[0])
+    if len(_MERKLE_ROOT_CACHE) >= 128:
+        _MERKLE_ROOT_CACHE.pop(next(iter(_MERKLE_ROOT_CACHE)))
+    _MERKLE_ROOT_CACHE[key] = result
+    return result
 
 
 class ZKPProverOptimized:
@@ -164,7 +175,9 @@ class ZKPProverOptimized:
         data_hash = poseidon_fold(di)
         
         # Compute L2 distance squared
-        dist2 = int(np.sum((np.array(q_t1, dtype=object) - np.array(q_t, dtype=object))**2))
+        dist2 = float(
+            torch.sum((t1.to(torch.float64) - t.to(torch.float64)) ** 2)
+        )
         
         # Public signals
         public = {

@@ -1,0 +1,161 @@
+{
+  "schema_version": 1,
+  "authority": {
+    "title": "PoL-BFL: Towards Trustworthy Federated Learning with Zero-Knowledge Proofs and Verifiable Incentives",
+    "doi": "10.1145/3770855.3817739",
+    "pdf_sha256": "0b013e58d4f99f91470c61a891a4ee89dfd09eff58e131abbe730d1f6f91e6d4"
+  },
+  "directions": {
+    "MA": "min",
+    "DR": "min",
+    "FPR": "max",
+    "PR": "min",
+    "ASR": "max",
+    "profit": "min",
+    "runtime_seconds": "max",
+    "communication_mb": "max",
+    "gas": "max",
+    "storage_mb": "max"
+  },
+  "table_2_pol_bfl": {
+    "CIFAR10": {
+      "FreeRidingNT": {"MA": 86.8, "DR": 96.5, "FPR": 2.1},
+      "FreeRidingLT": {"MA": 85.2, "DR": 92.3, "FPR": 2.5},
+      "ByzantineRandom": {"MA": 84.2, "DR": 91.5, "FPR": 2.8},
+      "ModelReplacement": {"MA": 83.5, "DR": 89.2, "FPR": 3.1},
+      "ALIE": {"MA": 82.8, "DR": 85.6, "FPR": 3.5},
+      "MinMax": {"MA": 82.0, "DR": 84.0, "FPR": 3.8},
+      "DataPoisoning": {"MA": 81.5, "DR": 82.3, "FPR": 3.2},
+      "Sybil": {"MA": 84.5, "DR": 92.8, "FPR": 2.5}
+    },
+    "FEMNIST": {
+      "FreeRidingNT": {"MA": 92.5, "DR": 96.8, "FPR": 2.0},
+      "FreeRidingLT": {"MA": 92.0, "DR": 93.8, "FPR": 2.2},
+      "ByzantineRandom": {"MA": 92.2, "DR": 92.5, "FPR": 2.5},
+      "ModelReplacement": {"MA": 91.8, "DR": 90.5, "FPR": 2.8},
+      "ALIE": {"MA": 91.2, "DR": 87.5, "FPR": 3.0},
+      "MinMax": {"MA": 90.5, "DR": 85.5, "FPR": 3.2},
+      "DataPoisoning": {"MA": 91.5, "DR": 84.2, "FPR": 2.8},
+      "Sybil": {"MA": 92.5, "DR": 93.8, "FPR": 2.2}
+    },
+    "CIFAR100": {
+      "FreeRidingNT": {"MA": 62.5, "DR": 95.8, "FPR": 2.5},
+      "FreeRidingLT": {"MA": 61.2, "DR": 91.5, "FPR": 2.8},
+      "ByzantineRandom": {"MA": 59.8, "DR": 89.5, "FPR": 3.2},
+      "ModelReplacement": {"MA": 58.5, "DR": 87.2, "FPR": 3.5},
+      "ALIE": {"MA": 58.2, "DR": 83.5, "FPR": 4.0},
+      "MinMax": {"MA": 57.0, "DR": 81.5, "FPR": 4.2},
+      "DataPoisoning": {"MA": 56.8, "DR": 80.2, "FPR": 3.8},
+      "Sybil": {"MA": 60.5, "DR": 91.2, "FPR": 2.8}
+    }
+  },
+  "table_3_layer_dr": {
+    "CIFAR10": {
+      "FreeRidingNT": {"L1": 96.0, "L1L2": 96.2, "L1L3": 96.2, "Full": 96.5},
+      "ALIE": {"L1": 78.2, "L1L2": 85.0, "L1L3": 78.5, "Full": 85.6},
+      "Sybil": {"L1": 82.5, "L1L2": 83.0, "L1L3": 92.2, "Full": 92.8}
+    },
+    "FEMNIST": {
+      "FreeRidingNT": {"L1": 96.5, "L1L2": 96.6, "L1L3": 96.6, "Full": 96.8},
+      "ALIE": {"L1": 80.5, "L1L2": 87.0, "L1L3": 80.8, "Full": 87.5},
+      "Sybil": {"L1": 84.2, "L1L2": 84.5, "L1L3": 93.2, "Full": 93.8}
+    },
+    "CIFAR100": {
+      "FreeRidingNT": {"L1": 95.2, "L1L2": 95.5, "L1L3": 95.5, "Full": 95.8},
+      "ALIE": {"L1": 76.5, "L1L2": 83.0, "L1L3": 77.0, "Full": 83.5},
+      "Sybil": {"L1": 80.5, "L1L2": 81.0, "L1L3": 90.8, "Full": 91.2}
+    }
+  },
+  "table_4_composability_cifar10": {
+    "Krum": {
+      "ALIE": {"MA": 73.5, "DR": 85.6, "FPR": 3.5},
+      "FreeRiding": {"MA": 85.2, "DR": 96.5, "FPR": 2.1}
+    },
+    "TrimmedMean": {
+      "ALIE": {"MA": 77.8, "DR": 87.2, "FPR": 3.2},
+      "FreeRiding": {"MA": 86.0, "DR": 97.0, "FPR": 2.0}
+    },
+    "Median": {
+      "ALIE": {"MA": 75.5, "DR": 86.0, "FPR": 3.4},
+      "FreeRiding": {"MA": 85.5, "DR": 96.8, "FPR": 2.1}
+    }
+  },
+  "table_5_incentive": {
+    "ParticipationRate": 94.2,
+    "AttackSuccessRate": 3.2,
+    "ModelAccuracy": 86.8
+  },
+  "table_6_profit_usd": {
+    "Honest": {"reward": 0.172, "cost": -0.022, "slash": 0.0, "profit": 0.150},
+    "RationalLT": {"reward": 0.098, "cost": -0.016, "slash": -0.008, "profit": 0.074},
+    "MaliciousNT": {"reward": 0.025, "cost": -0.015, "slash": -0.145, "profit": -0.135}
+  },
+  "table_7_overhead": {
+    "runtime_seconds": 78.5,
+    "communication_mb": 178.2,
+    "gas_usd": 0.85,
+    "storage_mb_per_client": 2.5
+  },
+  "table_8_scalability": {
+    "50": {"runtime_seconds": 78.5, "communication_mb": 178.2, "gas_usd": 0.85, "seconds_per_client": 1.57, "MA": 86.8, "DR": 96.5, "FPR": 2.1},
+    "100": {"runtime_seconds": 152.8, "communication_mb": 348.5, "gas_usd": 1.68, "seconds_per_client": 1.53, "MA": 85.5, "DR": 95.8, "FPR": 2.3},
+    "200": {"runtime_seconds": 298.5, "communication_mb": 685.2, "gas_usd": 3.32, "seconds_per_client": 1.49, "MA": 84.2, "DR": 94.5, "FPR": 2.8}
+  },
+  "table_9_noniid": {
+    "CIFAR10": {
+      "0.1": {"NoAttackMA": 82.5, "FreeRidingDR": 94.2, "ALIEDR": 80.5, "FPR": 4.8},
+      "0.5": {"NoAttackMA": 88.2, "FreeRidingDR": 96.5, "ALIEDR": 85.6, "FPR": 2.5},
+      "1.0": {"NoAttackMA": 89.5, "FreeRidingDR": 97.2, "ALIEDR": 86.8, "FPR": 2.0},
+      "IID": {"NoAttackMA": 91.2, "FreeRidingDR": 98.0, "ALIEDR": 88.2, "FPR": 1.5}
+    },
+    "FEMNIST": {
+      "0.1": {"NoAttackMA": 85.2, "FreeRidingDR": 95.5, "ALIEDR": 82.8, "FPR": 4.2},
+      "0.5": {"NoAttackMA": 89.5, "FreeRidingDR": 96.8, "ALIEDR": 87.5, "FPR": 2.2},
+      "1.0": {"NoAttackMA": 91.2, "FreeRidingDR": 97.5, "ALIEDR": 88.5, "FPR": 1.8},
+      "IID": {"NoAttackMA": 92.8, "FreeRidingDR": 98.2, "ALIEDR": 89.5, "FPR": 1.2}
+    },
+    "CIFAR100": {
+      "0.1": {"NoAttackMA": 52.5, "FreeRidingDR": 92.5, "ALIEDR": 78.2, "FPR": 5.5},
+      "0.5": {"NoAttackMA": 58.2, "FreeRidingDR": 95.8, "ALIEDR": 83.5, "FPR": 3.2},
+      "1.0": {"NoAttackMA": 60.5, "FreeRidingDR": 96.5, "ALIEDR": 85.2, "FPR": 2.5},
+      "IID": {"NoAttackMA": 62.5, "FreeRidingDR": 97.2, "ALIEDR": 86.8, "FPR": 2.0}
+    }
+  },
+  "table_10_adaptive": {
+    "BaselineNT": {"DR": 96.5, "FPR": 2.1, "profitable": false},
+    "CheckpointInterpolation": {"DR": 94.2, "FPR": 2.8, "forge_train_ratio": 1.8, "profitable": false},
+    "GradientMimicry": {"DR": 91.5, "FPR": 3.2, "forge_train_ratio": 2.3, "profitable": false},
+    "PartialReplay": {"DR": 88.8, "FPR": 3.5, "forge_train_ratio": 1.2, "profitable": false},
+    "CombinedAdaptive": {"DR": 85.2, "FPR": 4.0, "forge_train_ratio": 2.8, "profitable": false}
+  },
+  "table_11_cross_hardware": {
+    "RTX4090_RTX4090": {"FPR": 0.8, "honest_pass_rate": 99.2, "DR": 97.2, "block_rate": 97.2},
+    "V100_V100": {"FPR": 1.2, "honest_pass_rate": 98.8, "DR": 96.5, "block_rate": 96.5},
+    "RTX4090_RTX3080": {"FPR": 1.5, "honest_pass_rate": 98.5, "DR": 95.8, "block_rate": 95.8},
+    "RTX4090_V100": {"FPR": 1.8, "honest_pass_rate": 98.2, "DR": 94.2, "block_rate": 94.2},
+    "RTX4090_A100": {"FPR": 1.3, "honest_pass_rate": 98.7, "DR": 96.0, "block_rate": 96.0},
+    "V100_A100": {"FPR": 1.6, "honest_pass_rate": 98.4, "DR": 95.5, "block_rate": 95.5},
+    "Kaizen_RTX4090_V100": {"FPR": 5.2, "honest_pass_rate": 94.8, "DR": 93.5, "block_rate": 93.5}
+  },
+  "table_12_zk": {
+    "proof_generation_seconds": 4.2,
+    "circuit_constraints": 1100000,
+    "witness_seconds": 1.8,
+    "prover_memory_gb": 2.5,
+    "proof_bytes": 192,
+    "verification_ms": 8.5,
+    "merkle_proof_kb": 1.2,
+    "total_verification_ms": 52.0
+  },
+  "table_13_gas": {
+    "commitment": 85000,
+    "proof_receipt": 120000,
+    "reward_claim": 45000,
+    "slash": 65000,
+    "honest_round_total": 225000
+  },
+  "figure_6_sybil_scalability": {
+    "5": {"DR": 94.5, "stake_eth": 0.25},
+    "20": {"DR": 87.5, "stake_eth": 1.0}
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "authority_pdf_sha256": "0b013e58d4f99f91470c61a891a4ee89dfd09eff58e131abbe730d1f6f91e6d4",
+  "classification": "controlled_veriblockfl_full_verification",
+  "upstream": {
+    "repository": "https://github.com/ElmiraEbrahimi/Veriblock-FL",
+    "commit": "e0a66df7b9ce89a3d42f39e2044d49e714736926",
+    "circuit_relative_path": "verification/zokrates/root.zok",
+    "circuit_sha256": "854e82bc520f0df6222e69121fb2516aa445e31e2c3818028b347a8d0f4dc0ee"
+  },
+  "zokrates": {
+    "version": "0.8.8",
+    "release_archive_sha256": "da2e1062526acebdcff613a713f177db3bd1443d41f2ea74044026eb96979fb9",
+    "binary_sha256": "b3de37f64f283079dc85dea8db6f5ffc0da1206f4d01e4eeb5ef39718e518d16"
+  },
+  "circuit_profile": {
+    "batch_size": 10,
+    "features": 9,
+    "classes": 6
+  },
+  "declared_correction": "The upstream analytics helper supplied unrelated random w_new/b_new values, which cannot satisfy its own circuit assertion. The controlled runner deterministically computes w_new/b_new from the exact integer arithmetic encoded by the unchanged locked circuit."
+}

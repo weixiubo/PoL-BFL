@@ -1,0 +1,25 @@
+[package]
+name = "polbfl-poseidon-native"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.82"
+license = "MIT"
+description = "Circom-compatible native Poseidon batch helper for PoL-BFL"
+
+[[bin]]
+name = "polbfl-poseidon-native"
+path = "src/main.rs"
+
+[dependencies]
+ark-bn254 = "=0.5.0"
+ark-ff = "=0.5.0"
+light-poseidon = "=0.4.0"
+num-bigint = "=0.4.6"
+num-traits = "=0.2.19"
+serde_json = "=1.0.145"
+
+[profile.release]
+codegen-units = 1
+lto = "thin"
+panic = "abort"
+strip = true

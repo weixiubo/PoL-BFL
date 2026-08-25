@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "source_commit": "d7a7a5b0278bfada067e84f2661c0d7ea218cc48",
+  "authority_pdf_sha256": "0b013e58d4f99f91470c61a891a4ee89dfd09eff58e131abbe730d1f6f91e6d4",
+  "trust_setup": {
+    "classification": "isolated-development-benchmark-only",
+    "powers_of_tau_sha256": "6470917f0a6097c9817069fcfe4011bac26f72a322d503ec76514d337b55dc04",
+    "production_eligible": false
+  },
+  "artifacts": {
+    "r1cs_sha256": "e85a1b93f5295d95c2b5bcae4f9e9ec49b7da780f962ef61e0daf20d09a4b3ae",
+    "zkey_sha256": "e9e1b607e8cbc50fb8e3348965bab520a3b32806a49746517469c99d44c0eb22",
+    "verification_key_sha256": "4eb58e7691c71a8adec60911140e1f1257451f4567ae687777b087bd18714cd5",
+    "witness_binary_sha256": "fe82aeeeb90c80c6623363b2030c1e25ec68860d5bdae2df70d17acfada5bcff",
+    "proof_json_sha256": "a395d011531c0c9a76d94c3563b305e4f5243cd4093d4b2b4c23dbd2ac9b572b",
+    "public_json_sha256": "ea9aa07823cb845209325e611d520df5dd89a9473c0ba7db50d2893c2d537c0f"
+  },
+  "repetitions": {
+    "witness": 3,
+    "proof": 3,
+    "verification": 20
+  },
+  "metrics": {
+    "circuit_constraints": 1090382,
+    "proof_bytes": 192,
+    "proof_seconds_median": 2.4526007724925876,
+    "prover_peak_rss_kb_max": 922740,
+    "verification_peak_rss_kb_max": 4032,
+    "verification_seconds_median": 0.004104803316295147,
+    "witness_peak_rss_kb_max": 107264,
+    "witness_seconds_median": 0.6167389377951622
+  },
+  "gates": {
+    "circuit_size": true,
+    "proof_seconds": true,
+    "proof_size": true,
+    "prover_memory": true,
+    "verification_seconds": true,
+    "witness_seconds": true
+  },
+  "passed": true
+}

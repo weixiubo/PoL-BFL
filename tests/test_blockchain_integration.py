@@ -7,10 +7,12 @@ import unittest
 import os
 import sys
 from pathlib import Path
+import pytest
 
 # 添加项目根目录到路径
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+brownie = pytest.importorskip("brownie")
 from brownie import project, network, accounts
 from chainfl.interact import chainProxy
 

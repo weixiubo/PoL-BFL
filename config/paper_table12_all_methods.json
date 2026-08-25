@@ -1,0 +1,26 @@
+{
+  "authority_pdf_sha256": "0b013e58d4f99f91470c61a891a4ee89dfd09eff58e131abbe730d1f6f91e6d4",
+  "schema_version": 1,
+  "table_12_all_methods": {
+    "Kaizen": {
+      "circuit_constraints": 4500000,
+      "merkle_proof_kb": null,
+      "proof_bytes": 192,
+      "proof_generation_seconds": 12.5,
+      "prover_memory_gb": 8.2,
+      "total_verification_ms": 8.5,
+      "verification_ms": 8.5,
+      "witness_seconds": 5.2
+    },
+    "PoLBFL": {
+      "circuit_constraints": 1100000,
+      "merkle_proof_kb": 1.2,
+      "proof_bytes": 192,
+      "proof_generation_seconds": 4.2,
+      "prover_memory_gb": 2.5,
+      "total_verification_ms": 52.0,
+      "verification_ms": 8.5,
+      "witness_seconds": 1.8
+    }
+  }
+}

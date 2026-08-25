@@ -1,0 +1,732 @@
+{
+  "authority_pdf_sha256": "0b013e58d4f99f91470c61a891a4ee89dfd09eff58e131abbe730d1f6f91e6d4",
+  "schema_version": 1,
+  "table_2_all_methods": {
+    "CIFAR10": {
+      "ALIE": {
+        "FoolsGold": {
+          "DR": 22.5,
+          "FPR": 8.5,
+          "MA": 58.3
+        },
+        "Krum": {
+          "DR": 45.2,
+          "FPR": 7.5,
+          "MA": 68.2
+        },
+        "PoLBFL": {
+          "DR": 85.6,
+          "FPR": 3.5,
+          "MA": 82.8
+        },
+        "SDEA": {
+          "DR": 68.5,
+          "FPR": 5.8,
+          "MA": 78.2
+        },
+        "ShapleyFL": {
+          "DR": 28.6,
+          "FPR": 11.2,
+          "MA": 62.5
+        },
+        "VanillaFL": {
+          "MA": 48.5
+        }
+      },
+      "ByzantineRandom": {
+        "FoolsGold": {
+          "DR": 28.3,
+          "FPR": 6.2,
+          "MA": 68.5
+        },
+        "Krum": {
+          "DR": 62.5,
+          "FPR": 5.8,
+          "MA": 76.5
+        },
+        "PoLBFL": {
+          "DR": 91.5,
+          "FPR": 2.8,
+          "MA": 84.2
+        },
+        "SDEA": {
+          "DR": 75.2,
+          "FPR": 4.5,
+          "MA": 79.8
+        },
+        "ShapleyFL": {
+          "DR": 35.8,
+          "FPR": 8.2,
+          "MA": 71.2
+        },
+        "VanillaFL": {
+          "MA": 58.3
+        }
+      },
+      "DataPoisoning": {
+        "FoolsGold": {
+          "DR": 25.8,
+          "FPR": 7.2,
+          "MA": 62.1
+        },
+        "Krum": {
+          "DR": 52.3,
+          "FPR": 6.8,
+          "MA": 72.8
+        },
+        "PoLBFL": {
+          "DR": 82.3,
+          "FPR": 3.2,
+          "MA": 81.5
+        },
+        "SDEA": {
+          "DR": 65.8,
+          "FPR": 5.2,
+          "MA": 76.5
+        },
+        "ShapleyFL": {
+          "DR": 30.2,
+          "FPR": 10.5,
+          "MA": 65.3
+        },
+        "VanillaFL": {
+          "MA": 55.2
+        }
+      },
+      "FreeRidingLT": {
+        "FoolsGold": {
+          "DR": 10.2,
+          "FPR": 6.5,
+          "MA": 74.5
+        },
+        "Krum": {
+          "DR": 12.8,
+          "FPR": 7.2,
+          "MA": 73.8
+        },
+        "PoLBFL": {
+          "DR": 92.3,
+          "FPR": 2.5,
+          "MA": 85.2
+        },
+        "SDEA": {
+          "DR": 15.6,
+          "FPR": 8.1,
+          "MA": 75.2
+        },
+        "ShapleyFL": {
+          "DR": 68.2,
+          "FPR": 10.5,
+          "MA": 79.6
+        },
+        "VanillaFL": {
+          "MA": 69.5
+        }
+      },
+      "FreeRidingNT": {
+        "FoolsGold": {
+          "DR": 12.5,
+          "FPR": 7.8,
+          "MA": 73.1
+        },
+        "Krum": {
+          "DR": 15.2,
+          "FPR": 8.5,
+          "MA": 72.5
+        },
+        "PoLBFL": {
+          "DR": 96.5,
+          "FPR": 2.1,
+          "MA": 86.8
+        },
+        "SDEA": {
+          "DR": 18.3,
+          "FPR": 9.2,
+          "MA": 74.8
+        },
+        "ShapleyFL": {
+          "DR": 72.5,
+          "FPR": 12.3,
+          "MA": 81.3
+        },
+        "VanillaFL": {
+          "MA": 67.2
+        }
+      },
+      "MinMax": {
+        "FoolsGold": {
+          "DR": 20.8,
+          "FPR": 9.2,
+          "MA": 56.2
+        },
+        "Krum": {
+          "DR": 42.8,
+          "FPR": 8.2,
+          "MA": 66.5
+        },
+        "PoLBFL": {
+          "DR": 84.0,
+          "FPR": 3.8,
+          "MA": 82.0
+        },
+        "SDEA": {
+          "DR": 66.2,
+          "FPR": 6.2,
+          "MA": 77.5
+        },
+        "ShapleyFL": {
+          "DR": 26.5,
+          "FPR": 12.5,
+          "MA": 60.8
+        },
+        "VanillaFL": {
+          "MA": 46.2
+        }
+      },
+      "ModelReplacement": {
+        "FoolsGold": {
+          "DR": 25.6,
+          "FPR": 7.5,
+          "MA": 65.2
+        },
+        "Krum": {
+          "DR": 58.3,
+          "FPR": 6.2,
+          "MA": 74.2
+        },
+        "PoLBFL": {
+          "DR": 89.2,
+          "FPR": 3.1,
+          "MA": 83.5
+        },
+        "SDEA": {
+          "DR": 72.8,
+          "FPR": 5.1,
+          "MA": 78.5
+        },
+        "ShapleyFL": {
+          "DR": 32.5,
+          "FPR": 9.5,
+          "MA": 68.5
+        },
+        "VanillaFL": {
+          "MA": 52.1
+        }
+      },
+      "Sybil": {
+        "FoolsGold": {
+          "DR": 75.2,
+          "FPR": 5.5,
+          "MA": 78.5
+        },
+        "Krum": {
+          "DR": 32.5,
+          "FPR": 8.2,
+          "MA": 65.2
+        },
+        "PoLBFL": {
+          "DR": 92.8,
+          "FPR": 2.5,
+          "MA": 84.5
+        },
+        "SDEA": {
+          "DR": 35.2,
+          "FPR": 7.8,
+          "MA": 67.8
+        },
+        "ShapleyFL": {
+          "DR": 42.8,
+          "FPR": 7.5,
+          "MA": 68.5
+        },
+        "VanillaFL": {
+          "MA": 45.8
+        }
+      }
+    },
+    "CIFAR100": {
+      "ALIE": {
+        "FoolsGold": {
+          "DR": 20.5,
+          "FPR": 9.5,
+          "MA": 38.5
+        },
+        "Krum": {
+          "DR": 42.5,
+          "FPR": 8.2,
+          "MA": 45.2
+        },
+        "PoLBFL": {
+          "DR": 83.5,
+          "FPR": 4.0,
+          "MA": 58.2
+        },
+        "SDEA": {
+          "DR": 65.2,
+          "FPR": 6.5,
+          "MA": 52.8
+        },
+        "ShapleyFL": {
+          "DR": 25.8,
+          "FPR": 12.2,
+          "MA": 40.5
+        },
+        "VanillaFL": {
+          "MA": 32.5
+        }
+      },
+      "ByzantineRandom": {
+        "FoolsGold": {
+          "DR": 26.5,
+          "FPR": 7.0,
+          "MA": 44.5
+        },
+        "Krum": {
+          "DR": 58.5,
+          "FPR": 6.5,
+          "MA": 50.5
+        },
+        "PoLBFL": {
+          "DR": 89.5,
+          "FPR": 3.2,
+          "MA": 59.8
+        },
+        "SDEA": {
+          "DR": 72.5,
+          "FPR": 5.2,
+          "MA": 54.8
+        },
+        "ShapleyFL": {
+          "DR": 32.5,
+          "FPR": 9.2,
+          "MA": 46.2
+        },
+        "VanillaFL": {
+          "MA": 35.2
+        }
+      },
+      "DataPoisoning": {
+        "FoolsGold": {
+          "DR": 23.5,
+          "FPR": 8.0,
+          "MA": 40.2
+        },
+        "Krum": {
+          "DR": 50.2,
+          "FPR": 7.5,
+          "MA": 48.5
+        },
+        "PoLBFL": {
+          "DR": 80.2,
+          "FPR": 3.8,
+          "MA": 56.8
+        },
+        "SDEA": {
+          "DR": 62.5,
+          "FPR": 6.0,
+          "MA": 51.2
+        },
+        "ShapleyFL": {
+          "DR": 28.5,
+          "FPR": 11.5,
+          "MA": 42.8
+        },
+        "VanillaFL": {
+          "MA": 35.8
+        }
+      },
+      "FreeRidingLT": {
+        "FoolsGold": {
+          "DR": 8.8,
+          "FPR": 7.2,
+          "MA": 50.2
+        },
+        "Krum": {
+          "DR": 10.2,
+          "FPR": 8.2,
+          "MA": 49.5
+        },
+        "PoLBFL": {
+          "DR": 91.5,
+          "FPR": 2.8,
+          "MA": 61.2
+        },
+        "SDEA": {
+          "DR": 14.2,
+          "FPR": 9.0,
+          "MA": 51.2
+        },
+        "ShapleyFL": {
+          "DR": 66.5,
+          "FPR": 11.5,
+          "MA": 54.2
+        },
+        "VanillaFL": {
+          "MA": 44.2
+        }
+      },
+      "FreeRidingNT": {
+        "FoolsGold": {
+          "DR": 10.5,
+          "FPR": 8.5,
+          "MA": 48.8
+        },
+        "Krum": {
+          "DR": 12.5,
+          "FPR": 9.5,
+          "MA": 48.2
+        },
+        "PoLBFL": {
+          "DR": 95.8,
+          "FPR": 2.5,
+          "MA": 62.5
+        },
+        "SDEA": {
+          "DR": 16.5,
+          "FPR": 10.2,
+          "MA": 50.5
+        },
+        "ShapleyFL": {
+          "DR": 70.2,
+          "FPR": 13.5,
+          "MA": 55.8
+        },
+        "VanillaFL": {
+          "MA": 42.5
+        }
+      },
+      "MinMax": {
+        "FoolsGold": {
+          "DR": 18.8,
+          "FPR": 10.2,
+          "MA": 36.2
+        },
+        "Krum": {
+          "DR": 40.2,
+          "FPR": 8.8,
+          "MA": 43.5
+        },
+        "PoLBFL": {
+          "DR": 81.5,
+          "FPR": 4.2,
+          "MA": 57.0
+        },
+        "SDEA": {
+          "DR": 63.5,
+          "FPR": 7.0,
+          "MA": 51.5
+        },
+        "ShapleyFL": {
+          "DR": 23.5,
+          "FPR": 13.5,
+          "MA": 38.8
+        },
+        "VanillaFL": {
+          "MA": 30.8
+        }
+      },
+      "ModelReplacement": {
+        "FoolsGold": {
+          "DR": 24.5,
+          "FPR": 8.2,
+          "MA": 42.2
+        },
+        "Krum": {
+          "DR": 55.2,
+          "FPR": 7.0,
+          "MA": 48.2
+        },
+        "PoLBFL": {
+          "DR": 87.2,
+          "FPR": 3.5,
+          "MA": 58.5
+        },
+        "SDEA": {
+          "DR": 70.2,
+          "FPR": 5.8,
+          "MA": 53.2
+        },
+        "ShapleyFL": {
+          "DR": 30.2,
+          "FPR": 10.5,
+          "MA": 43.5
+        },
+        "VanillaFL": {
+          "MA": 32.8
+        }
+      },
+      "Sybil": {
+        "FoolsGold": {
+          "DR": 72.5,
+          "FPR": 6.2,
+          "MA": 52.5
+        },
+        "Krum": {
+          "DR": 30.5,
+          "FPR": 9.0,
+          "MA": 42.5
+        },
+        "PoLBFL": {
+          "DR": 91.2,
+          "FPR": 2.8,
+          "MA": 60.5
+        },
+        "SDEA": {
+          "DR": 32.8,
+          "FPR": 8.8,
+          "MA": 44.8
+        },
+        "ShapleyFL": {
+          "DR": 40.2,
+          "FPR": 8.5,
+          "MA": 45.2
+        },
+        "VanillaFL": {
+          "MA": 28.5
+        }
+      }
+    },
+    "FEMNIST": {
+      "ALIE": {
+        "FoolsGold": {
+          "DR": 27.5,
+          "FPR": 7.0,
+          "MA": 79.8
+        },
+        "Krum": {
+          "DR": 47.2,
+          "FPR": 6.2,
+          "MA": 86.2
+        },
+        "PoLBFL": {
+          "DR": 87.5,
+          "FPR": 3.0,
+          "MA": 91.2
+        },
+        "SDEA": {
+          "DR": 71.2,
+          "FPR": 5.0,
+          "MA": 89.5
+        },
+        "ShapleyFL": {
+          "DR": 31.5,
+          "FPR": 9.5,
+          "MA": 82.5
+        },
+        "VanillaFL": {
+          "MA": 72.5
+        }
+      },
+      "ByzantineRandom": {
+        "FoolsGold": {
+          "DR": 31.5,
+          "FPR": 5.8,
+          "MA": 86.8
+        },
+        "Krum": {
+          "DR": 63.5,
+          "FPR": 5.2,
+          "MA": 89.8
+        },
+        "PoLBFL": {
+          "DR": 92.5,
+          "FPR": 2.5,
+          "MA": 92.2
+        },
+        "SDEA": {
+          "DR": 77.2,
+          "FPR": 4.0,
+          "MA": 91.2
+        },
+        "ShapleyFL": {
+          "DR": 37.2,
+          "FPR": 7.5,
+          "MA": 87.5
+        },
+        "VanillaFL": {
+          "MA": 78.5
+        }
+      },
+      "DataPoisoning": {
+        "FoolsGold": {
+          "DR": 29.2,
+          "FPR": 6.2,
+          "MA": 82.5
+        },
+        "Krum": {
+          "DR": 54.2,
+          "FPR": 5.8,
+          "MA": 87.8
+        },
+        "PoLBFL": {
+          "DR": 84.2,
+          "FPR": 2.8,
+          "MA": 91.5
+        },
+        "SDEA": {
+          "DR": 67.2,
+          "FPR": 4.8,
+          "MA": 90.0
+        },
+        "ShapleyFL": {
+          "DR": 34.8,
+          "FPR": 8.8,
+          "MA": 84.2
+        },
+        "VanillaFL": {
+          "MA": 76.5
+        }
+      },
+      "FreeRidingLT": {
+        "FoolsGold": {
+          "DR": 11.8,
+          "FPR": 5.8,
+          "MA": 89.0
+        },
+        "Krum": {
+          "DR": 14.2,
+          "FPR": 6.5,
+          "MA": 88.8
+        },
+        "PoLBFL": {
+          "DR": 93.8,
+          "FPR": 2.2,
+          "MA": 92.0
+        },
+        "SDEA": {
+          "DR": 17.0,
+          "FPR": 7.2,
+          "MA": 89.5
+        },
+        "ShapleyFL": {
+          "DR": 69.5,
+          "FPR": 9.8,
+          "MA": 90.2
+        },
+        "VanillaFL": {
+          "MA": 86.0
+        }
+      },
+      "FreeRidingNT": {
+        "FoolsGold": {
+          "DR": 14.5,
+          "FPR": 6.5,
+          "MA": 88.5
+        },
+        "Krum": {
+          "DR": 16.5,
+          "FPR": 7.2,
+          "MA": 88.5
+        },
+        "PoLBFL": {
+          "DR": 96.8,
+          "FPR": 2.0,
+          "MA": 92.5
+        },
+        "SDEA": {
+          "DR": 19.2,
+          "FPR": 8.0,
+          "MA": 89.2
+        },
+        "ShapleyFL": {
+          "DR": 73.8,
+          "FPR": 11.5,
+          "MA": 90.8
+        },
+        "VanillaFL": {
+          "MA": 85.2
+        }
+      },
+      "MinMax": {
+        "FoolsGold": {
+          "DR": 25.2,
+          "FPR": 7.8,
+          "MA": 78.0
+        },
+        "Krum": {
+          "DR": 44.2,
+          "FPR": 6.8,
+          "MA": 85.0
+        },
+        "PoLBFL": {
+          "DR": 85.5,
+          "FPR": 3.2,
+          "MA": 90.5
+        },
+        "SDEA": {
+          "DR": 69.2,
+          "FPR": 5.5,
+          "MA": 88.8
+        },
+        "ShapleyFL": {
+          "DR": 29.2,
+          "FPR": 10.2,
+          "MA": 80.8
+        },
+        "VanillaFL": {
+          "MA": 70.8
+        }
+      },
+      "ModelReplacement": {
+        "FoolsGold": {
+          "DR": 29.2,
+          "FPR": 6.2,
+          "MA": 84.5
+        },
+        "Krum": {
+          "DR": 59.2,
+          "FPR": 5.5,
+          "MA": 88.5
+        },
+        "PoLBFL": {
+          "DR": 90.5,
+          "FPR": 2.8,
+          "MA": 91.8
+        },
+        "SDEA": {
+          "DR": 74.5,
+          "FPR": 4.5,
+          "MA": 90.5
+        },
+        "ShapleyFL": {
+          "DR": 34.2,
+          "FPR": 8.2,
+          "MA": 85.8
+        },
+        "VanillaFL": {
+          "MA": 74.2
+        }
+      },
+      "Sybil": {
+        "FoolsGold": {
+          "DR": 77.2,
+          "FPR": 5.0,
+          "MA": 89.2
+        },
+        "Krum": {
+          "DR": 34.2,
+          "FPR": 7.0,
+          "MA": 82.5
+        },
+        "PoLBFL": {
+          "DR": 93.8,
+          "FPR": 2.2,
+          "MA": 92.5
+        },
+        "SDEA": {
+          "DR": 37.2,
+          "FPR": 6.8,
+          "MA": 83.5
+        },
+        "ShapleyFL": {
+          "DR": 44.5,
+          "FPR": 6.5,
+          "MA": 84.2
+        },
+        "VanillaFL": {
+          "MA": 69.5
+        }
+      }
+    }
+  }
+}

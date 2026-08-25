@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "python": "3.13.2",
+  "node": "24.14.0",
+  "circom": {
+    "version": "2.2.2",
+    "linux_x86_64_sha256": "e72459d9490a6404ddf4bd6a517ab8ea3da4890247b72988be535be37feb296d"
+  },
+  "snarkjs": "0.7.5",
+  "circomlib": "2.0.5",
+  "circomlibjs": "0.1.7",
+  "native_poseidon": {
+    "implementation": "light-poseidon",
+    "crate_version": "0.4.0",
+    "ark_bn254_version": "0.5.0",
+    "rustc": "1.90.0 (1159e78c4 2025-09-14)",
+    "cargo_lock_sha256": "54464416f4e5133de5e57023e979950c31cf74d512f0cd407845052632fea544",
+    "linux_x86_64_sha256": "3de9f1c67c6be0168fa19892fe7fde4424da34111ab3b21bd607767507ad6b80"
+  },
+  "icicle_snark": {
+    "repository": "https://github.com/ingonyama-zk/icicle-snark.git",
+    "commit": "bf00385db19087a8a3f6d754b43b006254b1b465",
+    "version": "0.1.0",
+    "icicle_version": "3.8.0",
+    "cuda_toolkit": "12.4.99",
+    "cuda_architecture": "89",
+    "cargo_lock_sha256": "797b722838f85fe1e034b348574896798d0ae5b763970664db85df3570524cc6",
+    "artifacts": {
+      "bin/icicle-snark": "7b0a1b9b45ee7bc121f595d7822048ea6e8931fc119d08bb7492a57aaf6396f8",
+      "lib/libicicle_device.so": "418c3f57eb4ba777277a4457ee97b682554992e657de0bf65a9017aa4376f95d",
+      "lib/libicicle_field_bn254.so": "54031674fc15980bd93a737a4202a32bcd54ee84bdeb3aa9c8b9968bab5351b4",
+      "lib/libicicle_curve_bn254.so": "2373aa08557a81b2240982b0faa38196a1b6615b0c6fda45094fee71f1885474",
+      "backend/cuda/libicicle_backend_cuda_device.so": "c9c97572df44b58436fae89dd7fd55d504154489dbbde5a2f73384f871e83dcc",
+      "backend/cuda/libicicle_backend_cuda_field_bn254.so": "acd903ac0cb6af4f33f547b29002b2e107f9d331f864184628c92e9fd346c072",
+      "backend/cuda/libicicle_backend_cuda_curve_bn254.so": "4a24ae7d92653d34a0b07b07c6d48b4652aab1be98ad72626c0ab285b48912ff"
+    },
+    "memory_patch_sha256": "de068e167baae288d903904fbe942f18969f8fbcc568e0da14c57fba6d6e521e"
+  },
+  "rapidsnark": {
+    "repository": "https://github.com/iden3/rapidsnark.git",
+    "commit": "81eddf1a536d26497b237c0b8a04fe90baf7e439",
+    "linux_x86_64_prover_sha256": "0328bffb72356f995eafdb35d5d47f1526dd41a6cd08d649f8f9698060b27cf9",
+    "linux_x86_64_verifier_sha256": "e69edf62ead4e1bfd1a90b4e72402eaff0b68bbe35e10fcef3f7ea3b45b06fc3",
+    "linux_x86_64_shared_library_sha256": "6570a68b231de1e32a19117542b620cff3f2072cd2a812fe5a03bedf9202c29b"
+  },
+  "solc": "0.8.20",
+  "ganache": "7.9.2",
+  "powers_of_tau": {
+    "production_filename": "powersOfTau28_hez_final_21.ptau",
+    "production_blake2b_512": "9aef0573cef4ded9c4a75f148709056bf989f80dad96876aadeb6f1c6d062391f07a394a9e756d16f7eb233198d5b69407cca44594c763ab4a5b67ae73254678",
+    "production_sha512": "7518f67d3ba9651d43cd0dbea152151219188bf3882ed1f4b52e09c59ec141c5a14755c7b132abea8a134554d8c987ef83003fe20f59a434197a501e8e95ffe8",
+    "production_size_bytes": 2416002200,
+    "development_benchmark_sha256": "6470917f0a6097c9817069fcfe4011bac26f72a322d503ec76514d337b55dc04",
+    "minimum_power": 21,
+    "development_crs_allowed_for_formal_results": false
+  }
+}

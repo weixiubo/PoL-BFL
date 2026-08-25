@@ -5,6 +5,7 @@ PoL Trainer
 
 import copy
 import logging
+import os
 import torch
 from torch import nn
 from typing import Dict, List, Optional
@@ -143,6 +144,7 @@ class PoLTrainer(BaseTrainer):
                 x, labels = batch
                 idxs = None
             x, labels = x.to(device), labels.to(device)
+            batch_indices = ()
 
             # 记录数据索引（优先使用 dataloader 返回的真实全局索引）
             if self.enable_pol:
@@ -176,6 +178,10 @@ class PoLTrainer(BaseTrainer):
 
             # NaN/Inf guard on loss before backward
             if not torch.isfinite(loss):
+                if os.getenv("POL_INTEGRITY", "0") == "1":
+                    raise FloatingPointError(
+                        f"non-finite loss at optimizer step {self.batch_counter + 1}"
+                    )
                 logger.warning(f"[NaNGuard] Non-finite loss at global_step={self.batch_counter+1}: {float(loss)}. Skipping this step.")
                 self.optimizer.zero_grad()
                 continue
@@ -186,10 +192,15 @@ class PoLTrainer(BaseTrainer):
 
             # Gradient clipping to prevent explosion
             try:
-                clip_norm = float(self.args.get("clip_norm", 5.0))
-                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=clip_norm)
+                clip_value = self.args.get("clip_norm", 5.0)
+                if clip_value is not None:
+                    clip_norm = float(clip_value)
+                    if clip_norm <= 0:
+                        raise ValueError("clip norm must be positive or None")
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=clip_norm)
             except Exception:
-                pass
+                if os.getenv("POL_INTEGRITY", "0") == "1":
+                    raise
 
             self.optimizer.step()
 
@@ -201,6 +212,10 @@ class PoLTrainer(BaseTrainer):
                         if p is None or (not p.requires_grad):
                             continue
                         if torch.isnan(p).any() or torch.isinf(p).any():
+                            if os.getenv("POL_INTEGRITY", "0") == "1":
+                                raise FloatingPointError(
+                                    f"non-finite parameter {name} at optimizer step {self.batch_counter + 1}"
+                                )
                             logger.warning(f"[NaNGuard] Param {name} has NaN/Inf at step {self.batch_counter+1}. Sanitizing and reducing LR.")
                             torch.nan_to_num_(p, nan=0.0, posinf=1e6, neginf=-1e6)
                             sanitized = True
@@ -216,6 +231,17 @@ class PoLTrainer(BaseTrainer):
 
             batch_loss.append(loss.item())
             self.batch_counter += 1
+
+            self._record_protocol_step(
+                step=self.batch_counter,
+                epoch=epoch,
+                model=model,
+                optimizer=self.optimizer,
+                batch_data=x,
+                batch_labels=labels,
+                batch_indices=tuple(batch_indices or ()),
+                activations={"logits": log_probs.detach()},
+            )
 
             # PoL: 周期性保存checkpoint
             if self.enable_pol and self.batch_counter % self.pol_save_freq == 0:
@@ -234,6 +260,10 @@ class PoLTrainer(BaseTrainer):
         }
 
         return ret
+
+    def _record_protocol_step(self, **_kwargs):
+        """Extension hook for the paper protocol recorder."""
+        return None
 
     def _save_checkpoint(self, epoch: int, batch_idx: int, loss: float):
         """

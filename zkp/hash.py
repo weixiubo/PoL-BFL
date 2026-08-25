@@ -4,13 +4,13 @@ Shared ZKP hashing and quantization utilities.
 - Poseidon(2)-fold hashing via Node helper (circomlibjs)
 """
 from __future__ import annotations
-import json
-import subprocess
+import atexit
 import logging
 from pathlib import Path
 from typing import List, Sequence
 
 import torch
+from polbfl.zk import PoseidonBridge
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +19,16 @@ FR_P = 2188824287183927522224640574525727508854836440041603434369820418657580849
 DEFAULT_SCALE = 10**6  # fixed-point scale for weights
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-POSEIDON_JS = REPO_ROOT / 'analysis' / 'poseidon_fold.js'
+POSEIDON_JS = REPO_ROOT / "analysis" / "poseidon_fold.js"
+_POSEIDON_BRIDGE: PoseidonBridge | None = None
+
+
+def _bridge() -> PoseidonBridge:
+    global _POSEIDON_BRIDGE
+    if _POSEIDON_BRIDGE is None:
+        _POSEIDON_BRIDGE = PoseidonBridge(persistent=True)
+        atexit.register(_POSEIDON_BRIDGE.close)
+    return _POSEIDON_BRIDGE
 
 
 def flatten_first_n(state_dict: dict, n: int) -> torch.Tensor:
@@ -50,20 +59,26 @@ def quantize_to_field(x: torch.Tensor, scale: int = DEFAULT_SCALE) -> List[int]:
 
 
 def poseidon_fold(values: Sequence[int]) -> str:
-    """Compute Poseidon(2) fold hash by invoking Node helper. Returns decimal string.
-    Requires circomlibjs in Node environment.
-    """
-    if not POSEIDON_JS.exists():
-        raise FileNotFoundError(f"Missing Node helper: {POSEIDON_JS}")
-    try:
-        proc = subprocess.run(
-            ['node', str(POSEIDON_JS), json.dumps(list(map(int, values)))],
-            check=True, capture_output=True, text=True
+    """Compute the exact Circomlib Poseidon(2) fold through one persistent bridge."""
+
+    return _bridge().fold2(tuple(map(int, values)))
+
+
+def poseidon_fold_many(
+    rows: Sequence[Sequence[int]],
+) -> tuple[str, ...]:
+    """Batch independent Poseidon folds through one bridge request."""
+
+    return _bridge().execute(
+        tuple(
+            {
+                "kind": "fold2",
+                "values": list(map(int, row)),
+                "initial": "0",
+            }
+            for row in rows
         )
-        return proc.stdout.strip()
-    except subprocess.CalledProcessError as e:
-        logger.error(f"poseidon_fold failed: {e.stderr}")
-        raise
+    )
 
 
 def fold_indices(indices: Sequence[int]) -> str:

@@ -1,5 +1,33 @@
+import importlib.util
 import os
 import pytest
+
+
+LEGACY_BROWNIE_MODULES = {
+    "test_anchor_registry_e2e.py",
+    "test_blockchain_integration.py",
+    "test_challenge_contract.py",
+    "test_challenge_edgecases_onchain.py",
+    "test_challenge_failures_onchain.py",
+    "test_e2e_onchain_challenge.py",
+    "test_e2e_onchain_strict.py",
+    "test_incentive_failures_onchain.py",
+    "test_incentive_onchain_e2e.py",
+    "test_onchain_zkp_verifier_integrated.py",
+    "test_onchain_zkp_verifier_poc.py",
+    "test_p2p_challenge_server.py",
+}
+
+
+def pytest_collection_modifyitems(config, items):
+    if importlib.util.find_spec("brownie") is not None:
+        return
+    marker = pytest.mark.skip(
+        reason="legacy Brownie integration dependency is not installed"
+    )
+    for item in items:
+        if item.path.name in LEGACY_BROWNIE_MODULES:
+            item.add_marker(marker)
 
 
 @pytest.fixture(autouse=True)

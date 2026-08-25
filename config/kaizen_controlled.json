@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "authority_pdf_sha256": "0b013e58d4f99f91470c61a891a4ee89dfd09eff58e131abbe730d1f6f91e6d4",
+  "classification": "controlled_kaizen_style_cost_baseline",
+  "proof_system": "Groth16",
+  "curve": "bn128",
+  "target_constraints": 4000000,
+  "accepted_constraint_range": [3800000, 4200000],
+  "input": {"seed": "2"},
+  "powers_of_tau": {
+    "filename": "powersOfTau28_hez_final_22.ptau",
+    "blake2b_512": "0d64f63dba1a6f11139df765cb690da69d9b2f469a1ddd0de5e4aa628abb28f787f04c6a5fb84a235ec5ea7f41d0548746653ecab0559add658a83502d1cb21b",
+    "minimum_power": 22
+  },
+  "note": "The final paper specifies a controlled Kaizen-style full-verification baseline and its approximately 4.5M size, but not its circuit. This source-bound 4.0M sequential arithmetic circuit is the declared controlled cost construction; it is never represented as the Kaizen protocol implementation."
+}

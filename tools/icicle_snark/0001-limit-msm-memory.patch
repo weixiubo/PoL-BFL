@@ -1,0 +1,5 @@
+diff --git a/src/icicle_helper.rs b/src/icicle_helper.rs
+--- a/src/icicle_helper.rs
++++ b/src/icicle_helper.rs
+@@ -42,0 +43 @@
++    msm_config.ext.set_int("nof_chunks", 8);

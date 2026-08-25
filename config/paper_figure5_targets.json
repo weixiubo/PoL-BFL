@@ -1,0 +1,100 @@
+{
+  "authority_pdf_sha256": "0b013e58d4f99f91470c61a891a4ee89dfd09eff58e131abbe730d1f6f91e6d4",
+  "extraction": {
+    "curve_identity": {
+      "AttackExpectedPayoff": "dashed",
+      "HonestNetProfit": "solid"
+    },
+    "x_values_gwei": [
+      5,
+      10,
+      30,
+      50,
+      100,
+      200,
+      500,
+      1000
+    ],
+    "y_grid_usd": [
+      0,
+      -5,
+      -10,
+      -15,
+      -20,
+      -25,
+      -30
+    ]
+  },
+  "figure_5_gas_price_stress": {
+    "AttackExpectedPayoff": [
+      {
+        "gas_price_gwei": 5,
+        "payoff_usd": -0.08
+      },
+      {
+        "gas_price_gwei": 10,
+        "payoff_usd": -0.12
+      },
+      {
+        "gas_price_gwei": 30,
+        "payoff_usd": -0.95
+      },
+      {
+        "gas_price_gwei": 50,
+        "payoff_usd": -1.52
+      },
+      {
+        "gas_price_gwei": 100,
+        "payoff_usd": -2.9
+      },
+      {
+        "gas_price_gwei": 200,
+        "payoff_usd": -5.77
+      },
+      {
+        "gas_price_gwei": 500,
+        "payoff_usd": -14.35
+      },
+      {
+        "gas_price_gwei": 1000,
+        "payoff_usd": -28.22
+      }
+    ],
+    "HonestNetProfit": [
+      {
+        "gas_price_gwei": 5,
+        "payoff_usd": 0.15
+      },
+      {
+        "gas_price_gwei": 10,
+        "payoff_usd": 0.1
+      },
+      {
+        "gas_price_gwei": 30,
+        "payoff_usd": -0.48
+      },
+      {
+        "gas_price_gwei": 50,
+        "payoff_usd": -1.05
+      },
+      {
+        "gas_price_gwei": 100,
+        "payoff_usd": -2.43
+      },
+      {
+        "gas_price_gwei": 200,
+        "payoff_usd": -5.3
+      },
+      {
+        "gas_price_gwei": 500,
+        "payoff_usd": -13.88
+      },
+      {
+        "gas_price_gwei": 1000,
+        "payoff_usd": -27.75
+      }
+    ]
+  },
+  "physical_pdf_page": 11,
+  "schema_version": 1
+}

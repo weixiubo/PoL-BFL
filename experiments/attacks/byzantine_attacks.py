@@ -40,10 +40,18 @@ class RandomNoiseAttack(ByzantineAttack):
     Malicious clients send a model perturbed by parameter-scale random noise.
     """
     
-    def __init__(self, noise_scale: float = 1.0, min_scale: float = 1e-4):
+    def __init__(
+        self,
+        noise_scale: float = 1.0,
+        min_scale: float = 1e-4,
+        scale_mode: str = "absolute",
+    ):
         super().__init__("RandomNoiseAttack")
         self.noise_scale = noise_scale
         self.min_scale = min_scale
+        if scale_mode not in {"absolute", "parameter_scaled"}:
+            raise ValueError("random-noise scale_mode is invalid")
+        self.scale_mode = scale_mode
     
     def apply(self, model_state: OrderedDict, **kwargs) -> OrderedDict:
         """
@@ -72,6 +80,8 @@ class RandomNoiseAttack(ByzantineAttack):
             if not torch.isfinite(torch.tensor(scale_value)) or scale_value < self.min_scale:
                 mean_abs = float(scale_source.abs().mean().item()) if scale_source.numel() > 0 else 0.0
                 scale_value = max(mean_abs, self.min_scale)
+            if self.scale_mode == "absolute":
+                scale_value = 1.0
 
             noise = torch.randn_like(param) * (self.noise_scale * scale_value)
             attacked = base + noise
@@ -150,13 +160,26 @@ class ModelReplacementAttack(ByzantineAttack):
         """
         attacked_state = OrderedDict()
         
-        if self.replacement_type == 'random':
-            # Random initialization (float tensors get randn; non-float fall back to zeros)
+        if self.replacement_type == "random":
+            # Reproduce ordinary module initialization, including BatchNorm
+            # parameters/buffers, instead of injecting unit-scale noise.
             for key, param in model_state.items():
-                if torch.is_tensor(param) and param.is_floating_point():
-                    attacked_state[key] = torch.randn_like(param)
-                else:
+                if not (torch.is_tensor(param) and param.is_floating_point()):
                     attacked_state[key] = torch.zeros_like(param)
+                elif key.endswith("running_mean") or key.endswith(".bias"):
+                    attacked_state[key] = torch.zeros_like(param)
+                elif key.endswith("running_var"):
+                    attacked_state[key] = torch.ones_like(param)
+                elif key.endswith(".weight") and param.ndim == 1:
+                    attacked_state[key] = torch.ones_like(param)
+                elif key.endswith(".weight") and param.ndim >= 2:
+                    initialized = torch.empty_like(param)
+                    torch.nn.init.kaiming_normal_(
+                        initialized, mode="fan_out", nonlinearity="relu"
+                    )
+                    attacked_state[key] = initialized
+                else:
+                    attacked_state[key] = torch.randn_like(param) * 0.02
 
         elif self.replacement_type == 'zero':
             # Zero initialization

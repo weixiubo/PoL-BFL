@@ -4,12 +4,17 @@
   "description": "Blockchain-assisted federated learning with Proof-of-Learning verification, ZKP support, robust aggregation, and Sybil defense.",
   "license": "MIT",
   "private": false,
+  "engines": {
+    "node": ">=18 <21"
+  },
   "devDependencies": {
     "big-integer": "^1.6.52",
     "circomlib": "^2.0.5",
-    "circomlibjs": "^0.0.8",
+    "circomlibjs": "0.1.7",
+    "ethers": "6.13.5",
     "ganache": "^7.9.2",
     "ganache-cli": "^6.12.2",
-    "snarkjs": "^0.7.5"
+    "snarkjs": "^0.7.5",
+    "solc": "0.8.20"
   }
 }

@@ -1,76 +1,111 @@
-# Reproducing Experiments
+# Reproducing the final paper experiments
 
-This guide describes the formal reproduction workflow used by PoL-BFL.
+The accepted workflow is rooted at `experiments/final/`. The authoritative
+paper digest, protocol configuration, target tables, experiment matrix, source
+revision, tool binaries, datasets, partitions, seeds, raw round observations,
+and final artifacts are cryptographically bound into each run manifest.
 
-## Preflight
+## 1. Build and verify native tools
 
-Run the lightweight checks first:
-
-```bash
-pytest tests/test_reproducibility_tools.py \
-       tests/test_deterministic_replay_data.py \
-       tests/test_sybil_detector.py
-
-python experiments/reproducibility/audit_reproduction_coverage.py
-
-python experiments/reproducibility/run_paper_config.py \
-  --config-file experiments/reproducibility/configs/paper/rq1_main_security_formal.json \
-  --only cifar10 \
-  --only pol_bfl \
-  --dry-run
-```
-
-## Formal RQ1 Run
-
-For the main CIFAR-10 PoL-BFL security matrix:
+Build the Circom-compatible Poseidon helper and the pinned ICICLE-Snark CUDA
+backend:
 
 ```bash
-python experiments/reproducibility/run_paper_config.py \
-  --config-file experiments/reproducibility/configs/paper/rq1_main_security_formal.json \
-  --gpus 0,1 \
-  --parallel 2 \
-  --only cifar10 \
-  --only pol_bfl \
-  --resume \
-  --start-verifiers \
-  --validate-after-job
+cargo build --release --locked --manifest-path tools/poseidon_native/Cargo.toml
+install -d -m 0755 .tools/poseidon-native
+install -m 0755 \
+  tools/poseidon_native/target/release/polbfl-poseidon-native \
+  .tools/poseidon-native/polbfl-poseidon-native
+
+bash scripts/build_icicle_snark.sh
 ```
 
-Recommended environment for paper-scale PoL-BFL cells:
+Build the reference Circom circuit and Groth16 artifacts using a verified
+phase-2 Powers-of-Tau file. Development CRS artifacts are benchmark-only and
+cannot populate formal results.
+
+The formal prover consumes the same BN254 `.zkey` and `.wtns` formats as
+Rapidsnark. Every CUDA-generated proof is independently checked by the locked
+Rapidsnark verifier before committee receipts are issued.
+
+## 2. Preflight
+
+Run preflight with the final submitted PDF and canonical datasets:
 
 ```bash
-export NUM_WORKERS_OVERRIDE=0
-export POL_MEMORY_CHECKPOINT_LIMIT=2
-export POL_COMPACT_REMOTE_RESPONSE=1
-export POL_ENABLE_PARALLEL_CLIENT_TRAINING=1
+POL_INTEGRITY=1 CUBLAS_WORKSPACE_CONFIG=:4096:8 \
+python -m experiments.final.preflight \
+  --paper /absolute/path/to/main.pdf \
+  --data-root /absolute/path/to/data \
+  --zk-build /absolute/path/to/circuits/final/build/production
 ```
 
-Each cell writes:
+Preflight fails closed on a paper, dataset, source, tool, circuit, proving key,
+verifying key, GPU, deterministic-runtime, contract-runtime, or artifact-hash
+mismatch. Both RTX 4090 GPUs must be idle for a formal run.
 
-```text
-run_manifest.json
-runner.log
-rq1_output/config.json
-rq1_output/rq1_results.json
-validation_gate_report.md
-```
+## 3. Formal security cell
 
-## Validation
-
-Run the validator over a result root:
+The paper configuration uses all 50 clients per round, 10 malicious clients,
+200 rounds, five local epochs, batch size 32, learning rate 0.01, a 20% audit
+set, and real Groth16 proofs:
 
 ```bash
-python experiments/reproducibility/validate_reproduction.py \
-  --results-root experiments/results/reproduction/formal
+POL_INTEGRITY=1 CUBLAS_WORKSPACE_CONFIG=:4096:8 \
+CUDA_VISIBLE_DEVICES=0,1 OMP_NUM_THREADS=2 \
+python -u -m experiments.final.run_security_cell \
+  --dataset CIFAR10 \
+  --attack FreeRidingNT \
+  --method PoLBFL \
+  --seed 1337 \
+  --run-id formal-cifar10-freeridingnt-polbfl-s1337 \
+  --output experiments/results/final/formal-cifar10-freeridingnt-polbfl-s1337 \
+  --data-root /absolute/path/to/data \
+  --zk-build /absolute/path/to/circuits/final/build/production \
+  --process-training \
+  --train-processes-per-gpu 8 \
+  --proof-workers 8
 ```
 
-The validator emits:
+For a shared server, wrap the identical command with
+`scripts/gpu_idle_supervisor.py`. It waits for both GPUs to remain idle,
+restarts only retryable resource failures, and appends `--resume` when a
+source-compatible checkpoint exists.
 
-```text
-validation_manifest.json
-validation_report.md
+Each completed round atomically writes `checkpoint.pt` and appends one raw JSON
+record to `rounds.jsonl`. Resume is rejected if the source revision differs.
+The raw record contains predictions, labels, update decisions, proof and receipt
+digests, and hashes of retained audited traces. Once it and the checkpoint are
+durable, worker payloads and unselected traces are pruned. The final
+`result.json` reports paper-aligned mean time per round, communication per
+round, maximum client storage, MA, DR, FPR, total wall time, and an explicit
+formal acceptance gate.
+
+## 4. Result acceptance
+
+Shortened, synthetic, replayed, proof-disabled, PoL-disabled, busy-GPU, or
+otherwise protocol-incompatible runs belong under
+`experiments/results/diagnostic/`. They cannot be aggregated into a paper cell.
+
+Aggregate three accepted seeds only:
+
+```bash
+python -m experiments.final.aggregate_table2 \
+  experiments/results/final/*/result.json \
+  --output experiments/results/final/table-2-observed.json
 ```
 
-MA and DR are accepted when they are within the configured lower tolerance of the paper target. FPR is accepted when it is within the configured upper tolerance. Protocol-incompatible outputs are marked separately and should not be used as paper reproduction claims.
+Validate the observed table in the required direction:
 
-The repository includes the paper target tables needed by the validator under `experiments/reproducibility/paper_targets/`. Pass `--paper-root /path/to/Paper` only when validating against a separate manuscript checkout.
+```bash
+python -m experiments.final.validate_targets \
+  experiments/results/final/table-2-observed.json \
+  --targets config/paper_table2_all_methods.json \
+  --table table_2_all_methods \
+  --output experiments/results/final/table-2-validation.json
+```
+
+MA, DR, participation, and honest profit must meet or exceed the paper.
+FPR, ASR, runtime, communication, storage, gas, and malicious profit must meet
+or improve on the corresponding upper bound. Missing cells or failed formal
+gates are rejected rather than imputed.

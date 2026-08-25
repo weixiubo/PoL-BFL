@@ -27,9 +27,13 @@ def _rand_weights(n=120, seed=123):
 
 def test_zkp_real_verify_and_bind_ok():
     # Skip if artifacts missing
-    assert os.path.exists('circuits/build/parameter_update_js/parameter_update.wasm')
-    assert os.path.exists('circuits/build/parameter_update_0001.zkey')
-    assert os.path.exists('circuits/build/parameter_update.vkey.json')
+    required = (
+        "circuits/build/parameter_update_js/parameter_update.wasm",
+        "circuits/build/parameter_update_0001.zkey",
+        "circuits/build/parameter_update.vkey.json",
+    )
+    if not all(os.path.exists(path) for path in required):
+        pytest.skip("legacy parameter_update circuit artifacts are not installed")
 
     prover, verifier = _mk_prover_verifier(simulation=False)
 
@@ -50,9 +54,13 @@ def test_zkp_real_verify_and_bind_ok():
 
 def test_zkp_real_bind_fails_on_mismatch():
     # Skip if artifacts missing
-    assert os.path.exists('circuits/build/parameter_update_js/parameter_update.wasm')
-    assert os.path.exists('circuits/build/parameter_update_0001.zkey')
-    assert os.path.exists('circuits/build/parameter_update.vkey.json')
+    required = (
+        "circuits/build/parameter_update_js/parameter_update.wasm",
+        "circuits/build/parameter_update_0001.zkey",
+        "circuits/build/parameter_update.vkey.json",
+    )
+    if not all(os.path.exists(path) for path in required):
+        pytest.skip("legacy parameter_update circuit artifacts are not installed")
 
     prover, verifier = _mk_prover_verifier(simulation=False)
 

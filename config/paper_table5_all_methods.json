@@ -1,0 +1,26 @@
+{
+  "authority_pdf_sha256": "0b013e58d4f99f91470c61a891a4ee89dfd09eff58e131abbe730d1f6f91e6d4",
+  "schema_version": 1,
+  "table_5_all_methods": {
+    "FedCoin": {
+      "AttackSuccessRate": 20.2,
+      "ModelAccuracy": 76.8,
+      "ParticipationRate": 75.5
+    },
+    "PoLBFL": {
+      "AttackSuccessRate": 3.2,
+      "ModelAccuracy": 86.8,
+      "ParticipationRate": 94.2
+    },
+    "ShapleyFL": {
+      "AttackSuccessRate": 18.5,
+      "ModelAccuracy": 78.5,
+      "ParticipationRate": 78.5
+    },
+    "Vanilla": {
+      "AttackSuccessRate": 35.2,
+      "ModelAccuracy": 67.2,
+      "ParticipationRate": 62.5
+    }
+  }
+}

@@ -43,6 +43,26 @@ class SimpleCNN(nn.Module):
         return x
 
 
+class FEMNISTTwoLayerCNN(nn.Module):
+    """Two-convolution FEMNIST network with the paper's ~0.4M parameters."""
+
+    def __init__(self, num_classes=62):
+        super().__init__()
+        if num_classes != 62:
+            raise ValueError("the FEMNIST reference model requires 62 classes")
+        self.conv1 = nn.Conv2d(1, 32, kernel_size=5)
+        self.conv2 = nn.Conv2d(32, 64, kernel_size=5)
+        self.fc1 = nn.Linear(64 * 4 * 4, 320)
+        self.fc2 = nn.Linear(320, 62)
+
+    def forward(self, x):
+        x = F.relu(F.max_pool2d(self.conv1(x), 2))
+        x = F.relu(F.max_pool2d(self.conv2(x), 2))
+        x = torch.flatten(x, 1)
+        x = F.relu(self.fc1(x))
+        return self.fc2(x)
+
+
 class ResNet18(nn.Module):
     """
     ResNet-18 for CIFAR-10/CIFAR-100
@@ -207,6 +227,8 @@ def create_model(model_name: str, num_classes: int = 10, input_channels: int = 3
     key = str(model_name).lower()
     if key == 'simplecnn':
         model = SimpleCNN(num_classes=num_classes, input_channels=input_channels)
+    elif key in {'twolayercnn', 'femnisttwolayercnn', 'femnistcnn'}:
+        model = FEMNISTTwoLayerCNN(num_classes=num_classes)
     elif key == 'resnet18':
         model = ResNet18(num_classes=num_classes)
     elif key == 'resnet34':

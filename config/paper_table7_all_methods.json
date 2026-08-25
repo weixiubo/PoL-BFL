@@ -1,0 +1,30 @@
+{
+  "authority_pdf_sha256": "0b013e58d4f99f91470c61a891a4ee89dfd09eff58e131abbe730d1f6f91e6d4",
+  "schema_version": 1,
+  "table_7_all_methods": {
+    "Kaizen": {
+      "communication_mb": 312.5,
+      "gas_usd": 2.85,
+      "runtime_seconds": 265.8,
+      "storage_mb_per_client": 12.8
+    },
+    "PoLBFL": {
+      "communication_mb": 178.2,
+      "gas_usd": 0.85,
+      "runtime_seconds": 78.5,
+      "storage_mb_per_client": 2.5
+    },
+    "Vanilla": {
+      "communication_mb": 98.5,
+      "gas_usd": 0.0,
+      "runtime_seconds": 52.3,
+      "storage_mb_per_client": 0.0
+    },
+    "VeriblockFL": {
+      "communication_mb": 520.5,
+      "gas_usd": 5.2,
+      "runtime_seconds": 1850.2,
+      "storage_mb_per_client": 45.8
+    }
+  }
+}

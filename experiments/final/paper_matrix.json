@@ -1,0 +1,149 @@
+{
+  "schema_version": 1,
+  "authority_pdf_sha256": "0b013e58d4f99f91470c61a891a4ee89dfd09eff58e131abbe730d1f6f91e6d4",
+  "seeds": [1337, 2026, 3817739],
+  "federation": {
+    "num_clients": 50,
+    "clients_per_round": 50,
+    "num_malicious": 10,
+    "rounds": 200,
+    "local_epochs": 5,
+    "learning_rate": 0.01,
+    "batch_size": 32,
+    "optimizer": "SGD",
+    "momentum": 0.0,
+    "weight_decay": 0.0,
+    "default_partition": "IID"
+  },
+  "datasets": {
+    "CIFAR10": {"model": "ResNet18", "classes": 10, "partition": "IID"},
+    "CIFAR100": {"model": "ResNet34", "classes": 100, "partition": "IID"},
+    "FEMNIST": {"model": "TwoLayerCNN", "classes": 62, "partition": "NaturalWriter"}
+  },
+  "attacks": [
+    "FreeRidingNT",
+    "FreeRidingLT",
+    "ByzantineRandom",
+    "ModelReplacement",
+    "ALIE",
+    "MinMax",
+    "DataPoisoning",
+    "Sybil"
+  ],
+  "baselines": ["VanillaFL", "Krum", "SDEA", "ShapleyFL", "FoolsGold", "PoLBFL"],
+  "protocol": {
+    "audit_probability": 0.2,
+    "checkpoint_interval_steps": 5,
+    "recent_intervals": 2,
+    "random_intervals": 3,
+    "gradient_sample_rate": 0.01,
+    "committee_size": 5,
+    "committee_threshold": 3,
+    "aggregation": "trimmed_mean",
+    "byzantine_bound": 10,
+    "pair_tolerance": 0.00001,
+    "final_tolerance": 0.001,
+    "minimum_stake_eth": 0.05,
+    "slashing_ratio": 1.0,
+    "reputation_decay": 0.9
+  },
+  "integrity": {
+    "real_training": true,
+    "real_groth16_for_audited_clients": true,
+    "real_contract_transitions": true,
+    "simulated_success_values_allowed": false,
+    "require_raw_per_round_metrics": true,
+    "require_source_environment_dataset_seed_manifest": true
+  },
+  "implementation_choices": {
+    "clients_per_round": "All 50 clients execute each round, following Algorithm 1's all-client loop.",
+    "update_transport": "Per-tensor symmetric signed four-bit quantization with a deterministic packed binary wire format and lossless stream compression; selected to remain below the paper's communication budget while reducing quantization error.",
+    "proof_execution": "The same Circom BN254 Groth16 witnesses and proving key are processed by a locked dual-GPU ICICLE-Snark worker pool; every generated proof is independently checked by the locked Rapidsnark verifier.",
+    "layer_ablation": "L1 retains cryptographic training verification; L2 adds statistical screening and Byzantine-robust aggregation; L3 adds committed-trace Sybil/reputation processing and persistent contract enforcement. Disabled economic layers are evaluated without mutating stake or reputation state.",
+    "table5_attack_success": "A free-riding attempt succeeds only when the malicious update is included and has positive measured marginal validation accuracy; aggregate harm is separately bound to the same-round honest-only counterfactual.",
+    "table5_participation": "Participation rate counts registered honest clients that execute and submit; malicious attempts are reported separately through ASR."
+  },
+  "studies": {
+    "table_2_main_security": {
+      "datasets": ["CIFAR10", "FEMNIST", "CIFAR100"],
+      "attacks": ["FreeRidingNT", "FreeRidingLT", "ByzantineRandom", "ModelReplacement", "ALIE", "MinMax", "DataPoisoning", "Sybil"],
+      "methods": ["VanillaFL", "Krum", "SDEA", "ShapleyFL", "FoolsGold", "PoLBFL"]
+    },
+    "table_3_layer_contribution": {
+      "datasets": ["CIFAR10", "FEMNIST", "CIFAR100"],
+      "attacks": ["FreeRidingNT", "ALIE", "Sybil"],
+      "variants": ["L1", "L1L2", "L1L3", "Full"]
+    },
+    "table_4_composability": {
+      "dataset": "CIFAR10",
+      "attacks": ["ALIE", "FreeRidingNT"],
+      "aggregations": ["Krum", "TrimmedMean", "Median"],
+      "modes": ["Standalone", "PoLBFLPrefilter"]
+    },
+    "table_5_incentive_effectiveness": {
+      "dataset": "CIFAR10",
+      "attack": "FreeRidingNT",
+      "attack_success_evidence": "included malicious update with positive measured marginal validation accuracy",
+      "methods": ["Vanilla", "FedCoin", "ShapleyFL", "PoLBFL"],
+      "metrics": ["ParticipationRate", "AttackSuccessRate", "ModelAccuracy"]
+    },
+    "table_6_client_profit": {
+      "behaviors": ["Honest", "RationalLT", "MaliciousNT"],
+      "metrics": ["reward", "cost", "slash", "profit"]
+    },
+    "table_7_system_overhead": {
+      "dataset": "CIFAR10",
+      "methods": ["Vanilla", "VeriblockFL", "Kaizen", "PoLBFL"],
+      "metrics": ["runtime_seconds", "communication_mb", "gas_usd", "storage_mb_per_client"]
+    },
+    "table_8_scalability": {
+      "dataset": "CIFAR10",
+      "client_counts": [50, 100, 200],
+      "audit_probability": 0.2
+    },
+    "table_9_noniid": {
+      "datasets": ["CIFAR10", "FEMNIST", "CIFAR100"],
+      "dirichlet_alpha": [0.1, 0.5, 1.0, "IID"],
+      "attacks": ["NoAttack", "FreeRidingNT", "ALIE"]
+    },
+    "table_10_adaptive": {
+      "dataset": "CIFAR10",
+      "variants": ["BaselineNT", "CheckpointInterpolation", "GradientMimicry", "PartialReplay", "CombinedAdaptive"]
+    },
+    "table_11_cross_hardware": {
+      "dataset": "CIFAR10",
+      "hardware_pairs": ["RTX4090_RTX4090", "V100_V100", "RTX4090_RTX3080", "RTX4090_V100", "RTX4090_A100", "V100_A100", "Kaizen_RTX4090_V100"]
+    },
+    "table_12_zk_cost": {
+      "dataset": "CIFAR10",
+      "methods": ["PoLBFL", "Kaizen"]
+    },
+    "table_13_gas": {
+      "operations": ["commitment", "proof_receipt", "reward_claim", "slash", "honest_round_total"]
+    },
+    "figure_2_convergence": {
+      "dataset": "CIFAR10",
+      "attacks": ["FreeRidingNT", "ALIE", "Sybil"],
+      "methods": ["VanillaFL", "Krum", "SDEA", "ShapleyFL", "FoolsGold", "PoLBFL"],
+      "sample_rounds": [0, 50, 100, 150, 200]
+    },
+    "figure_3_reputation_evolution": {
+      "dataset": "CIFAR10",
+      "behaviors": ["Honest", "RationalLT", "MaliciousNT"],
+      "sample_rounds": [0, 20, 50, 100, 150, 200]
+    },
+    "figure_4_spot_check_sensitivity": {
+      "dataset": "CIFAR10",
+      "attack": "FreeRidingNT",
+      "audit_probabilities": [0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.50, 1.00]
+    },
+    "figure_5_gas_price_stress": {
+      "dataset": "CIFAR10",
+      "gas_prices_gwei": [5, 10, 30, 50, 100, 200, 500, 1000]
+    },
+    "figure_6_sybil_scalability": {
+      "dataset": "CIFAR10",
+      "identities_per_attacker": [5, 10, 15, 20]
+    }
+  }
+}
