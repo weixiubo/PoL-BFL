@@ -10,6 +10,11 @@ The project provides a blockchain-assisted federated learning framework that
 combines Proof-of-Learning verification, zero-knowledge proofs, robust
 aggregation, Sybil detection, and incentive mechanisms.
 
+<img src="docs/assets/polbfl-overview.png" width="1000"
+alt="System architecture diagram showing three defensive layers filtering client updates: Layer 1 uses zero-knowledge proofs to verify computation, Layer 2 applies robust aggregation to filter malicious updates, and Layer 3 enforces economic penalties through stake slashing.">
+
+*Figure 1. The three-layer defense architecture of PoL-BFL ([paper](https://doi.org/10.1145/3770855.3817739)).*
+
 ## Features
 
 - Proof-of-Learning trace generation and verification
