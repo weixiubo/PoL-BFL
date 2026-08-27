@@ -1,205 +1,178 @@
-# PoL-BFL Final Implementation Specification
+# PoL-BFL Protocol and Implementation Specification
 
-## Normative authority
+This document summarizes the protocol implemented by the repository and
+described in *PoL-BFL: Towards Trustworthy Federated Learning with
+Zero-Knowledge Proofs and Verifiable Incentives*,
+DOI `10.1145/3770855.3817739`.
 
-The normative system specification is the final KDD 2026 paper:
+## System model
 
-- Title: *PoL-BFL: Towards Trustworthy Federated Learning with Zero-Knowledge Proofs and Verifiable Incentives*
-- DOI: `10.1145/3770855.3817739`
-- Canonical PDF SHA-256: `0b013e58d4f99f91470c61a891a4ee89dfd09eff58e131abbe730d1f6f91e6d4`
+PoL-BFL targets cross-silo federated learning with persistent organizational
+identities. A deployment contains:
 
-Every implementation decision must preserve the protocol, security properties,
-experimental settings, and directional performance claims below. When the paper
-does not fix a wire format or engineering mechanism, the implementation may
-choose one, but the choice must be deterministic, testable, and no weaker than
-the stated construction.
+- clients that train local models and commit to learning traces;
+- an aggregator that combines eligible model updates;
+- a verifier committee that evaluates challenged trace intervals;
+- smart contracts for registration, commitments, receipts, stake, reputation,
+  rewards, and slashing;
+- off-chain storage for learning traces and on-chain commitment roots.
 
-## System scope
+The protocol assumes an authenticated source of gas-price information,
+deterministic training for supported hardware profiles, and stake values that
+are meaningful to participating organizations.
 
-PoL-BFL targets cross-silo blockchain federated learning with persistent,
-stake-backed organizational identities. A deployment consists of:
+## Round lifecycle
 
-- clients that train locally and commit to PoL traces;
-- an elected aggregator that aggregates only eligible updates;
-- a randomly selected verifier committee;
-- smart contracts that register actors, anchor commitments and receipts, manage
-  stake and reputation, and execute rewards and slashing;
-- an authenticated gas-price oracle used by the adaptive minimum-stake rule;
-- off-chain trace storage with on-chain commitment roots and retrieval
-  challenges.
+Each federated learning round consists of four ordered phases.
 
-The protocol assumes deterministic training can be configured for supported
-hardware profiles and that clients can lock meaningful collateral.
+### Local training and commitment
 
-## Protocol state and round lifecycle
+For each participating client:
 
-For each round `t`, the implementation must execute four ordered phases.
-
-### Phase 1: local training and commitment
-
-For every participating client `i`:
-
-1. Train the broadcast global model `w^(t)` on private data `D_i` for the
-   configured local epochs.
-2. Construct a PoL trace `tau_i = (W, I, H, A)` where:
-   - `W` is the ordered checkpoint sequence saved every `k` optimizer steps;
-   - `I` is the exact ordered sequence of batch indices used by training;
-   - `H` binds checkpoints into a hash chain;
-   - `A` contains the auxiliary gradients and activations required by the proof
-     relation.
+1. Train the global model on the client's local data.
+2. Record an ordered trace `tau = (W, I, H, A)`, where `W` contains model
+   checkpoints, `I` contains batch indices, `H` contains the checkpoint hash
+   chain, and `A` contains values required by the proof relation.
 3. Commit each private batch as `D_t = SHA256(b_t)`.
-4. Bind each checkpoint as
-   `h_t = SHA256(w_t || D_t || I_t || t)` using a canonical serialization.
-5. Build a Merkle tree over ordered checkpoint hashes and submit the 32-byte
-   root `CM_i` before the audit challenge is sampled.
-6. Submit the client model update and the commitment root to the aggregator.
+4. Bind each checkpoint as `h_t = SHA256(w_t || D_t || I_t || t)` using the
+   repository serialization format.
+5. Build a Merkle tree over the ordered checkpoint hashes.
+6. Submit the model update and commitment root before the challenge is drawn.
 
-The trace remains off-chain. The chain stores the commitment and issues random
-retrieval challenges; failure to provide committed evidence is penalizable.
+Training data and trace contents remain off chain.
 
-### Phase 2: probabilistic ZK-PoL verification
+### Sampled ZK-PoL verification
 
-1. Sample the audit set with probability `p_challenge` after commitments are
-   fixed.
-2. For each audited client, sample `Q = K + R` checkpoint intervals:
-   - `K` recent intervals covering the final training stages;
-   - `R` unpredictable intervals sampled across the trajectory.
-3. Generate a Groth16 proof for every sampled interval. The proof relation must
-   establish all of the following:
-   - the committed data value is authenticated by the committed trace;
-   - both checkpoint endpoints are authenticated under `CM_i`;
-   - the transition is consistent with `k` prescribed SGD steps on the private
-     committed batches;
-   - the sampled update satisfies the configured L2 magnitude bound;
-   - the proof is bound to the client, round, model, optimizer configuration,
-     challenge, and commitment root.
-4. Keep checkpoints, data, gradients, activations, and witnesses private.
-5. Verify proofs independently at `N_v` verifier nodes and accept only an
-   `M`-of-`N_v` honest-majority result where `M > N_v / 2`.
-6. Each receipt must be ECDSA-signed and bind at least the round, client,
-   commitment root, challenge, proof digest, decision, verifier identity, and
-   protocol version. Duplicate, stale, mismatched, or unauthorized receipts do
-   not count.
-7. Aggregator and verifier roles are disjoint within a round.
+After commitments are fixed, the protocol samples clients and checkpoint
+intervals for verification. The interval set combines recent checkpoints with
+randomly selected checkpoints from the training trajectory.
 
-Groth16 verification remains exact. Numerical tolerance applies only to the
-fixed-point trace-consistency relation:
+For each selected interval, the Groth16 relation verifies:
 
-- strict pairwise tolerance `delta_pair`;
-- relaxed final-trajectory tolerance `delta_final`.
+- authentication of the interval endpoints under the commitment root;
+- the prescribed fixed-point SGD transition;
+- the committed batch indices and sampled gradients;
+- the configured update-magnitude bound;
+- binding to the client, round, model, optimizer, challenge, and commitment
+  root.
 
-Both conditions must pass.
+Verifier nodes evaluate the proof independently. A decision requires three
+distinct signed receipts from a five-member committee. Duplicate, expired,
+mismatched, or unauthorized receipts are excluded.
 
-### Phase 3: robust aggregation
+Numerical tolerances apply to the fixed-point trace relation. Groth16 proof
+verification remains exact.
 
-Let `V_t` be clients that passed Layer 1 and Sybil screening. Form
-`U_t = {Delta w_i^(t) | i in V_t}` and aggregate only `U_t`.
+### Robust aggregation
 
-The implementation must support reputation-weighted robust aggregation with
-Trimmed Mean, Krum, and coordinate-wise Median. The one-round reference protocol
-uses Trimmed Mean. Sybil screening must use committed-trace evidence, including
-duplicate batch-index evidence and checkpoint-trajectory similarity, rather
-than gradient similarity alone.
+Only updates that pass cryptographic verification and Sybil screening enter the
+aggregation set. The implementation provides reputation-weighted variants of:
 
-Layer 1 failure affects proof eligibility and slashing. Layer 2 statistical
-rejection affects aggregation eligibility and must not by itself be treated as
-a cryptographic proof failure.
+- Trimmed Mean;
+- Krum;
+- coordinate-wise Median.
 
-### Phase 4: rewards, reputation, and slashing
+Sybil screening uses committed batch-index evidence and checkpoint-trajectory
+similarity. Statistical exclusion from aggregation is distinct from a
+cryptographic proof failure.
 
-- Every client must stake `S_i >= S_min` before rewarded participation.
-- An `M`-of-`N_v` signed rejection or an expired audit response triggers full
-  removal from the aggregation pool and slashing `S_i <- S_i - gamma * S_i`.
-- Rewards are based on verified participation, normalized work, and reputation:
-  `R_i^(t) = R_base * (1 + beta_work * Work_i^(t) + beta_rep * rho_i^(t))`.
-- Reputation follows
-  `rho_i^(t+1) = alpha * rho_i^(t) + (1-alpha) * I_i^(t)`.
-- Verifiers also stake collateral, earn rewards for correct service, and are
-  slashable for provable misbehavior.
-- The minimum stake adapts to gas price:
-  `S_min^(t) = max(S_base, G^(t)*C_ops/(gamma*p_challenge*p_detect) + margin)`.
+### Incentives and reputation
 
-The implementation must enforce the paper's rationality condition
-`p * (R + gamma*S) > Delta c`, with participation additionally requiring
-`R - c >= 0`.
+Clients and verifiers lock stake before participating. The protocol applies:
+
+- rewards for verified participation;
+- exponential moving-average reputation updates;
+- timeout penalties;
+- slashing for signed rejection outcomes and provable verifier misconduct;
+- a gas-responsive minimum-stake policy.
+
+The client reward and reputation updates are:
+
+```text
+R_i(t) = R_base × (1 + beta_work × Work_i(t) + beta_rep × rho_i(t))
+rho_i(t+1) = alpha × rho_i(t) + (1 - alpha) × I_i(t)
+```
+
+The minimum stake follows:
+
+```text
+S_min(t) = max(
+    S_base,
+    G(t) × C_ops / (gamma × p_challenge × p_detect) + margin
+)
+```
 
 ## Verifier selection
 
-For every round, select `N_v` verifiers from the registered pool using an
-authenticated VRF seed and the paper's stake/reputation weighted score:
+Verifier selection uses an authenticated round seed with stake and reputation
+weights:
 
-`score_i = VRF(seed_t, addr_i) * S_i^verifier / sum_j(S_j^verifier) * Rep_i^verifier`.
+```text
+score_i =
+    VRF(seed_t, address_i)
+    × verifier_stake_i / total_verifier_stake
+    × verifier_reputation_i
+```
 
-Selection must be deterministic from public inputs, auditable after the round,
-and unpredictable before commitment.
+Selection is deterministic from the published round inputs and is revealed
+after client commitments are fixed. Aggregator and verifier roles are disjoint
+within a round.
 
-## Normative experimental configuration
+## Experiment configuration
 
-- Hardware reference: Intel Core i7-13700, 64 GB RAM, two RTX 4090 24 GB GPUs.
-- Clients: 50.
-- Malicious clients: 10 (20%).
-- Rounds: 200.
-- Local epochs: 5.
-- Learning rate: 0.01.
-- Batch size: 32.
-- Default partition: IID unless explicitly varied.
-- CIFAR-10: ResNet-18, 10 classes.
-- CIFAR-100: ResNet-34, 100 classes.
-- FEMNIST: 2-layer CNN, 62 classes, natural writer non-IID partition.
-- Audit probability: 20%.
-- Verifier committee: 3-of-5.
-- Pairwise tolerance: `1e-5` for the same-architecture reference setting.
-- Final tolerance: `1e-3` for the cross-hardware evaluation.
-- Minimum client stake: 0.05 ETH.
-- Slashing ratio: 1.0.
-- Reputation decay: 0.9.
-- Gas reference: 1.5 gwei and 2500 USD/ETH.
+The paper configuration uses:
 
-Required attack families:
+| Parameter | Value |
+|---|---:|
+| Clients | 50 |
+| Malicious clients | 10 |
+| Rounds | 200 |
+| Local epochs | 5 |
+| Batch size | 32 |
+| Learning rate | 0.01 |
+| Audit probability | 0.20 |
+| Verifier threshold | 3 of 5 |
+| Minimum client stake | 0.05 ETH |
+| Slashing ratio | 1.0 |
+| Reputation decay | 0.9 |
+| Gas-price reference | 1.5 gwei |
+| ETH-price reference | 2,500 USD |
 
-- free-riding: no training and lazy training;
-- Byzantine random noise and model replacement;
-- ALIE and MinMax;
-- semantic data poisoning;
-- Sybil identities;
-- adaptive checkpoint interpolation, gradient mimicry, partial replay, and a
-  combined adaptive strategy.
+CIFAR-10 uses ResNet-18, CIFAR-100 uses ResNet-34, and FEMNIST uses a
+two-layer convolutional network with natural writer partitions. IID partitions
+are used unless an experiment explicitly studies non-IID data.
 
-Required baselines:
+The evaluated attack families include free-riding, Byzantine random updates,
+model replacement, ALIE, MinMax, data poisoning, Sybil identities, checkpoint
+interpolation, gradient mimicry, partial replay, and combined adaptive attacks.
 
-- Vanilla FL;
-- Krum, Trimmed Mean, and SDEA;
-- ShapleyFL and FoolsGold;
-- Veriblock-FL and Kaizen for proof-system overhead;
-- FedCoin for incentive comparison.
+The comparison methods include Vanilla FL, Krum, Trimmed Mean, SDEA,
+ShapleyFL, FoolsGold, Veriblock-FL, Kaizen, and FedCoin.
 
-## Proof-system acceptance targets
+## Proof-system configuration
 
-- Groth16 proof size: 192 bytes.
-- Proof generation: no more than 4.2 seconds in the reference setup.
-- Witness computation: no more than 1.8 seconds.
-- Prover memory: no more than 2.5 GB.
-- Verification time: no more than 8.5 ms for the Groth16 check.
-- Merkle proof size: no more than 1.2 KB.
-- Total verification path: no more than 52 ms.
-- Circuit size: approximately 1.1 million constraints.
-- The proof-cost reduction uses 1% gradient sampling, selective checkpoint
-  auditing, and incentive-backed enforcement without weakening binding to the
-  challenged SGD relation.
+| Property | Value |
+|---|---:|
+| Curve and proof system | BN254 Groth16 |
+| Sampled gradient ratio | 1 percent |
+| SGD steps per challenged interval | 5 |
+| Reference constraint count | 1,090,382 |
+| Encoded proof size | 192 bytes |
+| Pairwise tolerance | `1e-5` |
+| Cross-hardware trajectory tolerance | `1e-3` |
 
-## End-to-end acceptance policy
+SHA-256 checkpoint chains and Merkle openings are verified outside the circuit.
+The proving relation binds the challenged SGD transition to its round,
+commitment, batch indices, endpoints, and model digest.
 
-The final implementation is accepted only when:
+## Software organization
 
-1. every normative protocol requirement above has a direct code owner and an
-   automated test;
-2. unit, property, integration, adversarial, contract, and two-GPU tests pass;
-3. generated manifests bind source revision, environment, dataset, seed,
-   protocol parameters, raw results, and validation outcome;
-4. positive metrics (MA, DR, participation, honest profit) meet or exceed the
-   paper values;
-5. negative metrics (FPR, ASR, runtime, communication, storage, gas, attacker
-   profit) meet or improve upon the paper values;
-6. no result is accepted from a protocol-incompatible smoke or simulation run;
-7. ZK and blockchain claims are backed by real proofs and executed contract
-   transitions, not simulated success values.
+The protocol implementation is divided among the following packages:
+
+- `polbfl/protocol` for commitments, challenges, rounds, and storage;
+- `polbfl/zk` and `circuits/final` for proof construction and verification;
+- `polbfl/committee` for verifier selection and signed receipts;
+- `polbfl/aggregation` and `polbfl/sybil` for update filtering;
+- `polbfl/incentives` for rewards, reputation, and stake transitions;
+- `chainEnv/contracts` for the Solidity implementation;
+- `experiments/final` for the paper experiment matrix.

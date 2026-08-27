@@ -1,33 +1,29 @@
-# Calibrated Parameters
+# Experiment Parameters
 
-These parameters are the default starting points used by the formal PoL-BFL runners. Keep the values fixed when reproducing paper-scale cells unless the experiment explicitly studies a parameter change.
+## Paper configuration
 
-## CIFAR-10
+The principal experiment settings are defined in
+`config/paper_protocol.json` and
+`experiments/final/paper_matrix.json`.
 
-- Model: `ResNet18`
-- Clients: `50`
-- Rounds: `200`
-- Local epochs: `5`
-- Malicious ratio: `0.2`
-- Verification rate: configured by the paper matrix
-- Checkpoint memory limit: `2`
-- Parallel client training: enabled
+| Parameter | Value |
+|---|---:|
+| Clients | 50 |
+| Malicious clients | 10 |
+| Rounds | 200 |
+| Local epochs | 5 |
+| Batch size | 32 |
+| Learning rate | 0.01 |
+| Audit probability | 0.20 |
+| Verifier threshold | 3 of 5 |
+| Seeds | 1337, 2026, 3817739 |
 
-## CIFAR-100
+CIFAR-10 uses ResNet-18, CIFAR-100 uses ResNet-34, and FEMNIST uses a
+two-layer convolutional network with natural writer partitions.
 
-- Model: `ResNet34`
-- Clients: `50`
-- Rounds: `200`
-- Local epochs: `5`
-- Malicious ratio: `0.2`
+## Resource controls
 
-## FEMNIST
-
-- Model: `SimpleCNN`
-- Partitioning: `Natural_Writer`
-- Data format: LEAF-style writer JSON shards
-
-## Recommended Environment
+The experiment launchers recognize the following environment variables:
 
 ```bash
 export NUM_WORKERS_OVERRIDE=0
@@ -36,3 +32,8 @@ export POL_COMPACT_REMOTE_RESPONSE=1
 export POL_ENABLE_PARALLEL_CLIENT_TRAINING=1
 export CUBLAS_WORKSPACE_CONFIG=:4096:8
 ```
+
+These variables control worker scheduling, memory use, response serialization,
+parallel training, and deterministic CUDA behavior. Changes to protocol or
+model parameters should be recorded in the experiment configuration rather
+than encoded as resource controls.

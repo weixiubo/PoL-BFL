@@ -1,51 +1,36 @@
-# PoL-BFL Experiments
+# Experiment Package
 
-The `experiments/` package contains attacks, baselines, paper-scale runners, reproducibility configs, and result validators for PoL-BFL.
+The `experiments/` directory contains the evaluation software for PoL-BFL.
 
-## Main Entry Points
+## Directory structure
 
-- `experiments/reproducibility/run_paper_config.py`: expands formal paper matrices into resumable jobs.
-- `experiments/reproducibility/validate_reproduction.py`: validates raw outputs against paper targets and protocol gates.
-- `experiments/reproducibility/audit_reproduction_coverage.py`: reports which paper targets have runnable configs or require measurement provenance.
-- `experiments/scripts/runners/run_rq1_security.py`: main security runner for attacks and baselines.
-- `experiments/scripts/runners/run_rq2_layer_contribution.py`: layer contribution ablation runner.
-- `experiments/scripts/runners/run_rq5_composability.py`: PoL-BFL plus robust aggregation composability runner.
-- `experiments/scripts/runners/run_rq6_noniid.py`: Non-IID sensitivity runner.
-- `experiments/scripts/runners/run_rq9_adaptive.py`: adaptive attacker runner.
+| Directory | Purpose |
+|---|---|
+| `final/` | Paper experiment matrices, single-cell runners, aggregators, and result validation |
+| `reproducibility/` | Configuration expansion, smoke tests, coverage reports, and result validation |
+| `scripts/` | Analysis, plotting, dataset preparation, monitoring, and supporting runners |
 
-## Quick Start
+## Main experiment modules
 
-```bash
-python experiments/reproducibility/run_repro_smoke.py \
-  --config-file experiments/reproducibility/configs/smoke_mnist.json \
-  --dry-run
+| Study | Module |
+|---|---|
+| Main security comparison | `experiments.final.run_matrix` |
+| Layer contribution | `experiments.final.run_layer_matrix` |
+| Robust-aggregation composability | `experiments.final.run_table4_matrix` |
+| Incentive effectiveness | `experiments.final.run_table5_matrix` |
+| Scalability | `experiments.final.run_scalability_matrix` |
+| Non-IID sensitivity | `experiments.final.run_noniid_matrix` |
+| Adaptive attacks | `experiments.final.run_adaptive_matrix` |
+| Cross-hardware verification | `experiments.final.run_cross_hardware_matrix` |
+| Sybil scalability | `experiments.final.run_sybil_matrix` |
 
-bash experiments/scripts/run_repro_smoke.sh \
-  --config-file experiments/reproducibility/configs/smoke_mnist.json \
-  --gpu 0
-```
+Protocol settings are stored in `config/paper_protocol.json`, experiment
+dimensions are stored in `experiments/final/paper_matrix.json`, and numerical
+comparison values are stored under `config/`.
 
-## Formal Runs
+Generated experiment outputs are excluded from version control. Each run
+directory records its configuration, dataset information, seed, metrics, and
+method-specific artifacts.
 
-```bash
-python experiments/reproducibility/run_paper_config.py \
-  --config-file experiments/reproducibility/configs/paper/rq1_main_security_formal.json \
-  --gpus 0,1 \
-  --parallel 2 \
-  --only cifar10 \
-  --only pol_bfl \
-  --resume \
-  --start-verifiers \
-  --validate-after-job
-```
-
-Outputs are written under `experiments/results/reproduction/`, which is ignored by git.
-
-## Result Validation
-
-```bash
-python experiments/reproducibility/validate_reproduction.py \
-  --results-root experiments/results/reproduction/formal
-```
-
-The validator keeps raw experiment output separate from claims. It records passing cells, failing cells, missing cells, and protocol mismatches in the validation manifest.
+Execution examples are provided in [`USAGE.md`](USAGE.md) and
+[`docs/REPRODUCING.md`](../docs/REPRODUCING.md).

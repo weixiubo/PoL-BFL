@@ -1,14 +1,35 @@
-# Reproducing the final paper experiments
+# Reproducing the Paper Experiments
 
-The accepted workflow is rooted at `experiments/final/`. The authoritative
-paper digest, protocol configuration, target tables, experiment matrix, source
-revision, tool binaries, datasets, partitions, seeds, raw round observations,
-and final artifacts are cryptographically bound into each run manifest.
+This guide describes the repository interfaces for running PoL-BFL
+experiments. The complete matrix uses 50 clients, 200 communication rounds,
+three random seeds, and GPU-based training and proof generation. Individual
+experiments can be run independently.
 
-## 1. Build and verify native tools
+## Installation
 
-Build the Circom-compatible Poseidon helper and the pinned ICICLE-Snark CUDA
-backend:
+Create the Python environment and install the JavaScript dependencies:
+
+```bash
+python3.13 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+pip install -r requirements-final.txt
+npm ci
+```
+
+## Datasets
+
+Prepare CIFAR-10, CIFAR-100, and FEMNIST under a common dataset directory. The
+expected layout and archive checksums are documented in
+[DATASETS.md](DATASETS.md).
+
+```bash
+export POLBFL_DATA_ROOT=/path/to/data
+```
+
+## Native components
+
+Build the native Poseidon helper:
 
 ```bash
 cargo build --release --locked --manifest-path tools/poseidon_native/Cargo.toml
@@ -16,96 +37,90 @@ install -d -m 0755 .tools/poseidon-native
 install -m 0755 \
   tools/poseidon_native/target/release/polbfl-poseidon-native \
   .tools/poseidon-native/polbfl-poseidon-native
+```
 
+Build the ICICLE-Snark backend:
+
+```bash
 bash scripts/build_icicle_snark.sh
 ```
 
-Build the reference Circom circuit and Groth16 artifacts using a verified
-phase-2 Powers-of-Tau file. Development CRS artifacts are benchmark-only and
-cannot populate formal results.
-
-The formal prover consumes the same BN254 `.zkey` and `.wtns` formats as
-Rapidsnark. Every CUDA-generated proof is independently checked by the locked
-Rapidsnark verifier before committee receipts are issued.
-
-## 2. Preflight
-
-Run preflight with the final submitted PDF and canonical datasets:
+Set the directory containing the circuit, proving key, verification key,
+witness generator, prover, and verifier:
 
 ```bash
-POL_INTEGRITY=1 CUBLAS_WORKSPACE_CONFIG=:4096:8 \
-python -m experiments.final.preflight \
-  --paper /absolute/path/to/main.pdf \
-  --data-root /absolute/path/to/data \
-  --zk-build /absolute/path/to/circuits/final/build/production
+export POLBFL_ZK_BUILD=/path/to/circuits/final/build
 ```
 
-Preflight fails closed on a paper, dataset, source, tool, circuit, proving key,
-verifying key, GPU, deterministic-runtime, contract-runtime, or artifact-hash
-mismatch. Both RTX 4090 GPUs must be idle for a formal run.
+## Experiment configuration
 
-## 3. Formal security cell
-
-The paper configuration uses all 50 clients per round, 10 malicious clients,
-200 rounds, five local epochs, batch size 32, learning rate 0.01, a 20% audit
-set, and real Groth16 proofs:
+The paper matrix is defined in
+`experiments/final/paper_matrix.json`. The main security matrix can be
+inspected without starting training:
 
 ```bash
-POL_INTEGRITY=1 CUBLAS_WORKSPACE_CONFIG=:4096:8 \
+python -m experiments.final.run_matrix
+```
+
+## Running one security experiment
+
+The following command runs the PoL-BFL method on the CIFAR-10 free-riding
+configuration for seed 1337:
+
+```bash
 CUDA_VISIBLE_DEVICES=0,1 OMP_NUM_THREADS=2 \
 python -u -m experiments.final.run_security_cell \
   --dataset CIFAR10 \
   --attack FreeRidingNT \
   --method PoLBFL \
   --seed 1337 \
-  --run-id formal-cifar10-freeridingnt-polbfl-s1337 \
-  --output experiments/results/final/formal-cifar10-freeridingnt-polbfl-s1337 \
-  --data-root /absolute/path/to/data \
-  --zk-build /absolute/path/to/circuits/final/build/production \
+  --run-id cifar10-freeridingnt-polbfl-s1337 \
+  --output experiments/results/cifar10-freeridingnt-polbfl-s1337 \
+  --data-root "$POLBFL_DATA_ROOT" \
+  --zk-build "$POLBFL_ZK_BUILD" \
   --process-training \
   --train-processes-per-gpu 8 \
   --proof-workers 8
 ```
 
-For a shared server, wrap the identical command with
-`scripts/gpu_idle_supervisor.py`. It waits for both GPUs to remain idle,
-restarts only retryable resource failures, and appends `--resume` when a
-source-compatible checkpoint exists.
+The number of training processes and proof workers can be adjusted for the
+available hardware.
 
-Each completed round atomically writes `checkpoint.pt` and appends one raw JSON
-record to `rounds.jsonl`. Resume is rejected if the source revision differs.
-The raw record contains predictions, labels, update decisions, proof and receipt
-digests, and hashes of retained audited traces. Once it and the checkpoint are
-durable, worker payloads and unselected traces are pruned. The final
-`result.json` reports paper-aligned mean time per round, communication per
-round, maximum client storage, MA, DR, FPR, total wall time, and an explicit
-formal acceptance gate.
+## Experiment modules
 
-## 4. Result acceptance
+| Study | Module |
+|---|---|
+| Main security comparison | `experiments.final.run_matrix` |
+| Layer contribution | `experiments.final.run_layer_matrix` |
+| Robust-aggregation composability | `experiments.final.run_table4_matrix` |
+| Incentive effectiveness | `experiments.final.run_table5_matrix` |
+| Scalability | `experiments.final.run_scalability_matrix` |
+| Non-IID sensitivity | `experiments.final.run_noniid_matrix` |
+| Adaptive attacks | `experiments.final.run_adaptive_matrix` |
+| Cross-hardware verification | `experiments.final.run_cross_hardware_matrix` |
+| Sybil scalability | `experiments.final.run_sybil_matrix` |
 
-Shortened, synthetic, replayed, proof-disabled, PoL-disabled, busy-GPU, or
-otherwise protocol-incompatible runs belong under
-`experiments/results/diagnostic/`. They cannot be aggregated into a paper cell.
+Each module provides additional command-line options through `--help`.
 
-Aggregate three accepted seeds only:
+## Aggregation
+
+Table 2 results from multiple seeds can be aggregated with:
 
 ```bash
 python -m experiments.final.aggregate_table2 \
-  experiments/results/final/*/result.json \
-  --output experiments/results/final/table-2-observed.json
+  experiments/results/*/result.json \
+  --output experiments/results/table2-aggregate.json
 ```
 
-Validate the observed table in the required direction:
+Other studies provide corresponding `aggregate_*` modules under
+`experiments/final/`.
 
-```bash
-python -m experiments.final.validate_targets \
-  experiments/results/final/table-2-observed.json \
-  --targets config/paper_table2_all_methods.json \
-  --table table_2_all_methods \
-  --output experiments/results/final/table-2-validation.json
-```
+## Result files
 
-MA, DR, participation, and honest profit must meet or exceed the paper.
-FPR, ASR, runtime, communication, storage, gas, and malicious profit must meet
-or improve on the corresponding upper bound. Missing cells or failed formal
-gates are rejected rather than imputed.
+A completed experiment directory contains the experiment manifest, per-round
+records, final metrics, and the cryptographic and contract records required by
+the selected method. Generated results are excluded from version control.
+
+Comparisons across runs should use the same source revision, dependency set,
+dataset checksums, partition configuration, protocol parameters, and random
+seeds.

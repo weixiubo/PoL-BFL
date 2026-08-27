@@ -47,7 +47,7 @@ experiment outputs are excluded from version control.
 ## Requirements
 
 - Python 3.13
-- Node.js 18 or 20
+- Node.js 18–20
 - CUDA-enabled PyTorch for GPU execution
 - Circom and snarkjs for zero-knowledge proof workflows
 - Solidity-compatible tooling and Ganache for blockchain workflows

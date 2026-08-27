@@ -1,18 +1,18 @@
-# Native Poseidon helper
+# Native Poseidon Helper
 
-This helper evaluates the exact Circomlib BN254 Poseidon parameterization used
-by the final ZK-PoL circuit. It preserves the JSON protocol of
-`circuits/final/poseidon_bridge.cjs` while removing JavaScript big-integer
-overhead from checkpoint construction.
+The native helper implements the Circomlib BN254 Poseidon parameterization used
+by the sampled SGD circuit. It exposes the same JSON request format as
+`circuits/final/poseidon_bridge.cjs` and supports batched field operations.
 
-Build the pinned release binary with:
+Build and install the helper with:
 
 ```bash
 cargo build --release --locked --manifest-path tools/poseidon_native/Cargo.toml
+install -d -m 0755 .tools/poseidon-native
 install -m 0755 tools/poseidon_native/target/release/polbfl-poseidon-native \
   .tools/poseidon-native/polbfl-poseidon-native
 ```
 
-The formal preflight runs the embedded Circomlib acceptance vector and compares
-representative positive, negative, and batched operations against
-CircomlibJS. A binary that differs by even one field element is rejected.
+The helper is tested against CircomlibJS for positive, negative, and batched
+inputs. Matching field outputs ensure that native commitments and circuit
+commitments use the same parameterization.
