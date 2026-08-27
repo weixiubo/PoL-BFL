@@ -1,59 +1,59 @@
 # PoL-BFL
 
-PoL-BFL provides the protocol implementation and evaluation software for
+PoL-BFL is the reference implementation accompanying
 *PoL-BFL: Towards Trustworthy Federated Learning with Zero-Knowledge Proofs and
-Verifiable Incentives*. The paper was published in the Proceedings of the 32nd
-ACM SIGKDD Conference on Knowledge Discovery and Data Mining V.2 (KDD 2026),
+Verifiable Incentives*. The paper appears in the Proceedings of the 32nd ACM
+SIGKDD Conference on Knowledge Discovery and Data Mining V.2 (KDD 2026),
 DOI [10.1145/3770855.3817739](https://doi.org/10.1145/3770855.3817739).
 
-## Scope
+The project provides a blockchain-assisted federated learning framework that
+combines Proof-of-Learning verification, zero-knowledge proofs, robust
+aggregation, Sybil detection, and incentive mechanisms.
 
-The repository implements the following components:
+## Features
 
-- canonical Proof-of-Learning traces, hash chains, and Merkle commitments;
-- sampled SGD verification with BN254 Groth16 proofs;
-- authenticated verifier selection and ECDSA quorum receipts;
-- robust aggregation with reputation and Sybil screening;
-- stake, reward, reputation, timeout, and slashing transitions;
-- Solidity settlement logic for a local Ethereum-compatible test network;
-- CIFAR-10, CIFAR-100, and FEMNIST evaluation workloads;
-- source-bound experiment manifests and paper-target validation.
+- Proof-of-Learning trace generation and verification
+- BN254 Groth16 zero-knowledge proof integration
+- Authenticated verifier committees and signed quorum receipts
+- Robust aggregation with reputation and Sybil screening
+- Stake, reward, reputation, timeout, and slashing mechanisms
+- Solidity contracts for protocol settlement
+- Evaluation workloads for CIFAR-10, CIFAR-100, and FEMNIST
+- Security experiments covering free-riding, Byzantine, poisoning, replacement,
+  and Sybil attacks
 
 ## Repository structure
 
 ```text
-polbfl/                     protocol, cryptography, verification, and economics
-client/                     client training and private evidence recording
-server/                     aggregation and verifier-node integration
-chainEnv/contracts/         Solidity protocol and settlement contracts
-circuits/final/             Circom relations and input bridges
-experiments/final/          paper experiment runners and aggregators
-experiments/reproducibility/  compatibility launch and validation interfaces
-experiments/scripts/        diagnostic and analysis utilities
-config/                     protocol, target, economics, and toolchain records
-scripts/                    build, preflight, supervision, and benchmark tools
-docs/                       protocol and reproduction documentation
-tests/                      unit, adversarial, proof, contract, and integration tests
+polbfl/                     core protocol and cryptographic components
+client/                     federated learning clients and evidence generation
+server/                     aggregation and verifier-node components
+dataset/                    dataset interfaces
+model/                      neural network architectures
+chainEnv/contracts/         Solidity contracts
+circuits/final/             Circom circuits and proof interfaces
+experiments/final/          experiment configurations and runners
+experiments/reproducibility/  reproduction utilities
+analysis/                   analysis and measurement utilities
+config/                     protocol and toolchain configuration
+scripts/                    build and execution utilities
+docs/                       technical documentation
+tests/                      automated tests
 ```
 
-Generated datasets, checkpoints, proving artifacts, native binaries, and
+Generated datasets, checkpoints, proof artifacts, native binaries, and
 experiment outputs are excluded from version control.
 
-## Reference environment
+## Requirements
 
-The validated reference environment uses:
+- Python 3.13
+- Node.js 18 or 20
+- CUDA-enabled PyTorch for GPU execution
+- Circom and snarkjs for zero-knowledge proof workflows
+- Solidity-compatible tooling and Ganache for blockchain workflows
 
-- Python 3.13.2;
-- PyTorch 2.9.1 with CUDA 12.8;
-- torchvision 0.24.1;
-- Node.js 20.20.2, within the declared `>=18 <21` engine range;
-- Circom 2.2.2 and snarkjs 0.7.5;
-- ICICLE-Snark 0.1.0 with ICICLE 3.8.0;
-- Solidity 0.8.20 and Ganache 7.9.2.
-
-Exact Python, Node, native-tool, and circuit constraints are recorded in
-`requirements-final.txt`, `package-lock.json`, and
-`config/toolchain.lock.json`.
+Exact dependency versions are recorded in `requirements-final.txt`,
+`package-lock.json`, and `config/toolchain.lock.json`.
 
 ## Installation
 
@@ -68,69 +68,38 @@ pip install -r requirements-final.txt
 npm ci
 ```
 
-The native Poseidon helper is built with:
-
-```bash
-cargo build --release --locked --manifest-path tools/poseidon_native/Cargo.toml
-install -d -m 0755 .tools/poseidon-native
-install -m 0755 \
-  tools/poseidon_native/target/release/polbfl-poseidon-native \
-  .tools/poseidon-native/polbfl-poseidon-native
-```
-
-The CUDA prover build is generated with:
-
-```bash
-bash scripts/build_icicle_snark.sh
-```
-
 ## Datasets
 
-Dataset archives and FEMNIST writer shards are prepared outside the source
-tree. Required checksums, directory layouts, and partition rules are specified
-in [docs/DATASETS.md](docs/DATASETS.md).
+The repository includes dataset interfaces and experiment configurations for
+CIFAR-10, CIFAR-100, and FEMNIST. Dataset files are not distributed with the
+source code. Preparation procedures are provided in
+[docs/DATASETS.md](docs/DATASETS.md).
 
 ## Verification
 
-The complete source test suite is executed with:
+The automated test suite is executed with:
 
 ```bash
 pytest -q
 ```
 
-Formal preflight requires the submitted paper, canonical datasets, and a
-production Groth16 build:
+## Experiments
 
-```bash
-export POLBFL_PAPER_PDF=/path/to/main.pdf
-export POLBFL_DATA_ROOT=/path/to/data
-export POLBFL_ZK_BUILD=/path/to/circuits/final/build/production
-
-POL_INTEGRITY=1 CUBLAS_WORKSPACE_CONFIG=:4096:8 \
-python -m experiments.final.preflight \
-  --paper "$POLBFL_PAPER_PDF" \
-  --data-root "$POLBFL_DATA_ROOT" \
-  --zk-build "$POLBFL_ZK_BUILD"
-```
-
-## Experiment reproduction
-
-The paper matrix is defined in `experiments/final/paper_matrix.json`. A dry-run
-of the main security matrix is produced with:
+Experiment definitions are stored in
+`experiments/final/paper_matrix.json`. The configured experiment matrix can be
+inspected with:
 
 ```bash
 python -m experiments.final.run_matrix
 ```
 
-Formal execution procedures, evidence requirements, resume behavior, and
-target validation are specified in
-[docs/REPRODUCING.md](docs/REPRODUCING.md).
-
-## Technical documentation
+## Documentation
 
 - [Implementation specification](docs/FINAL_IMPLEMENTATION_SPEC.md)
-- [Paper-to-code traceability](docs/PAPER_TRACEABILITY.md)
-- [ZK proof and blockchain components](docs/ZKP_AND_BLOCKCHAIN.md)
+- [Dataset preparation](docs/DATASETS.md)
+- [Experiment reproduction](docs/REPRODUCING.md)
+- [Paper-to-code correspondence](docs/PAPER_TRACEABILITY.md)
+- [Zero-knowledge proof and blockchain components](docs/ZKP_AND_BLOCKCHAIN.md)
 
 ## Citation
 
