@@ -132,7 +132,7 @@ def main() -> None:
     parser.add_argument(
         "--targets",
         type=Path,
-        default=root / "config" / "paper_targets.json",
+        default=root / "config" / "paper_table3_layer_dr.json",
     )
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()

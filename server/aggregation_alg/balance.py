@@ -1,5 +1,7 @@
 from ..base.baseAggregator import ServerAggregator
 import numpy as np
+import torch
+from collections import OrderedDict
 
 class balanceAggregator(ServerAggregator):
     def __init__(self, gamma, kappa, init_model):
@@ -8,25 +10,44 @@ class balanceAggregator(ServerAggregator):
         self.kappa = kappa
         self.saved_model = init_model
         
-    def _on_before_aggregation(self):
-        pass
+    def _on_before_aggregation(self, raw_client_model_or_grad_list):
+        return raw_client_model_or_grad_list
         
-    def _on_after_aggregation(self):
-        pass
+    def _on_after_aggregation(self, aggregated_model_or_grad):
+        return aggregated_model_or_grad
         
-    def test(self):
-        pass
+    def test(self, test_data=None, device=None, args=None):
+        return {
+            'gamma': self.gamma,
+            'kappa': self.kappa,
+            'pooled_updates': len(self.model_pool),
+        }
+
+    @staticmethod
+    def _flatten(model):
+        if isinstance(model, dict):
+            parts = []
+            for key in sorted(model):
+                value = model[key]
+                if torch.is_tensor(value):
+                    value = value.detach().cpu().numpy()
+                parts.append(np.asarray(value, dtype=np.float64).reshape(-1))
+            return np.concatenate(parts)
+        return np.asarray(model, dtype=np.float64).reshape(-1)
         
 
     def _aggregate_alg(self, raw_client_model_or_grad_list=None, t=None):
         if raw_client_model_or_grad_list is None:
             raw_client_model_or_grad_list = self.model_pool
+        if not raw_client_model_or_grad_list:
+            raise ValueError("balance aggregation requires client updates")
 
         # 假设 w_global 是当前的全局模型参数
         w_global = self.saved_model  # 需要确保 self.global_model 已定义
 
         # 计算 w_global 的范数
-        w_global_norm = np.linalg.norm(w_global)
+        global_vector = self._flatten(w_global)
+        w_global_norm = np.linalg.norm(global_vector)
 
         # 定义 lambda 函数，假设 lambda(t) = 1 / (1 + t)
         lambda_t = 1 / (1 + t) if t is not None else 1
@@ -40,25 +61,29 @@ class balanceAggregator(ServerAggregator):
         filtered_models = []
         for model in raw_client_model_or_grad_list:
             # 计算模型参数与 w_global 的距离
-            distance = np.linalg.norm(np.array(model) - np.array(w_global))
+            model_vector = self._flatten(model)
+            if model_vector.shape != global_vector.shape:
+                raise ValueError("balance client updates have incompatible shapes")
+            distance = np.linalg.norm(model_vector - global_vector)
             if distance < distance_threshold:
                 filtered_models.append(model)
             else:
-                print(f"Model rejected: distance {distance} >= threshold {distance_threshold}")
+                continue
 
         if not filtered_models:
-            print("No models were accepted for aggregation.")
-            return w_global  # 如果没有模型被接受，则返回全局模型
+            return w_global
 
         # 对筛选后的模型参数进行平均聚合
         if isinstance(filtered_models[0], dict):
             keys = filtered_models[0].keys()
-            aggregated_model = {}
+            aggregated_model = OrderedDict()
 
             for key in keys:
                 values = [model[key] for model in filtered_models]
-                aggregated_model[key] = np.mean(values, axis=0)
-                # 如果值是向量或矩阵，np.mean 会自动对指定轴进行平均
+                if torch.is_tensor(values[0]):
+                    aggregated_model[key] = torch.stack(values).mean(dim=0)
+                else:
+                    aggregated_model[key] = np.mean(values, axis=0)
 
             return aggregated_model
 

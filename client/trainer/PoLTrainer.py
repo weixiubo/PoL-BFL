@@ -64,6 +64,7 @@ class PoLTrainer(BaseTrainer):
                 save_dir=self.pol_save_dir,
                 save_freq=self.pol_save_freq,
                 compress=self.pol_compress,
+                async_save=POL_CONFIG.get('async_save', False),
                 save_to_disk=POL_CONFIG.get('save_checkpoints_to_disk', True),
                 memory_limit=POL_CONFIG.get('memory_checkpoint_limit', 5),
                 enable_auto_cleanup=POL_CONFIG.get('enable_auto_cleanup', False),

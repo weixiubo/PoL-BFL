@@ -5,6 +5,16 @@
     "doi": "10.1145/3770855.3817739",
     "pdf_sha256": "0b013e58d4f99f91470c61a891a4ee89dfd09eff58e131abbe730d1f6f91e6d4"
   },
+  "system_scope": {
+    "federation_setting": "cross-silo",
+    "persistent_organizational_identities": true,
+    "adversary_knowledge": "full",
+    "corrupted_client_bound": "f < N/2",
+    "deterministic_training_required": true,
+    "meaningful_stake_required": true,
+    "gas_oracle_authentication_required": true,
+    "gas_oracle_deployment_scope": ["permissioned", "semi-permissioned"]
+  },
   "federation": {
     "num_clients": 50,
     "num_malicious": 10,
@@ -54,6 +64,12 @@
     "honest_reward_usd": 0.172,
     "honest_cost_usd": 0.022
   },
+  "storage": {
+    "trace_location": "content-addressed off-chain storage",
+    "on_chain_anchor": "32-byte Merkle root",
+    "availability_challenge": "post-commit authenticated-random audit",
+    "availability_failure": "aggregation exclusion and full stake slashing"
+  },
   "aggregation": {
     "reference_method": "trimmed_mean",
     "supported_methods": ["trimmed_mean", "krum", "median"],
@@ -81,6 +97,7 @@
     "checkpoint_interval_steps": "Chosen as five to match the five-step reference proof relation within the paper's approximately 1.1M-constraint budget.",
     "hybrid_interval_split": "K=2 recent and R=3 random intervals; the paper specifies Q=K+R but does not publish K and R.",
     "sybil_trajectory_cosine_threshold": "0.995 is a deterministic deployment threshold; sensitivity remains an experimental gate.",
+    "sybil_trajectory_alignment": "Committed checkpoint vectors with unequal counts are linearly resampled onto a shared normalized-training-progress grid before cosine comparison. Different sampled-coordinate widths are non-comparable for cosine; exact batch-index duplication remains an independent signal.",
     "layer_ablation": "L1 retains cryptographic training verification; L2 adds statistical screening and Byzantine-robust aggregation; L3 adds committed-trace Sybil/reputation processing and persistent contract enforcement. Disabled economic layers are evaluated without mutating stake or reputation state.",
     "table5_attack_success": "A free-riding attempt succeeds only when the malicious update is included and has positive measured marginal validation accuracy; the aggregate accuracy loss against the same-round honest-only counterfactual is retained separately. No paper outcome value is used by this decision rule.",
     "table5_participation": "Participation rate is the fraction of registered honest clients that execute and submit the round; malicious attack attempts are accounted for separately in ASR."

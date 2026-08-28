@@ -58,6 +58,10 @@ def test_protocol_trainer_produces_verifiable_round(tmp_path):
     assert commitment["num_checkpoints"] == 2
     assert commitment["total_steps"] == 2
     assert len(commitment["data_hash"]) == 64
+    assert all(
+        trainer.trace_recorder.store.has(step.blob)
+        for step in trainer.recorded_trace.steps.values()
+    )
 
     trace = trainer.recorded_trace.trace
     challenge = HybridChallengeSampler(recent_pairs=1, random_pairs=0).sample(
@@ -68,6 +72,15 @@ def test_protocol_trainer_produces_verifiable_round(tmp_path):
         proof_mode="strict_replay",
     )
     response = trainer.respond_to_challenge(challenge)
+    retained_digests = {
+        step.blob.digest for step in trainer.recorded_trace.steps.values()
+    }
+    response_digests = {
+        digest
+        for witness in response.interval_witnesses.values()
+        for digest in witness.replay_metadata["step_evidence"]
+    }
+    assert response_digests <= retained_digests
     replay = TorchSGDReplay(
         TorchSGDReplayConfig(
             model_factory=_model,

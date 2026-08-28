@@ -241,6 +241,17 @@ def visualize_rq3_overhead_bars(results, output_dir):
     """
     logger.info("Generating RQ3 overhead bar chart...")
     
+    if isinstance(results, dict):
+        results = [
+            {
+                'method': method,
+                'avg_training_time': metrics.get('training_time', {}).get('mean', 0.0),
+                'avg_communication_cost': metrics.get('communication_cost', {}).get('mean', 0.0),
+                'avg_storage_cost': metrics.get('storage_cost', {}).get('mean', 0.0),
+            }
+            for method, metrics in sorted(results.items())
+        ]
+
     methods = []
     training_times = []
     comm_costs = []
@@ -253,9 +264,10 @@ def visualize_rq3_overhead_bars(results, output_dir):
         storage_costs.append(result.get('avg_storage_cost', 0.0))
     
     # Normalize to Vanilla FL
-    if methods and methods[0] == 'Vanilla_FL':
-        baseline_time = training_times[0]
-        training_times = [t / baseline_time for t in training_times]
+    if 'Vanilla_FL' in methods:
+        baseline_time = training_times[methods.index('Vanilla_FL')]
+        if baseline_time > 0:
+            training_times = [t / baseline_time for t in training_times]
     
     fig, ax = plt.subplots(figsize=(8, 5))
     
@@ -291,6 +303,39 @@ def visualize_rq4_utility_evolution(results, output_dir):
     """
     logger.info("Generating RQ4 utility evolution curves...")
     
+    if isinstance(results, dict):
+        scenarios = sorted(results)
+        x = np.arange(len(scenarios))
+        width = 0.25
+        fig, ax = plt.subplots(figsize=(8, 5))
+        honest = [
+            results[name].get('honest_utility', {}).get('mean', 0.0)
+            for name in scenarios
+        ]
+        rational = [
+            results[name].get('rational_utility', {}).get('mean', 0.0)
+            for name in scenarios
+        ]
+        malicious = [
+            results[name].get('malicious_utility', {}).get('mean', 0.0)
+            for name in scenarios
+        ]
+        ax.bar(x - width, honest, width, label='Honest')
+        ax.bar(x, rational, width, label='Rational')
+        ax.bar(x + width, malicious, width, label='Malicious')
+        ax.set_xticks(x)
+        ax.set_xticklabels(scenarios, rotation=30, ha='right')
+        ax.set_xlabel('Scenario')
+        ax.set_ylabel('Cumulative Utility')
+        ax.set_title('RQ4: Utility by Node Type')
+        ax.legend(loc='best')
+        ax.grid(True, alpha=0.3, axis='y')
+        output_path = Path(output_dir) / 'rq4_utility_evolution.pdf'
+        plt.savefig(output_path, format='pdf')
+        plt.close()
+        logger.info(f"Saved {output_path}")
+        return
+
     fig, ax = plt.subplots(figsize=(8, 5))
     
     for result in results:
@@ -328,6 +373,17 @@ def visualize_rq5_composability_bars(results, output_dir):
     """
     logger.info("Generating RQ5 composability bar chart...")
     
+    if isinstance(results, dict):
+        results = [
+            {
+                'attack_type': attack,
+                'baseline_method': method,
+                'final_accuracy': metrics.get('final_accuracy', {}).get('mean', 0.0),
+            }
+            for attack, methods in sorted(results.items())
+            for method, metrics in sorted(methods.items())
+        ]
+
     # Group by attack and base method
     from collections import defaultdict
     by_attack = defaultdict(lambda: defaultdict(list))
@@ -421,4 +477,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

@@ -7,6 +7,31 @@ from experiments.final.manifest import create_run_manifest, sha256_file, write_m
 ROOT = Path(__file__).parents[1]
 
 
+def test_paper_scope_and_trace_availability_requirements_are_explicit():
+    protocol = json.loads(
+        (ROOT / "config" / "paper_protocol.json").read_text(encoding="utf-8")
+    )
+    assert protocol["system_scope"] == {
+        "federation_setting": "cross-silo",
+        "persistent_organizational_identities": True,
+        "adversary_knowledge": "full",
+        "corrupted_client_bound": "f < N/2",
+        "deterministic_training_required": True,
+        "meaningful_stake_required": True,
+        "gas_oracle_authentication_required": True,
+        "gas_oracle_deployment_scope": ["permissioned", "semi-permissioned"],
+    }
+    assert protocol["storage"] == {
+        "trace_location": "content-addressed off-chain storage",
+        "on_chain_anchor": "32-byte Merkle root",
+        "availability_challenge": "post-commit authenticated-random audit",
+        "availability_failure": "aggregation exclusion and full stake slashing",
+    }
+
+
+    alignment = protocol["implementation_choices"]["sybil_trajectory_alignment"]
+    assert "normalized-training-progress grid" in alignment
+    assert "non-comparable for cosine" in alignment
 def test_experiment_manifest_binds_source_config_dataset_seed_and_artifacts(tmp_path):
     artifact = tmp_path / "raw.json"
     artifact.write_text('{"accuracy": 90.0}\n', encoding="utf-8")

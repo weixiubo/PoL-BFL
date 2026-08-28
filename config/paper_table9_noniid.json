@@ -1,0 +1,84 @@
+{
+  "authority_pdf_sha256": "0b013e58d4f99f91470c61a891a4ee89dfd09eff58e131abbe730d1f6f91e6d4",
+  "schema_version": 1,
+  "table_9_noniid": {
+    "CIFAR10": {
+      "0.1": {
+        "ALIEDR": 80.5,
+        "FPR": 4.8,
+        "FreeRidingDR": 94.2,
+        "NoAttackMA": 82.5
+      },
+      "0.5": {
+        "ALIEDR": 85.6,
+        "FPR": 2.5,
+        "FreeRidingDR": 96.5,
+        "NoAttackMA": 88.2
+      },
+      "1.0": {
+        "ALIEDR": 86.8,
+        "FPR": 2.0,
+        "FreeRidingDR": 97.2,
+        "NoAttackMA": 89.5
+      },
+      "IID": {
+        "ALIEDR": 88.2,
+        "FPR": 1.5,
+        "FreeRidingDR": 98.0,
+        "NoAttackMA": 91.2
+      }
+    },
+    "CIFAR100": {
+      "0.1": {
+        "ALIEDR": 78.2,
+        "FPR": 5.5,
+        "FreeRidingDR": 92.5,
+        "NoAttackMA": 52.5
+      },
+      "0.5": {
+        "ALIEDR": 83.5,
+        "FPR": 3.2,
+        "FreeRidingDR": 95.8,
+        "NoAttackMA": 58.2
+      },
+      "1.0": {
+        "ALIEDR": 85.2,
+        "FPR": 2.5,
+        "FreeRidingDR": 96.5,
+        "NoAttackMA": 60.5
+      },
+      "IID": {
+        "ALIEDR": 86.8,
+        "FPR": 2.0,
+        "FreeRidingDR": 97.2,
+        "NoAttackMA": 62.5
+      }
+    },
+    "FEMNIST": {
+      "0.1": {
+        "ALIEDR": 82.8,
+        "FPR": 4.2,
+        "FreeRidingDR": 95.5,
+        "NoAttackMA": 85.2
+      },
+      "0.5": {
+        "ALIEDR": 87.5,
+        "FPR": 2.2,
+        "FreeRidingDR": 96.8,
+        "NoAttackMA": 89.5
+      },
+      "1.0": {
+        "ALIEDR": 88.5,
+        "FPR": 1.8,
+        "FreeRidingDR": 97.5,
+        "NoAttackMA": 91.2
+      },
+      "IID": {
+        "ALIEDR": 89.5,
+        "FPR": 1.2,
+        "FreeRidingDR": 98.2,
+        "NoAttackMA": 92.8
+      }
+    }
+  }
+}

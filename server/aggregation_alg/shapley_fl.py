@@ -9,13 +9,15 @@ which can defend against:
 - Byzantine attacks (by identifying low-contribution malicious clients)
 - Free-riding attacks (by detecting clients with zero/low contribution)
 
-This is a simplified implementation adapted for PoL-BFL framework.
+The adapter evaluates Monte Carlo coalitions against an explicit validation
+model or a caller-supplied utility function.
 """
 
+import copy
 import torch
 import numpy as np
 import logging
-from typing import List, Dict, Tuple
+from typing import Callable, List, Optional, Tuple
 from collections import OrderedDict
 from ..base.baseAggregator import ServerAggregator
 
@@ -36,7 +38,10 @@ class ShapleyFLAggregator(ServerAggregator):
                  num_mc_samples: int = 10,
                  threshold_percentile: float = 0.0,
                  validation_data: Tuple = None,
-                 device: str = 'cpu'):
+                 device: str = 'cpu',
+                 model: Optional[torch.nn.Module] = None,
+                 evaluation_fn: Optional[Callable[[OrderedDict], float]] = None,
+                 seed: int = 1337):
         """
         Initialize ShapleyFL aggregator
         
@@ -47,12 +52,21 @@ class ShapleyFLAggregator(ServerAggregator):
                 - 50: Keep top 50% clients
             validation_data: Tuple of (val_loader, criterion) for validation
             device: Device for computation ('cpu' or 'cuda')
+            model: Model architecture used to evaluate coalition state dictionaries
+            evaluation_fn: Optional direct state-dictionary utility function
+            seed: Monte Carlo permutation seed
         """
-        super().__init__()
+        if num_mc_samples <= 0:
+            raise ValueError("num_mc_samples must be positive")
+        if not 0.0 <= threshold_percentile <= 100.0:
+            raise ValueError("threshold_percentile must be in [0, 100]")
+        super().__init__(model=model)
         self.num_mc_samples = num_mc_samples
         self.threshold_percentile = threshold_percentile
         self.validation_data = validation_data
         self.device = device
+        self.evaluation_fn = evaluation_fn
+        self.rng = np.random.default_rng(seed)
         
         # Track Shapley values over rounds
         self.shapley_history = []
@@ -64,13 +78,29 @@ class ShapleyFLAggregator(ServerAggregator):
         """No preprocessing needed"""
         return raw_client_model_or_grad_list
     
-    def _on_after_aggregation(self):
-        """No postprocessing needed"""
-        pass
+    def _on_after_aggregation(self, aggregated_model):
+        """Return the Shapley-weighted model unchanged."""
+        return aggregated_model
     
-    def test(self):
-        """Test method (placeholder)"""
-        pass
+    def test(self, test_data=None, device=None, args=None):
+        """Evaluate the configured global model on validation or supplied data."""
+        if self.model is None:
+            raise RuntimeError("ShapleyFL test requires a model")
+        if test_data is None:
+            if self.validation_data is None:
+                raise RuntimeError("ShapleyFL test requires validation data")
+            test_data, criterion = self.validation_data
+        else:
+            criterion = (args or {}).get('criterion')
+        previous_device = self.device
+        if device is not None:
+            self.device = str(device)
+        try:
+            return self._evaluate_model(
+                self.model.state_dict(), test_data, criterion
+            )
+        finally:
+            self.device = previous_device
     
     def _aggregate_alg(self, raw_client_model_or_grad_list: List[OrderedDict] = None) -> OrderedDict:
         """
@@ -92,7 +122,7 @@ class ShapleyFLAggregator(ServerAggregator):
             return OrderedDict()
         
         # If validation data is not available, fall back to FedAvg
-        if self.validation_data is None:
+        if self.validation_data is None and self.evaluation_fn is None:
             logger.warning("No validation data provided, falling back to FedAvg")
             return self._fedavg_aggregate(raw_client_model_or_grad_list)
         
@@ -137,15 +167,22 @@ class ShapleyFLAggregator(ServerAggregator):
         shapley_values = np.zeros(num_clients)
         
         # Get validation data
-        val_loader, criterion = self.validation_data
+        if self.validation_data is None:
+            val_loader, criterion = None, None
+        else:
+            val_loader, criterion = self.validation_data
         
         # Baseline accuracy (no clients)
-        baseline_acc = 0.0  # Could use global model from previous round
+        baseline_acc = (
+            self._evaluate_model(self.model.state_dict(), val_loader, criterion)
+            if self.model is not None
+            else 0.0
+        )
         
         # Monte Carlo sampling
         for _ in range(self.num_mc_samples):
             # Random permutation of clients
-            perm = np.random.permutation(num_clients)
+            perm = self.rng.permutation(num_clients)
             
             # Track accuracy as we add clients
             prev_acc = baseline_acc
@@ -275,16 +312,35 @@ class ShapleyFLAggregator(ServerAggregator):
         Returns:
             accuracy: Validation accuracy
         """
-        # This is a simplified version - in practice, you'd need to:
-        # 1. Load model into a neural network
-        # 2. Run inference on validation data
-        # 3. Compute accuracy
-        
-        # For now, return a placeholder (will be implemented when integrated)
-        # In real implementation, this would use the actual model and validation data
-        return 0.0
+        if self.evaluation_fn is not None:
+            utility = float(self.evaluation_fn(model))
+            if not np.isfinite(utility):
+                raise ValueError("Shapley utility must be finite")
+            return utility
+        if self.model is None or val_loader is None:
+            raise RuntimeError(
+                "Shapley evaluation requires a model and validation loader"
+            )
+
+        evaluated = copy.deepcopy(self.model).to(self.device)
+        evaluated.load_state_dict(model, strict=True)
+        evaluated.eval()
+        correct = 0
+        total = 0
+        with torch.no_grad():
+            for batch in val_loader:
+                if not isinstance(batch, (tuple, list)) or len(batch) < 2:
+                    raise ValueError("validation batches must contain inputs and labels")
+                inputs = batch[0].to(self.device)
+                labels = batch[1].to(self.device)
+                logits = evaluated(inputs)
+                predictions = logits.argmax(dim=1)
+                correct += int((predictions == labels).sum().item())
+                total += int(labels.numel())
+        if total == 0:
+            raise ValueError("validation loader is empty")
+        return correct / total
     
     def get_shapley_history(self) -> List[np.ndarray]:
         """Get history of Shapley values across rounds"""
         return self.shapley_history
-

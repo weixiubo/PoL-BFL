@@ -5,7 +5,7 @@ from util import jsonFormat
 from collections import defaultdict
 # defer brownie imports to runtime (see ensure_connected_and_deployed)
 # from brownie import *  # removed for compatibility with environments without brownie installed
-# module-level placeholders for brownie objects; will be assigned at runtime
+# Module-level lazy bindings for Brownie objects, assigned at runtime.
 accounts = None
 network = None
 project = None

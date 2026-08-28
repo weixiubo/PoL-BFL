@@ -1,13 +1,20 @@
+from pathlib import Path
+
 from experiments.final.convergence import ATTACKS, METHODS, aggregate_convergence
+from experiments.final.target_provenance import (
+    FIGURE2_TARGET_FILES,
+    load_merged_targets,
+)
+
+
+ROOT = Path(__file__).parents[1]
 
 
 def test_convergence_requires_all_methods_attacks_seeds_and_rounds():
     trials = []
-    targets = {"table_2_all_methods": {"CIFAR10": {}}}
+    targets = load_merged_targets(ROOT, FIGURE2_TARGET_FILES)
     for attack in ATTACKS:
-        targets["table_2_all_methods"]["CIFAR10"][attack] = {}
         for method in METHODS:
-            targets["table_2_all_methods"]["CIFAR10"][attack][method] = {"MA": 80.0}
             for seed in (1337, 2026, 3817739):
                 trials.append(
                     {
@@ -19,7 +26,7 @@ def test_convergence_requires_all_methods_attacks_seeds_and_rounds():
                         "rounds": [
                             {
                                 "round": round_number,
-                                "accuracy": 10.0 + 71.0 * (round_number + 1) / 200,
+                                "accuracy": 100.0,
                             }
                             for round_number in range(200)
                         ],
@@ -31,5 +38,5 @@ def test_convergence_requires_all_methods_attacks_seeds_and_rounds():
     assert result["acceptance"]["passed"]
     assert result["figure_2_convergence"]["ALIE"]["PoLBFL"][-1] == {
         "round": 200,
-        "MA": 81.0,
+        "MA": 100.0,
     }

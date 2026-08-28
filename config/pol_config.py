@@ -37,7 +37,7 @@ POL_CONFIG = {
     # 是否压缩checkpoint
     'compress': _env_bool('POL_COMPRESS_CHECKPOINTS', True),
 
-    # 是否异步保存（暂未实现）
+    # 是否使用独立I/O线程异步保存
     'async_save': False,
 
     # ========== 验证配置 ==========

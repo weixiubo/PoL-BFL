@@ -70,3 +70,7 @@ def test_real_contract_transitions_and_paper_gas_gates():
     assert int(result["slash_gas"]) <= 65_000
     assert int(result["reward_claim_gas"]) <= 45_000
     assert result["slashed_clients"] == 2
+    assert result["rejected_client_slashed"] is True
+    assert result["timeout_client_slashed"] is True
+    assert result["oracle_stake_update_verified"] is True
+    assert int(result["minimum_stake_after_oracle"]) > 50_000_000_000_000_000

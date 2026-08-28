@@ -114,7 +114,11 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("results", nargs="+", type=Path)
     parser.add_argument("--gas-evidence", type=Path, required=True)
-    parser.add_argument("--targets", type=Path, default=root / "config" / "paper_targets.json")
+    parser.add_argument(
+        "--targets",
+        type=Path,
+        default=root / "config" / "paper_table8_scalability.json",
+    )
     parser.add_argument("--required-seed-count", type=int, default=3)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()

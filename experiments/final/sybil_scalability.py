@@ -71,7 +71,11 @@ def main() -> None:
     root = Path(__file__).resolve().parents[2]
     parser = argparse.ArgumentParser()
     parser.add_argument("observations", nargs="+", type=Path)
-    parser.add_argument("--targets", type=Path, default=root / "config" / "paper_targets.json")
+    parser.add_argument(
+        "--targets",
+        type=Path,
+        default=root / "config" / "paper_figure6_targets.json",
+    )
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     aggregate = aggregate_sybil_scalability(

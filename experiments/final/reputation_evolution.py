@@ -15,6 +15,10 @@ sys.path.insert(0, str(ROOT))
 
 from scripts.capture_formal_evidence import verify_completed_cell
 from experiments.final.evidence import seal_evidence
+from experiments.final.target_provenance import (
+    FIGURE3_TARGET_FILES,
+    load_merged_targets,
+)
 
 
 SAMPLE_ROUNDS = (0, 20, 50, 100, 150, 200)
@@ -58,12 +62,15 @@ def _validated_rounds(
 def aggregate_reputation_evolution(
     rational_rows: Iterable[Mapping[str, Any]],
     malicious_rows: Iterable[Mapping[str, Any]],
+    targets: Mapping[str, Any],
     *,
     required_rounds: int = 200,
     sample_rounds: Sequence[int] = SAMPLE_ROUNDS,
 ) -> dict[str, Any]:
     rational = _validated_rounds(rational_rows, required_rounds=required_rounds)
     malicious = _validated_rounds(malicious_rows, required_rounds=required_rounds)
+    if "figure_3_reputation_evolution" not in targets:
+        raise ValueError("Figure 3 aggregation requires PDF-derived vector targets")
     if tuple(sample_rounds) != SAMPLE_ROUNDS or sample_rounds[-1] != required_rounds:
         raise ValueError("Figure 3 sampling points must match the final paper")
 
@@ -105,6 +112,20 @@ def aggregate_reputation_evolution(
         "honest_dominates": float(final["Honest"])
         > max(float(final["Rational"]), float(final["Malicious"])),
     }
+    vector = targets["figure_3_reputation_evolution"]
+    if [int(point["round"]) for point in vector] != list(sample_rounds):
+        raise ValueError("Figure 3 target rounds differ from the final paper")
+    for observed, expected in zip(points, vector):
+        round_number = int(observed["round"])
+        checks[f"round_{round_number}.Honest"] = float(observed["Honest"]) >= float(
+            expected["Honest"]
+        )
+        checks[f"round_{round_number}.Rational"] = float(observed["Rational"]) <= float(
+            expected["Rational"]
+        )
+        checks[f"round_{round_number}.Malicious"] = float(observed["Malicious"]) <= float(
+            expected["Malicious"]
+        )
     return {
         "figure_3_reputation_evolution": points,
         "acceptance": {
@@ -127,6 +148,10 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--rational-result", type=Path, required=True)
     parser.add_argument("--malicious-result", type=Path, required=True)
+    parser.add_argument(
+        "--targets",
+        type=Path,
+    )
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     rational_evidence = verify_completed_cell(args.rational_result, root=ROOT)
@@ -144,9 +169,15 @@ def main() -> None:
         raise ValueError("Figure 3 requires accepted CIFAR10 LT and NT cells")
     rational_rounds = args.rational_result.with_name("rounds.jsonl")
     malicious_rounds = args.malicious_result.with_name("rounds.jsonl")
+    targets = (
+        json.loads(args.targets.read_text(encoding="utf-8"))
+        if args.targets is not None
+        else load_merged_targets(ROOT, FIGURE3_TARGET_FILES)
+    )
     aggregate = aggregate_reputation_evolution(
         _read_jsonl(rational_rounds),
         _read_jsonl(malicious_rounds),
+        targets,
     )
     aggregate["source_commit"] = rational_evidence["source_commit"]
     aggregate["provenance"] = {

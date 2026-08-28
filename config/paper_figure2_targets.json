@@ -1,0 +1,437 @@
+{
+  "authority_pdf_sha256": "0b013e58d4f99f91470c61a891a4ee89dfd09eff58e131abbe730d1f6f91e6d4",
+  "extraction": {
+    "accuracy_tick_values": [
+      20,
+      40,
+      60,
+      80
+    ],
+    "attacks": [
+      "FreeRidingNT",
+      "ALIE",
+      "Sybil"
+    ],
+    "methods": [
+      "VanillaFL",
+      "Krum",
+      "SDEA",
+      "ShapleyFL",
+      "FoolsGold",
+      "PoLBFL"
+    ],
+    "sample_rounds": [
+      0,
+      50,
+      100,
+      150,
+      200
+    ]
+  },
+  "figure_2_convergence": {
+    "ALIE": {
+      "FoolsGold": [
+        {
+          "MA": 10.0,
+          "round": 0
+        },
+        {
+          "MA": 45.8,
+          "round": 50
+        },
+        {
+          "MA": 55.2,
+          "round": 100
+        },
+        {
+          "MA": 57.0,
+          "round": 150
+        },
+        {
+          "MA": 58.3,
+          "round": 200
+        }
+      ],
+      "Krum": [
+        {
+          "MA": 10.0,
+          "round": 0
+        },
+        {
+          "MA": 52.5,
+          "round": 50
+        },
+        {
+          "MA": 62.5,
+          "round": 100
+        },
+        {
+          "MA": 65.5,
+          "round": 150
+        },
+        {
+          "MA": 68.2,
+          "round": 200
+        }
+      ],
+      "PoLBFL": [
+        {
+          "MA": 10.0,
+          "round": 0
+        },
+        {
+          "MA": 70.5,
+          "round": 50
+        },
+        {
+          "MA": 78.2,
+          "round": 100
+        },
+        {
+          "MA": 80.8,
+          "round": 150
+        },
+        {
+          "MA": 82.8,
+          "round": 200
+        }
+      ],
+      "SDEA": [
+        {
+          "MA": 10.0,
+          "round": 0
+        },
+        {
+          "MA": 65.2,
+          "round": 50
+        },
+        {
+          "MA": 74.5,
+          "round": 100
+        },
+        {
+          "MA": 76.5,
+          "round": 150
+        },
+        {
+          "MA": 78.2,
+          "round": 200
+        }
+      ],
+      "ShapleyFL": [
+        {
+          "MA": 10.0,
+          "round": 0
+        },
+        {
+          "MA": 48.2,
+          "round": 50
+        },
+        {
+          "MA": 58.2,
+          "round": 100
+        },
+        {
+          "MA": 60.5,
+          "round": 150
+        },
+        {
+          "MA": 62.5,
+          "round": 200
+        }
+      ],
+      "VanillaFL": [
+        {
+          "MA": 10.0,
+          "round": 0
+        },
+        {
+          "MA": 38.2,
+          "round": 50
+        },
+        {
+          "MA": 45.2,
+          "round": 100
+        },
+        {
+          "MA": 47.0,
+          "round": 150
+        },
+        {
+          "MA": 48.5,
+          "round": 200
+        }
+      ]
+    },
+    "FreeRidingNT": {
+      "FoolsGold": [
+        {
+          "MA": 10.0,
+          "round": 0
+        },
+        {
+          "MA": 60.2,
+          "round": 50
+        },
+        {
+          "MA": 69.8,
+          "round": 100
+        },
+        {
+          "MA": 71.5,
+          "round": 150
+        },
+        {
+          "MA": 73.1,
+          "round": 200
+        }
+      ],
+      "Krum": [
+        {
+          "MA": 10.0,
+          "round": 0
+        },
+        {
+          "MA": 58.2,
+          "round": 50
+        },
+        {
+          "MA": 68.5,
+          "round": 100
+        },
+        {
+          "MA": 70.8,
+          "round": 150
+        },
+        {
+          "MA": 72.5,
+          "round": 200
+        }
+      ],
+      "PoLBFL": [
+        {
+          "MA": 10.0,
+          "round": 0
+        },
+        {
+          "MA": 75.2,
+          "round": 50
+        },
+        {
+          "MA": 82.5,
+          "round": 100
+        },
+        {
+          "MA": 84.8,
+          "round": 150
+        },
+        {
+          "MA": 86.8,
+          "round": 200
+        }
+      ],
+      "SDEA": [
+        {
+          "MA": 10.0,
+          "round": 0
+        },
+        {
+          "MA": 62.5,
+          "round": 50
+        },
+        {
+          "MA": 71.5,
+          "round": 100
+        },
+        {
+          "MA": 73.2,
+          "round": 150
+        },
+        {
+          "MA": 74.8,
+          "round": 200
+        }
+      ],
+      "ShapleyFL": [
+        {
+          "MA": 10.0,
+          "round": 0
+        },
+        {
+          "MA": 68.5,
+          "round": 50
+        },
+        {
+          "MA": 76.2,
+          "round": 100
+        },
+        {
+          "MA": 78.8,
+          "round": 150
+        },
+        {
+          "MA": 81.3,
+          "round": 200
+        }
+      ],
+      "VanillaFL": [
+        {
+          "MA": 10.0,
+          "round": 0
+        },
+        {
+          "MA": 52.5,
+          "round": 50
+        },
+        {
+          "MA": 62.8,
+          "round": 100
+        },
+        {
+          "MA": 65.0,
+          "round": 150
+        },
+        {
+          "MA": 67.2,
+          "round": 200
+        }
+      ]
+    },
+    "Sybil": {
+      "FoolsGold": [
+        {
+          "MA": 10.0,
+          "round": 0
+        },
+        {
+          "MA": 65.2,
+          "round": 50
+        },
+        {
+          "MA": 74.2,
+          "round": 100
+        },
+        {
+          "MA": 76.5,
+          "round": 150
+        },
+        {
+          "MA": 78.5,
+          "round": 200
+        }
+      ],
+      "Krum": [
+        {
+          "MA": 10.0,
+          "round": 0
+        },
+        {
+          "MA": 50.2,
+          "round": 50
+        },
+        {
+          "MA": 60.5,
+          "round": 100
+        },
+        {
+          "MA": 63.0,
+          "round": 150
+        },
+        {
+          "MA": 65.2,
+          "round": 200
+        }
+      ],
+      "PoLBFL": [
+        {
+          "MA": 10.0,
+          "round": 0
+        },
+        {
+          "MA": 72.5,
+          "round": 50
+        },
+        {
+          "MA": 80.2,
+          "round": 100
+        },
+        {
+          "MA": 82.5,
+          "round": 150
+        },
+        {
+          "MA": 84.5,
+          "round": 200
+        }
+      ],
+      "SDEA": [
+        {
+          "MA": 10.0,
+          "round": 0
+        },
+        {
+          "MA": 52.5,
+          "round": 50
+        },
+        {
+          "MA": 62.8,
+          "round": 100
+        },
+        {
+          "MA": 65.5,
+          "round": 150
+        },
+        {
+          "MA": 67.8,
+          "round": 200
+        }
+      ],
+      "ShapleyFL": [
+        {
+          "MA": 10.0,
+          "round": 0
+        },
+        {
+          "MA": 52.8,
+          "round": 50
+        },
+        {
+          "MA": 62.5,
+          "round": 100
+        },
+        {
+          "MA": 65.8,
+          "round": 150
+        },
+        {
+          "MA": 68.5,
+          "round": 200
+        }
+      ],
+      "VanillaFL": [
+        {
+          "MA": 10.0,
+          "round": 0
+        },
+        {
+          "MA": 35.5,
+          "round": 50
+        },
+        {
+          "MA": 42.2,
+          "round": 100
+        },
+        {
+          "MA": 44.0,
+          "round": 150
+        },
+        {
+          "MA": 45.8,
+          "round": 200
+        }
+      ]
+    }
+  },
+  "physical_pdf_page": 7,
+  "schema_version": 1
+}

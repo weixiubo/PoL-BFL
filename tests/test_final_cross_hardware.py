@@ -2,10 +2,18 @@ from pathlib import Path
 
 from experiments.final.aggregate_table11 import aggregate_table11
 from experiments.final.cross_hardware import aggregate_cross_hardware
+from experiments.final.cross_hardware_profiles import (
+    KAIZEN_PAIR,
+    evaluate_numerical_probe,
+    profile_for_pair,
+)
 from experiments.final.run_cross_hardware_matrix import (
     hardware_command,
     plan_cross_hardware_cells,
 )
+
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def _observation(client, behavior, accepted):
@@ -74,6 +82,57 @@ def test_cross_hardware_matrix_plans_all_pairs_and_three_seeds(tmp_path):
         zk_build=tmp_path / "zk",
     )
     assert command[command.index("--hardware-pair") + 1] == cell.hardware_pair
+
+    kaizen_cell = next(
+        item for item in cells if item.hardware_pair == KAIZEN_PAIR
+    )
+    kaizen_command = hardware_command(
+        kaizen_cell,
+        {
+            "trainer_device": 0,
+            "verifier_device": 1,
+            "expected_trainer": "RTX 4090",
+            "expected_verifier": "V100",
+        },
+        python=Path("/python"),
+        output=tmp_path / "kaizen-cell",
+        data_root=tmp_path / "data",
+        zk_build=tmp_path / "zk",
+    )
+    assert kaizen_command[2:4] == [
+        "-m",
+        "experiments.final.run_kaizen_cross_hardware_trial",
+    ]
+    assert (
+        kaizen_command[kaizen_command.index("--hardware-pair") + 1]
+        == KAIZEN_PAIR
+    )
+
+
+def test_cross_hardware_profiles_bind_dual_and_single_thresholds():
+    polbfl = profile_for_pair(ROOT, "RTX4090_RTX4090")
+    assert polbfl.method == "PoLBFL"
+    assert polbfl.pair_tolerance == 1e-5
+    assert polbfl.final_tolerance == 1e-3
+    assert polbfl.configuration_sha256 is None
+
+    kaizen = profile_for_pair(ROOT, KAIZEN_PAIR)
+    assert kaizen.method == "Kaizen"
+    assert kaizen.profile_id == "kaizen_single_threshold_v1"
+    assert kaizen.pair_tolerance == 1e-3
+    assert kaizen.final_tolerance == 1e-3
+    assert len(str(kaizen.configuration_sha256)) == 64
+
+    accepted = evaluate_numerical_probe(
+        kaizen, {"maximum_absolute_error": 9.9e-4}
+    )
+    rejected = evaluate_numerical_probe(
+        kaizen, {"maximum_absolute_error": 1.01e-3}
+    )
+    assert accepted["passed"]
+    assert accepted["checks"]["single_threshold_only"]
+    assert not rejected["passed"]
+    assert rejected["failed"] == ["final_tolerance"]
 
 
 def test_complete_table11_aggregate_requires_every_pair_and_seed():

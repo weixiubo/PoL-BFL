@@ -15,6 +15,7 @@ Usage:
 
 import argparse
 import json
+import math
 import numpy as np
 from pathlib import Path
 from collections import defaultdict
@@ -35,6 +36,57 @@ from statistical_analysis import (
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+
+def _load_seed_results(result_files):
+    """Load result lists while preserving seed-level failures as diagnostics."""
+    loaded = []
+    for file_path in result_files:
+        try:
+            payload = json.loads(Path(file_path).read_text(encoding='utf-8'))
+        except (OSError, json.JSONDecodeError) as exc:
+            logger.warning("Failed to load %s: %s", file_path, exc)
+            continue
+        if isinstance(payload, dict) and isinstance(payload.get('results'), list):
+            payload = payload['results']
+        if not isinstance(payload, list) or not all(
+            isinstance(record, dict) for record in payload
+        ):
+            logger.warning("Ignoring %s: expected a list of result objects", file_path)
+            continue
+        loaded.append(payload)
+    return loaded
+
+
+def _summary(values):
+    values = [float(value) for value in values if math.isfinite(float(value))]
+    if not values:
+        return {'mean': 0.0, 'std': 0.0, 'values': [], 'num_runs': 0}
+    return {
+        'mean': float(np.mean(values)),
+        'std': float(np.std(values, ddof=1)) if len(values) > 1 else 0.0,
+        'values': values,
+        'num_runs': len(values),
+    }
+
+
+def _numeric(records, field, *, transform=None):
+    values = []
+    for record in records:
+        value = record.get(field)
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            values.append(transform(record) if transform else value)
+    return _summary(values)
+
+
+def _write_aggregate(payload, output_dir, name):
+    output_path = Path(output_dir) / f'{name}_aggregated.json'
+    output_path.write_text(
+        json.dumps(payload, indent=2, sort_keys=True) + '\n',
+        encoding='utf-8',
+    )
+    logger.info("Saved aggregated results to %s", output_path)
+    return payload
 
 
 def aggregate_rq1_results(result_files, output_dir):
@@ -267,6 +319,107 @@ def aggregate_rq2_results(result_files, output_dir):
     return aggregated
 
 
+def aggregate_rq3_results(result_files, output_dir):
+    """Aggregate measured training, communication, storage, ZKP, and gas costs."""
+    grouped = defaultdict(list)
+    for seed_results in _load_seed_results(result_files):
+        for record in seed_results:
+            method = record.get('method')
+            if method:
+                grouped[str(method)].append(record)
+
+    aggregated = {}
+    for method, records in sorted(grouped.items()):
+        aggregated[method] = {
+            'training_time': _numeric(records, 'total_training_time'),
+            'communication_cost': _numeric(records, 'total_communication_mb'),
+            'storage_cost': _numeric(records, 'total_storage_mb'),
+            'zkp_time': _numeric(
+                records,
+                'total_zkp_gen_time',
+                transform=lambda row: float(row.get('total_zkp_gen_time', 0.0))
+                + float(row.get('total_zkp_verify_time', 0.0)),
+            ),
+            'gas_cost': _numeric(records, 'total_estimated_fee_eth'),
+            'round_time': _numeric(records, 'avg_round_time'),
+            'num_runs': len(records),
+        }
+    if not aggregated:
+        raise ValueError('RQ3 aggregation found no valid method results')
+    return _write_aggregate(aggregated, output_dir, 'rq3')
+
+
+def aggregate_rq4_results(result_files, output_dir):
+    """Aggregate incentive outcomes by scenario across independent seeds."""
+    grouped = defaultdict(list)
+    for seed_results in _load_seed_results(result_files):
+        for record in seed_results:
+            scenario = record.get('scenario')
+            if scenario:
+                grouped[str(scenario)].append(record)
+
+    metric_map = {
+        'participation_rate': 'avg_participation_rate',
+        'attack_success_rate': 'avg_attack_success_rate',
+        'honest_utility': 'total_honest_utility',
+        'rational_utility': 'total_rational_utility',
+        'malicious_utility': 'total_malicious_utility',
+        'final_accuracy': 'final_accuracy',
+    }
+    aggregated = {}
+    for scenario, records in sorted(grouped.items()):
+        aggregated[scenario] = {
+            output_name: _numeric(records, source_name)
+            for output_name, source_name in metric_map.items()
+        }
+        aggregated[scenario]['num_runs'] = len(records)
+    if not aggregated:
+        raise ValueError('RQ4 aggregation found no valid scenario results')
+    return _write_aggregate(aggregated, output_dir, 'rq4')
+
+
+def aggregate_rq5_results(result_files, output_dir):
+    """Aggregate composability metrics by attack and aggregation method."""
+    grouped = defaultdict(lambda: defaultdict(list))
+    for seed_results in _load_seed_results(result_files):
+        for record in seed_results:
+            attack = record.get('attack_type')
+            method = record.get('baseline_method')
+            if attack and method:
+                grouped[str(attack)][str(method)].append(record)
+
+    aggregated = {}
+    for attack, methods in sorted(grouped.items()):
+        aggregated[attack] = {}
+        for method, records in sorted(methods.items()):
+            metrics = {
+                'final_accuracy': _numeric(records, 'final_accuracy'),
+                'convergence_round': _numeric(records, 'convergence_round'),
+                'num_runs': len(records),
+            }
+            detection_names = sorted(
+                {
+                    name
+                    for record in records
+                    for name, value in record.get('detection_metrics', {}).items()
+                    if isinstance(value, (int, float)) and not isinstance(value, bool)
+                }
+            )
+            for name in detection_names:
+                metrics[name] = _summary(
+                    record.get('detection_metrics', {}).get(name)
+                    for record in records
+                    if isinstance(
+                        record.get('detection_metrics', {}).get(name),
+                        (int, float),
+                    )
+                )
+            aggregated[attack][method] = metrics
+    if not aggregated:
+        raise ValueError('RQ5 aggregation found no valid composability results')
+    return _write_aggregate(aggregated, output_dir, 'rq5')
+
+
 def main():
     parser = argparse.ArgumentParser(description='Aggregate multi-seed experiment results')
     parser.add_argument('--experiment', type=str, required=True, choices=['rq1', 'rq2', 'rq3', 'rq4', 'rq5'],
@@ -299,10 +452,13 @@ def main():
         aggregate_rq1_results(result_files, output_dir)
     elif args.experiment == 'rq2':
         aggregate_rq2_results(result_files, output_dir)
-    else:
-        logger.warning(f"Aggregation for {args.experiment} not yet implemented")
+    elif args.experiment == 'rq3':
+        aggregate_rq3_results(result_files, output_dir)
+    elif args.experiment == 'rq4':
+        aggregate_rq4_results(result_files, output_dir)
+    elif args.experiment == 'rq5':
+        aggregate_rq5_results(result_files, output_dir)
 
 
 if __name__ == '__main__':
     main()
-

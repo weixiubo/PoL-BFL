@@ -337,8 +337,54 @@ def generate_rq5_table(aggregated_results, output_path):
         f.write(" & Only & +PoL & Only & +PoL & Only & +PoL & Only & +PoL \\\\\n")
         f.write("\\midrule\n")
         
-        # Process results
-        # (Implementation depends on actual data structure)
+        method_pairs = [
+            ('Krum', 'PoL_Krum'),
+            ('Trimmed_Mean', 'PoL_Trimmed_Mean'),
+            ('Median', 'PoL_Median'),
+            ('Bulyan', 'PoL_Bulyan'),
+        ]
+
+        def accuracy_cell(methods, method, *, emphasize=False):
+            metric = methods.get(method, {}).get('final_accuracy')
+            if not isinstance(metric, dict) or not metric.get('num_runs'):
+                return '-'
+            rendered = format_with_significance(
+                float(metric['mean']) * 100,
+                float(metric.get('std', 0.0)) * 100,
+                decimals=1,
+            )
+            return f"\\textbf{{{rendered}}}" if emphasize else rendered
+
+        for attack in sorted(aggregated_results):
+            methods = aggregated_results[attack]
+            cells = []
+            for base_method, pol_method in method_pairs:
+                base_mean = float(
+                    methods.get(base_method, {})
+                    .get('final_accuracy', {})
+                    .get('mean', float('-inf'))
+                )
+                pol_mean = float(
+                    methods.get(pol_method, {})
+                    .get('final_accuracy', {})
+                    .get('mean', float('-inf'))
+                )
+                cells.extend(
+                    [
+                        accuracy_cell(
+                            methods,
+                            base_method,
+                            emphasize=base_mean >= pol_mean,
+                        ),
+                        accuracy_cell(
+                            methods,
+                            pol_method,
+                            emphasize=pol_mean >= base_mean,
+                        ),
+                    ]
+                )
+            attack_name = attack.replace('_', ' ').title()
+            f.write(f"{attack_name} & " + " & ".join(cells) + " \\\\\n")
         
         f.write("\\bottomrule\n")
         f.write("\\end{tabular}\n")
@@ -398,4 +444,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

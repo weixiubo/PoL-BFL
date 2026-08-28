@@ -9,7 +9,7 @@ import json
 import sys
 from decimal import Decimal
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -18,6 +18,77 @@ from experiments.final.manifest import sha256_file, write_manifest_atomic
 from experiments.final.run_security_cell import table5_metrics
 from polbfl.crypto import domain_hash
 from polbfl.protocol import TraceCommitment, select_audit_clients
+
+
+def _canonical_field_digest(payload: Mapping[str, Any], field: str) -> bool:
+    declared = str(payload.get(field, ""))
+    if len(declared) != 64:
+        return False
+    body = dict(payload)
+    body.pop(field, None)
+    return hashlib.sha256(
+        json.dumps(body, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest() == declared
+
+
+def verify_standalone_trial_evidence(
+    result_path: Path,
+    result: Mapping[str, Any],
+    manifest: Mapping[str, Any],
+) -> int:
+    study = str(result.get("study", ""))
+    evidence_name = {
+        "adaptive": "adaptive-evidence.json",
+        "cross_hardware": "hardware-evidence.json",
+    }.get(study)
+    if evidence_name is None:
+        raise ValueError("unsupported standalone formal trial")
+    evidence_path = result_path.with_name(evidence_name)
+    declared_artifact_names = {
+        Path(str(label)).name
+        for label in manifest.get("artifact_sha256", {})
+    }
+    if {"result.json", evidence_name} - declared_artifact_names:
+        raise ValueError("standalone trial artifacts are not manifest-bound")
+    evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+    if (
+        not _canonical_field_digest(result, "result_digest")
+        or not _canonical_field_digest(evidence, "evidence_digest")
+        or result.get("evidence_digest") != evidence.get("evidence_digest")
+        or result.get("source_commit") != manifest["source"]["commit"]
+        or evidence.get("source_commit") != manifest["source"]["commit"]
+        or result.get("seed") != evidence.get("seed")
+        or evidence.get("acceptance", {}).get("passed") is not True
+        or int(evidence.get("proof_bytes", 0)) != 192
+    ):
+        raise ValueError("standalone formal trial digest or provenance is invalid")
+    honest = evidence.get("honest_report", {})
+    malicious = evidence.get("malicious_report", {})
+    if (
+        honest.get("valid") is not True
+        or honest.get("proof_valid") is not True
+        or malicious.get("valid") is not False
+        or malicious.get("proof_valid") is not True
+    ):
+        raise ValueError("standalone formal trial proof controls are invalid")
+    if study == "adaptive":
+        if (
+            result.get("variant") != evidence.get("variant")
+            or result.get("trials") != evidence.get("trials")
+            or len(result.get("trials", ())) != 2
+        ):
+            raise ValueError("adaptive formal evidence differs from its result")
+    else:
+        if (
+            result.get("hardware_pair") != evidence.get("hardware_pair")
+            or result.get("observations") != evidence.get("observations")
+            or len(result.get("observations", ())) != 2
+            or not evidence.get("trainer_attestation")
+            or not evidence.get("verifier_attestation")
+            or evidence.get("numerical_decision", {}).get("passed") is not True
+        ):
+            raise ValueError("cross-hardware formal evidence differs from its result")
+    return len(manifest.get("artifact_sha256", {}))
 
 
 def verify_completed_cell(result_path: Path, *, root: Path = ROOT) -> dict[str, Any]:
@@ -71,7 +142,11 @@ def verify_completed_cell(result_path: Path, *, root: Path = ROOT) -> dict[str, 
             raise ValueError(f"formal artifact hash mismatch: {path}")
         verified_artifacts[label] = observed
     retained_evidence_count = 0
-    if method == "PoLBFL":
+    if result.get("study") in {"adaptive", "cross_hardware"}:
+        retained_evidence_count = verify_standalone_trial_evidence(
+            result_path, result, manifest
+        )
+    elif method == "PoLBFL":
         rounds_path = result_path.with_name("rounds.jsonl")
         round_rows = [
             json.loads(line)

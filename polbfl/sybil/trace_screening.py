@@ -87,6 +87,38 @@ def _cosine(left: np.ndarray, right: np.ndarray) -> float:
     return float(np.clip(np.dot(left, right) / (left_norm * right_norm), -1.0, 1.0))
 
 
+def _resampled_trajectory(
+    fingerprint: TraceFingerprint,
+    *,
+    checkpoint_count: int,
+) -> np.ndarray:
+    matrix = np.asarray(fingerprint.checkpoint_vectors, dtype=np.float64)
+    if checkpoint_count < 2:
+        raise ValueError("trajectory comparison requires at least two checkpoints")
+    source_positions = np.linspace(0.0, 1.0, num=matrix.shape[0])
+    target_positions = np.linspace(0.0, 1.0, num=checkpoint_count)
+    resampled = np.stack(
+        [
+            np.interp(target_positions, source_positions, matrix[:, coordinate])
+            for coordinate in range(matrix.shape[1])
+        ],
+        axis=1,
+    )
+    return np.diff(resampled, axis=0).reshape(-1)
+
+
+def _trajectory_cosine(left: TraceFingerprint, right: TraceFingerprint) -> float:
+    left_width = len(left.checkpoint_vectors[0])
+    right_width = len(right.checkpoint_vectors[0])
+    if left_width != right_width:
+        return 0.0
+    checkpoint_count = max(len(left.checkpoint_vectors), len(right.checkpoint_vectors))
+    return _cosine(
+        _resampled_trajectory(left, checkpoint_count=checkpoint_count),
+        _resampled_trajectory(right, checkpoint_count=checkpoint_count),
+    )
+
+
 def screen_trace_fingerprints(
     fingerprints: tuple[TraceFingerprint, ...] | list[TraceFingerprint],
     *,
@@ -101,7 +133,7 @@ def screen_trace_fingerprints(
     ordered = sorted(fingerprints, key=lambda item: item.client_id)
     for left_index, left in enumerate(ordered):
         for right in ordered[left_index + 1 :]:
-            cosine = _cosine(left.trajectory, right.trajectory)
+            cosine = _trajectory_cosine(left, right)
             identical_indices = bool(left.batch_indices) and left.batch_indices == right.batch_indices
             reasons: list[str] = []
             if cosine >= trajectory_cosine_threshold:

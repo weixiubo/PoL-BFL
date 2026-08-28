@@ -90,7 +90,7 @@ def main() -> None:
     parser.add_argument(
         "--targets",
         type=Path,
-        default=root / "config" / "paper_targets.json",
+        default=root / "config" / "paper_table10_adaptive.json",
     )
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
@@ -105,6 +105,9 @@ def main() -> None:
         str(path): hashlib.sha256(path.read_bytes()).hexdigest()
         for path in args.results
     }
+    aggregate["formal_result_paths"] = [
+        str(path.resolve()) for path in args.results
+    ]
     aggregate = seal_evidence(aggregate, analysis_root=root)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(

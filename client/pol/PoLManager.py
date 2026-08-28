@@ -13,6 +13,8 @@ import numpy as np
 import torch
 from typing import Dict, List, Any, Optional
 import logging
+import threading
+from concurrent.futures import Future, ThreadPoolExecutor
 from datetime import datetime
 
 from client.pol.MerkleTree import MerkleTree
@@ -44,7 +46,7 @@ class PoLManager:
             save_dir: 保存目录
             save_freq: checkpoint保存频率（每N个batch）
             compress: 是否压缩checkpoint
-            async_save: 是否异步保存（暂未实现）
+            async_save: 是否在单独I/O线程中持久化checkpoint
             save_to_disk: 是否保存checkpoint到磁盘
             memory_limit: 内存模式下保留的checkpoint数量
             enable_auto_cleanup: 是否启用自动清理
@@ -56,6 +58,16 @@ class PoLManager:
         self.compress = compress
         self.async_save = async_save
         self.save_to_disk = save_to_disk
+        self._save_lock = threading.Lock()
+        self._pending_saves: Dict[int, Future] = {}
+        self._save_executor = (
+            ThreadPoolExecutor(
+                max_workers=1,
+                thread_name_prefix=f"pol-checkpoint-{client_id}",
+            )
+            if self.async_save and self.save_to_disk
+            else None
+        )
         try:
             self.memory_limit = max(1, int(memory_limit))
         except Exception:
@@ -130,6 +142,45 @@ class PoLManager:
         except Exception:
             return value
 
+    def _write_checkpoint_file(self, checkpoint_snapshot: Dict, path: str) -> str:
+        """Atomically persist one checkpoint and return its final path."""
+        temporary = f"{path}.tmp-{threading.get_ident()}"
+        try:
+            if self.compress:
+                with gzip.open(temporary, 'wb') as stream:
+                    torch.save(checkpoint_snapshot, stream)
+            else:
+                torch.save(checkpoint_snapshot, temporary)
+            os.replace(temporary, path)
+            return path
+        finally:
+            if os.path.exists(temporary):
+                os.remove(temporary)
+
+    def _wait_for_checkpoint(self, step: int) -> None:
+        with self._save_lock:
+            future = self._pending_saves.get(int(step))
+        if future is not None:
+            future.result()
+            with self._save_lock:
+                self._pending_saves.pop(int(step), None)
+
+    def flush_pending_saves(self) -> None:
+        """Wait until every scheduled checkpoint is durable on disk."""
+        with self._save_lock:
+            pending = list(self._pending_saves.items())
+        for step, future in pending:
+            future.result()
+            with self._save_lock:
+                self._pending_saves.pop(step, None)
+
+    def close(self) -> None:
+        """Flush checkpoint I/O and release the optional worker thread."""
+        self.flush_pending_saves()
+        if self._save_executor is not None:
+            self._save_executor.shutdown(wait=True, cancel_futures=False)
+            self._save_executor = None
+
     def save_checkpoint(self, step: int, checkpoint_data: Dict) -> str:
         """
         保存checkpoint（磁盘或内存模式）
@@ -159,14 +210,24 @@ class PoLManager:
                 self.save_dir, "checkpoints", f"ckpt_step_{step}.pt"
             )
 
-            # 保存checkpoint
             if self.compress:
-                # 使用gzip压缩
-                with gzip.open(checkpoint_path + ".gz", 'wb') as f:
-                    torch.save(checkpoint_snapshot, f)
                 checkpoint_path += ".gz"
+
+            if self._save_executor is None:
+                if self.compress:
+                    with gzip.open(checkpoint_path, 'wb') as stream:
+                        torch.save(checkpoint_snapshot, stream)
+                else:
+                    torch.save(checkpoint_snapshot, checkpoint_path)
             else:
-                torch.save(checkpoint_snapshot, checkpoint_path)
+                self._wait_for_checkpoint(step)
+                future = self._save_executor.submit(
+                    self._write_checkpoint_file,
+                    checkpoint_snapshot,
+                    checkpoint_path,
+                )
+                with self._save_lock:
+                    self._pending_saves[int(step)] = future
 
             # 更新元数据
             self.metadata['checkpoints'].append({
@@ -222,6 +283,9 @@ class PoLManager:
             checkpoint = self.memory_checkpoints.get(step)
             if checkpoint is not None:
                 return self._snapshot_for_storage(checkpoint)
+
+        if self._save_executor is not None:
+            self._wait_for_checkpoint(step)
 
         # 尝试压缩版本
         checkpoint_path = os.path.join(
@@ -489,6 +553,10 @@ class PoLManager:
         Args:
             keep_every_n: 每N个checkpoint保留一个
         """
+        if keep_every_n <= 0:
+            raise ValueError("keep_every_n must be positive")
+        if self._save_executor is not None:
+            self.flush_pending_saves()
         checkpoint_dir = os.path.join(self.save_dir, "checkpoints")
         if not os.path.exists(checkpoint_dir):
             return
@@ -516,6 +584,8 @@ class PoLManager:
             logger.info("Skip auto cleanup: verification pending/inflight")
             return
         if self.save_to_disk:
+            if self._save_executor is not None:
+                self.flush_pending_saves()
             # 磁盘模式：使用CheckpointCleaner进行智能清理
             checkpoint_dir = os.path.join(self.save_dir, "checkpoints")
             cleaner = CheckpointCleaner(
@@ -549,6 +619,9 @@ class PoLManager:
         """
         if not self.save_to_disk:
             return
+
+        if self._save_executor is not None:
+            self.flush_pending_saves()
 
         checkpoint_dir = os.path.join(self.save_dir, "checkpoints")
         try:

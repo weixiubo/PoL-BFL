@@ -8,6 +8,9 @@ import json
 from pathlib import Path
 from typing import Any, Mapping
 
+from experiments.final.evidence import seal_evidence
+from experiments.final.manifest import sha256_file, source_identity
+
 
 COVERAGE = {
     "table_2_main_security": ("executable_matrix", "experiments/final/run_matrix.py"),
@@ -54,6 +57,15 @@ def audit_coverage(matrix: Mapping[str, Any], *, root: Path) -> dict[str, Any]:
     }
 
 
+def coverage_input_paths(matrix_path: Path, *, root: Path) -> tuple[Path, ...]:
+    owners = tuple(
+        sorted({(root / owner).resolve() for _mode, owner in COVERAGE.values()})
+    )
+    if len(owners) != len(COVERAGE):
+        raise ValueError("final-paper coverage owners must be one-to-one")
+    return (matrix_path.resolve(), *owners)
+
+
 def main() -> None:
     root = Path(__file__).resolve().parents[2]
     parser = argparse.ArgumentParser()
@@ -63,6 +75,21 @@ def main() -> None:
     report = audit_coverage(
         json.loads(args.matrix.read_text(encoding="utf-8")),
         root=root,
+    )
+    inputs = coverage_input_paths(args.matrix, root=root)
+    report["input_sha256"] = {
+        (
+            str(path.relative_to(root))
+            if path.is_relative_to(root)
+            else str(path)
+        ): sha256_file(path)
+        for path in inputs
+    }
+    source = source_identity(root)
+    report = seal_evidence(
+        report,
+        source_commit=source["commit"],
+        analysis_source=source,
     )
     payload = json.dumps(report, indent=2, sort_keys=True) + "\n"
     if args.output:

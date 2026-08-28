@@ -162,3 +162,36 @@ def test_sybil_screening_does_not_treat_empty_index_sequences_as_duplicates():
         trajectory_cosine_threshold=0.99,
     )
     assert not report.flagged_clients
+
+
+def test_sybil_screening_resamples_different_checkpoint_counts():
+    report = screen_trace_fingerprints(
+        [
+            TraceFingerprint(
+                "a",
+                "a" * 64,
+                ((0.0, 0.0), (1.0, 2.0), (2.0, 4.0)),
+                (1, 2, 3),
+            ),
+            TraceFingerprint(
+                "b",
+                "b" * 64,
+                ((10.0, 10.0), (12.0, 14.0)),
+                (4, 5, 6),
+            ),
+            TraceFingerprint(
+                "incompatible-width",
+                "c" * 64,
+                ((0.0,), (1.0,)),
+                (7, 8, 9),
+            ),
+        ],
+        trajectory_cosine_threshold=0.995,
+    )
+    assert report.flagged_clients == frozenset({"a", "b"})
+    pairs = {
+        (pair.left_client, pair.right_client): pair for pair in report.pairs
+    }
+    assert pairs[("a", "b")].trajectory_cosine == pytest.approx(1.0)
+    assert "checkpoint_trajectory_similarity" in pairs[("a", "b")].reasons
+    assert pairs[("a", "incompatible-width")].trajectory_cosine == 0.0

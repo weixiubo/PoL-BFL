@@ -27,7 +27,6 @@ class Task:
         self.model = None
         
         #Get Dataset
-        # TODO pass the schema (object) instead of args directly.  
         logger.info("Constructing dataset %s from dataset Factory", global_args.get('dataset'))
         self.train_dataset = DatasetFactory().get_dataset(global_args.get('dataset'),True)
         self.test_dataset =  DatasetFactory().get_dataset(global_args.get('dataset'),False)
@@ -36,7 +35,7 @@ class Task:
         self.model = ModelFactory().get_model(model=self.global_args.get('model'),class_num=self.global_args.get('class_num'))
         
         #FL alg
-        logger.info("Algorithm: {algorithm}")
+        logger.info("Algorithm: %s", algorithm)
         self.server = algorithm.get_server()
         self.server = self.server()
         self.trainer = algorithm.get_trainer()
@@ -47,7 +46,12 @@ class Task:
         self.client_pool : list[Client] = []
         
     def __repr__(self) -> str:
-        pass
+        return (
+            f"Task(dataset={self.global_args.get('dataset')!r}, "
+            f"model={self.global_args.get('model')!r}, "
+            f"clients={self.global_args.get('client_num')!r}, "
+            f"rounds={self.global_args.get('communication_round')!r})"
+        )
     
     def _construct_dataloader(self):
         logger.info("Constructing dataloader with batch size %d, client_num: %d, non-iid: %s", self.global_args.get('batch_size')
@@ -63,7 +67,7 @@ class Task:
         self.keys_dict = dict()
         self.keys = list()
         sign_num = self.global_args.get('sign_num')
-        if(None == sign_num): 
+        if sign_num is None or int(sign_num) <= 0:
             sign_num = 0
             logger.info("No client need to add watermark")
             for ind, (client_id,_) in enumerate(self.client_list.items()):
@@ -79,9 +83,11 @@ class Task:
                     self.keys.append(None)
             for ind, (client_id,_) in enumerate(self.client_list.items()):
                 self.keys_dict[client_id] = self.keys[ind]
-            #Project the watermake to the client TODO work with the blockchain
-            #Get model Here better split another function.                 
-            tmp_args = chain_proxy.construct_sign(self.global_args)
+            # Build the signed model from the same negotiated key material that
+            # is assigned to the participating clients.
+            tmp_args = next((key for key in self.keys if key is not None), None)
+            if tmp_args is None:
+                raise RuntimeError("watermark configuration produced no signing key")
             self.model = ModelFactory().get_sign_model(model          = self.global_args.get('model'),
                                                        class_num      = self.global_args.get('class_num'),
                                                        in_channels    = self.global_args.get('in_channels'),
@@ -115,3 +121,4 @@ class Task:
             global_model = self.server.aggregate()
             for client in self.client_pool:
                 client.load_state_dict(global_model)
+        return global_model

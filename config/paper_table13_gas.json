@@ -1,0 +1,11 @@
+{
+  "authority_pdf_sha256": "0b013e58d4f99f91470c61a891a4ee89dfd09eff58e131abbe730d1f6f91e6d4",
+  "schema_version": 1,
+  "table_13_gas": {
+    "commitment": 85000,
+    "honest_round_total": 225000,
+    "proof_receipt": 120000,
+    "reward_claim": 45000,
+    "slash": 65000
+  }
+}

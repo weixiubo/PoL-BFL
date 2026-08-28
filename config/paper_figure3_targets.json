@@ -1,0 +1,62 @@
+{
+  "authority_pdf_sha256": "0b013e58d4f99f91470c61a891a4ee89dfd09eff58e131abbe730d1f6f91e6d4",
+  "extraction": {
+    "behaviors": [
+      "Honest",
+      "Rational",
+      "Malicious"
+    ],
+    "reputation_axis": {
+      "maximum": 100.0,
+      "minimum": 0.0
+    },
+    "sample_rounds": [
+      0,
+      20,
+      50,
+      100,
+      150,
+      200
+    ]
+  },
+  "figure_3_reputation_evolution": [
+    {
+      "Honest": 50.0,
+      "Malicious": 50.0,
+      "Rational": 50.0,
+      "round": 0
+    },
+    {
+      "Honest": 62.5,
+      "Malicious": 42.8,
+      "Rational": 55.2,
+      "round": 20
+    },
+    {
+      "Honest": 78.2,
+      "Malicious": 28.5,
+      "Rational": 62.5,
+      "round": 50
+    },
+    {
+      "Honest": 88.5,
+      "Malicious": 15.2,
+      "Rational": 68.2,
+      "round": 100
+    },
+    {
+      "Honest": 92.8,
+      "Malicious": 8.5,
+      "Rational": 72.5,
+      "round": 150
+    },
+    {
+      "Honest": 95.2,
+      "Malicious": 5.2,
+      "Rational": 75.8,
+      "round": 200
+    }
+  ],
+  "physical_pdf_page": 8,
+  "schema_version": 1
+}

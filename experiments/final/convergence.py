@@ -17,6 +17,10 @@ sys.path.insert(0, str(ROOT))
 
 from scripts.capture_formal_evidence import verify_completed_cell
 from experiments.final.evidence import require_single_source_commit, seal_evidence
+from experiments.final.target_provenance import (
+    FIGURE2_TARGET_FILES,
+    load_merged_targets,
+)
 
 
 METHODS = ("VanillaFL", "Krum", "SDEA", "ShapleyFL", "FoolsGold", "PoLBFL")
@@ -32,6 +36,8 @@ def aggregate_convergence(
     sample_rounds: Sequence[int] = SAMPLE_ROUNDS,
 ) -> dict[str, Any]:
     trials = tuple(trials)
+    if "figure_2_convergence" not in targets:
+        raise ValueError("Figure 2 aggregation requires PDF-derived vector targets")
     source_commit = require_single_source_commit(trials, context="Figure 2")
     groups: dict[tuple[str, str], list[Mapping[str, Any]]] = defaultdict(list)
     for trial in trials:
@@ -85,6 +91,13 @@ def aggregate_convergence(
                 )
                 points.append({"round": int(round_number), "MA": statistics.fmean(values)})
             figure.setdefault(attack, {})[method] = points
+            vector = targets["figure_2_convergence"][attack][method]
+            if [int(point["round"]) for point in vector] != list(sample_rounds):
+                raise ValueError(f"Figure 2 target rounds differ: {attack}/{method}")
+            for observed, expected in zip(points, vector):
+                checks[
+                    f"{attack}.{method}.round_{observed['round']}.MA"
+                ] = float(observed["MA"]) >= float(expected["MA"])
             target = targets["table_2_all_methods"]["CIFAR10"][attack][method]
             checks[f"{attack}.{method}.final_MA"] = points[-1]["MA"] >= float(target["MA"])
             provenance[f"{attack}.{method}"] = {
@@ -127,13 +140,18 @@ def main() -> None:
     parser.add_argument(
         "--targets",
         type=Path,
-        default=ROOT / "config" / "paper_table2_all_methods.json",
+        default=None,
     )
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
+    targets = (
+        json.loads(args.targets.read_text(encoding="utf-8"))
+        if args.targets is not None
+        else load_merged_targets(ROOT, FIGURE2_TARGET_FILES)
+    )
     aggregate = aggregate_convergence(
         [_trial_from_result(path.resolve()) for path in args.results],
-        json.loads(args.targets.read_text(encoding="utf-8")),
+        targets,
     )
     aggregate["input_sha256"] = {
         str(path): hashlib.sha256(path.read_bytes()).hexdigest()

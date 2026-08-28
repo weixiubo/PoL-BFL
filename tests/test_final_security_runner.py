@@ -436,10 +436,17 @@ def test_layer_profile_is_formal_only_in_the_table3_study(monkeypatch, tmp_path)
         run_security_cell.parse_args()
 
 
-def test_sybil_scalability_acceptance_uses_endpoint_targets_and_stake_floor():
+def test_sybil_scalability_acceptance_uses_dataset_vector_targets_and_stake_floor():
     targets = {
-        "figure_6_sybil_scalability": {
-            "20": {"DR": 87.5, "stake_eth": 1.0}
+        "figure_6_vector_targets": {
+            "CIFAR10": {
+                "20": {
+                    "MA": 80.5,
+                    "DR": 87.5,
+                    "FPR": 3.2,
+                    "stake_eth": 1.0,
+                }
+            }
         }
     }
     result = {
@@ -448,6 +455,7 @@ def test_sybil_scalability_acceptance_uses_endpoint_targets_and_stake_floor():
         "attack": "Sybil",
         "sybil_identity_count": 20,
         "sybil_stake_eth": 1.0,
+        "MA": 81.0,
         "DR": 90.0,
         "FPR": 2.0,
         "real_groth16": True,

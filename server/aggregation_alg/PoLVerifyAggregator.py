@@ -909,14 +909,14 @@ class PoLVerifyAggregator(ServerAggregator):
             # Fallback: if ZKP not present but we have 2+ checkpoints, still issue an on-chain challenge record for auditability
             try:
                 if (zkp_ok is None or zkp_ok is False) and self.enable_zkp and len(response.get('checkpoints', [])) >= 2:
-                    # Use placeholder public signals when proof is absent
+                    # Represent absent public signals explicitly when no proof was submitted.
                     pair = [response['checkpoints'][0]['index'], response['checkpoints'][1]['index']]
                     idx0 = int(pair[0])
                     idx1 = int(pair[1])
                     deadline_ts = int(time.time()) + 3600
                     chal_id = chain_proxy.issue_challenge(client_id, idx0, idx1, deadline_ts)
                     if isinstance(chal_id, str) and len(chal_id) > 0:
-                        # Record absence of ZKP without synthesizing placeholder signals
+                        # Record absence of ZKP without synthesizing public inputs.
                         chain_proxy.challenge_proof(chal_id, {}, False, reason="zkp_absent_or_fail")
             except Exception as e:
                 logger.warning(f"On-chain fallback challengeProof record failed for {client_id}: {e}")

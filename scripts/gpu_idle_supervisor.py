@@ -72,6 +72,31 @@ def foreign_gpu_pids(process_group: int) -> set[int]:
     return foreign
 
 
+def training_rounds_complete(run_dir: Path) -> bool:
+    """Return true once every configured round and its checkpoint are durable."""
+
+    manifest_path = run_dir / "manifest.json"
+    rounds_path = run_dir / "rounds.jsonl"
+    checkpoint_path = run_dir / "checkpoint.pt"
+    if not manifest_path.is_file() or not rounds_path.is_file() or not checkpoint_path.is_file():
+        return False
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        expected = int(manifest["run_parameters"]["rounds"])
+        rows = [
+            json.loads(line)
+            for line in rounds_path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+    except (KeyError, OSError, TypeError, ValueError, json.JSONDecodeError):
+        return False
+    return (
+        expected > 0
+        and len(rows) == expected
+        and [int(row.get("round", -1)) for row in rows] == list(range(expected))
+    )
+
+
 def wait_until_idle(*, settle_seconds: int, poll_seconds: int) -> None:
     idle_since = None
     while True:
@@ -154,6 +179,8 @@ def main() -> None:
             )
             child_group = child.pid
             preempted = False
+            training_complete = training_rounds_complete(args.run_dir)
+            ignored_foreign: tuple[tuple[int, ...], str | None] | None = None
             while child.poll() is None:
                 try:
                     foreign = foreign_gpu_pids(child_group)
@@ -162,6 +189,25 @@ def main() -> None:
                     foreign = set()
                     monitor_error = f"{type(exc).__name__}:{exc}"
                 if foreign or monitor_error is not None:
+                    if not training_complete:
+                        training_complete = training_rounds_complete(args.run_dir)
+                    if training_complete:
+                        observed = (tuple(sorted(foreign)), monitor_error)
+                        if observed != ignored_foreign:
+                            event = {
+                                "event": "foreign_gpu_ignored_after_training",
+                                "at_ns": time.time_ns(),
+                                "child_group": child_group,
+                                "foreign_gpu_pids": list(observed[0]),
+                                "monitor_error": monitor_error,
+                                "gpu_usage": gpu_usage(),
+                            }
+                            stream.write(json.dumps(event, sort_keys=True) + "\n")
+                            stream.flush()
+                            os.fsync(stream.fileno())
+                            ignored_foreign = observed
+                        time.sleep(max(0.1, args.monitor_seconds))
+                        continue
                     event = {
                         "event": "foreign_gpu_preemption",
                         "at_ns": time.time_ns(),

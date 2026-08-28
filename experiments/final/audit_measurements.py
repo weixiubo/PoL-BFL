@@ -29,6 +29,8 @@ FORMAL_CELL_ROUTES = frozenset(
         "table_7_system_overhead",
         "table_8_scalability",
         "table_9_noniid",
+        "table_10_adaptive",
+        "table_11_cross_hardware",
         "figure_2_convergence",
         "figure_3_reputation_evolution",
         "figure_4_spot_check_sensitivity",

@@ -1,10 +1,8 @@
-"""
-ZKP Verifier for PoL-FL Server
+"""Groth16 verifier for PoL-BFL parameter-update proofs.
 
-Verifies zero-knowledge proofs of parameter updates without accessing private data.
-
-Note: This is an interface implementation with simulated verification.
-For production use, integrate with actual Circom/snarkjs workflow or on-chain verification.
+The verifier exposes three explicit backends: deterministic structural checks for
+tests, off-chain ``snarkjs`` verification, and the deployed Solidity verifier.
+Integrity-mode executions reject the structural-only backend.
 """
 
 import os
@@ -12,7 +10,7 @@ import json
 import logging
 import subprocess
 import tempfile
-from typing import Dict, Optional
+from typing import Callable, Dict, Optional
 
 from zkp.hash import fold_weights_from_state, fold_indices
 
@@ -36,18 +34,25 @@ class ZKPVerifier:
 
     def __init__(self, verification_key_path: str = None,
                  use_simulation: bool = True,
-                 use_onchain: bool = False):
+                 use_onchain: bool = False,
+                 onchain_verifier: Optional[
+                     Callable[[Dict, Dict], bool]
+                 ] = None):
         """
         Initialize ZKP Verifier
 
         Args:
             verification_key_path: Path to verification key (.json)
-            use_simulation: If True, simulate verification (for development)
-            use_onchain: If True, use on-chain verification (requires blockchain)
+            use_simulation: Run deterministic structural checks for isolated tests
+            use_onchain: Verify with the deployed Groth16 Solidity contract
+            onchain_verifier: Optional injected contract-call adapter
         """
+        if use_simulation and use_onchain:
+            raise ValueError("select exactly one ZKP verification backend")
         self.verification_key_path = verification_key_path
         self.use_simulation = use_simulation
         self.use_onchain = use_onchain
+        self.onchain_verifier = onchain_verifier
 
         if os.getenv('POL_INTEGRITY', '0') == '1' and self.use_simulation:
             raise RuntimeError("POL_INTEGRITY=1 forbids ZKP simulation; set use_simulation=False and ensure snarkjs/node are installed.")
@@ -90,10 +95,9 @@ class ZKPVerifier:
 
     def _simulate_verification(self, proof: Dict, public_signals: Dict) -> bool:
         """
-        Simulate proof verification (for development/testing)
+        Run deterministic structural checks for isolated unit tests.
 
-        In production, this would call actual snarkjs or smart contract.
-        For now, we perform basic sanity checks.
+        This backend is explicitly rejected when ``POL_INTEGRITY=1``.
         """
         # Check proof structure
         if not self._check_proof_structure(proof):
@@ -107,9 +111,7 @@ class ZKPVerifier:
                 logger.error(f"Missing public signal: {field}")
                 return False
 
-        # Simulate verification (always pass in simulation mode)
-        # In reality, this would verify the cryptographic proof
-        logger.info("Simulated ZKP verification: PASS")
+        logger.info("Structural ZKP verification: PASS")
         logger.debug(f"  W_t_hash: {public_signals['W_t_hash'][:16]}...")
         logger.debug(f"  W_t1_hash: {public_signals['W_t1_hash'][:16]}...")
 
@@ -167,13 +169,32 @@ class ZKPVerifier:
             return is_valid
 
     def _verify_onchain(self, proof: Dict, public_signals: Dict) -> bool:
-        """
-        Verify proof on-chain using smart contract
+        """Verify a proof through the deployed Groth16 Solidity contract.
 
-        Not yet implemented; for now, use off-chain verification if available.
+        Contract unavailability and malformed inputs fail closed; an on-chain
+        request is never silently downgraded to a different backend.
         """
-        logger.warning("On-chain verification not yet implemented; falling back to off-chain")
-        return self._verify_offchain(proof, public_signals)
+        if not self._check_proof_structure(proof):
+            logger.error("Invalid Groth16 proof structure")
+            return False
+        required = ("W_t_hash", "W_t1_hash", "data_hash", "max_distance")
+        if not isinstance(public_signals, dict) or any(
+            field not in public_signals for field in required
+        ):
+            logger.error("Invalid Groth16 public signals")
+            return False
+        try:
+            verifier = self.onchain_verifier
+            if verifier is None:
+                from chainfl.interact import chain_proxy
+
+                verifier = chain_proxy.verify_zkp_onchain
+            verified = bool(verifier(proof, public_signals))
+            logger.info("On-chain ZKP verification: %s", "PASS" if verified else "FAIL")
+            return verified
+        except Exception as exc:
+            logger.error("On-chain ZKP verification failed: %s", exc)
+            return False
 
     def _check_proof_structure(self, proof: Dict) -> bool:
         """Check if proof has valid Groth16 structure"""

@@ -32,6 +32,11 @@ from experiments.final.manifest import (
     write_manifest_atomic,
 )
 from experiments.final.preflight import md5_file
+from experiments.final.target_provenance import (
+    ADAPTIVE_TARGET_FILES,
+    load_merged_targets,
+    target_paths,
+)
 from experiments.final.trust_setup import validate_trust_setup
 from experiments.scripts.utils.models import create_model
 from polbfl.protocol import HybridChallengeSampler
@@ -258,11 +263,7 @@ def run_trial(args: argparse.Namespace) -> dict:
         raise RuntimeError("adaptive timing evidence is non-positive")
     ratio = forge_seconds / honest_reference_seconds
 
-    targets = json.loads(
-        (ROOT / "config" / "paper_targets.json").read_text(
-            encoding="utf-8"
-        )
-    )
+    targets = load_merged_targets(ROOT, ADAPTIVE_TARGET_FILES)
     economics = targets["table_6_profit_usd"]
     malicious_economics = economics["MaliciousNT"]
     malicious_profit = adaptive_profit(
@@ -405,6 +406,7 @@ def run_trial(args: argparse.Namespace) -> dict:
         configuration_files=(
             ROOT / "config" / "paper_protocol.json",
             ROOT / "config" / "paper_targets.json",
+            *target_paths(ROOT, ADAPTIVE_TARGET_FILES),
             ROOT / "config" / "toolchain.lock.json",
             ROOT / "experiments" / "final" / "paper_matrix.json",
         ),

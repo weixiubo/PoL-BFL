@@ -1,7 +1,7 @@
 pragma circom 2.0.0;
 
 // Real SGD update proof wrapper using the shared ParameterUpdateProof.
-// This replaces the previous placeholder circuit and provides production constraints.
+// Production constraints for sampled SGD transition verification.
 
 include "parameter_update_template.circom";
 

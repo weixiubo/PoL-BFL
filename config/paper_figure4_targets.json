@@ -1,0 +1,79 @@
+{
+  "authority_pdf_sha256": "0b013e58d4f99f91470c61a891a4ee89dfd09eff58e131abbe730d1f6f91e6d4",
+  "extraction": {
+    "left_axis": {
+      "maximum": 100.0,
+      "minimum": 0.0
+    },
+    "ma_axis": {
+      "maximum": 90.0,
+      "minimum": 80.0
+    },
+    "probabilities": [
+      "0.05",
+      "0.10",
+      "0.15",
+      "0.20",
+      "0.25",
+      "0.30",
+      "0.50",
+      "1.00"
+    ],
+    "runtime_axis": {
+      "maximum": 200.0,
+      "minimum": 40.0
+    }
+  },
+  "figure_4_spot_check_sensitivity": {
+    "0.05": {
+      "DR": 78.5,
+      "FPR": 1.5,
+      "MA": 82.2,
+      "runtime_seconds": 58.2
+    },
+    "0.10": {
+      "DR": 85.2,
+      "FPR": 1.8,
+      "MA": 84.5,
+      "runtime_seconds": 65.8
+    },
+    "0.15": {
+      "DR": 90.5,
+      "FPR": 2.0,
+      "MA": 85.8,
+      "runtime_seconds": 72.5
+    },
+    "0.20": {
+      "DR": 92.8,
+      "FPR": 2.1,
+      "MA": 86.8,
+      "runtime_seconds": 78.5
+    },
+    "0.25": {
+      "DR": 94.2,
+      "FPR": 2.3,
+      "MA": 87.0,
+      "runtime_seconds": 85.2
+    },
+    "0.30": {
+      "DR": 95.5,
+      "FPR": 2.5,
+      "MA": 87.2,
+      "runtime_seconds": 92.5
+    },
+    "0.50": {
+      "DR": 97.8,
+      "FPR": 2.8,
+      "MA": 87.5,
+      "runtime_seconds": 125.2
+    },
+    "1.00": {
+      "DR": 99.2,
+      "FPR": 3.2,
+      "MA": 87.8,
+      "runtime_seconds": 185.5
+    }
+  },
+  "physical_pdf_page": 8,
+  "schema_version": 1
+}

@@ -2,7 +2,11 @@ import hashlib
 import json
 from pathlib import Path
 
-from experiments.final.audit_final_coverage import COVERAGE, audit_coverage
+from experiments.final.audit_final_coverage import (
+    COVERAGE,
+    audit_coverage,
+    coverage_input_paths,
+)
 from experiments.final.audit_measurements import (
     AUTHORITY_PDF_SHA256,
     FORMAL_CELL_ROUTES,
@@ -44,6 +48,19 @@ def test_final_coverage_audit_routes_every_study_without_claiming_measurements()
     assert report["passed"]
     assert set(report["routes"]) == set(COVERAGE) == set(matrix["studies"])
     assert report["measurement_complete"] is False
+    assert {
+        "table_10_adaptive",
+        "table_11_cross_hardware",
+    } <= FORMAL_CELL_ROUTES
+
+
+def test_final_coverage_provenance_hashes_matrix_and_every_unique_owner():
+    matrix_path = ROOT / "experiments" / "final" / "paper_matrix.json"
+    inputs = coverage_input_paths(matrix_path, root=ROOT)
+    assert inputs[0] == matrix_path.resolve()
+    assert len(inputs) == 1 + len(COVERAGE) == 18
+    assert len(set(inputs)) == len(inputs)
+    assert all(path.is_file() for path in inputs)
 
 
 def test_measurement_audit_requires_accepted_same_source_evidence_for_all_routes(tmp_path):

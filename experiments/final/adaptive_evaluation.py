@@ -102,7 +102,11 @@ def main() -> None:
     root = Path(__file__).resolve().parents[2]
     parser = argparse.ArgumentParser()
     parser.add_argument("trials", nargs="+", type=Path)
-    parser.add_argument("--targets", type=Path, default=root / "config" / "paper_targets.json")
+    parser.add_argument(
+        "--targets",
+        type=Path,
+        default=root / "config" / "paper_table10_adaptive.json",
+    )
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     aggregate = aggregate_adaptive_trials(

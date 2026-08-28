@@ -163,6 +163,21 @@ async function main() {
   assert.equal((await protocol.rounds(roundId)).finalized, true);
   for (const verifier of committee) assert.equal((await protocol.accounts(verifier)).locks, 0n);
 
+  const stressedGasPrice = ethers.parseUnits("100", "gwei");
+  const operationsGas = 225_000n;
+  const minimumBeforeUnauthorizedUpdate = await protocol.minimumClientStake();
+  await assert.rejects(
+    protocol.connect(clientSigners[0]).updateMinimumStake(stressedGasPrice, operationsGas, 0),
+  );
+  assert.equal(await protocol.minimumClientStake(), minimumBeforeUnauthorizedUpdate);
+  const wad = 10n ** 18n;
+  const detection = await protocol.challengeProbabilityBps() * wad / 10_000n
+    * await protocol.detectionProbability() / wad;
+  const denominator = await protocol.slashingRatio() * detection / wad;
+  const expectedResponsiveStake = stressedGasPrice * operationsGas * wad / denominator;
+  await (await protocol.updateMinimumStake(stressedGasPrice, operationsGas, 0)).wait();
+  assert.equal(await protocol.minimumClientStake(), expectedResponsiveStake);
+
   assert.ok(
     commitmentGas.every((value) => value <= 85_000n),
     `commitment gas exceeds paper target: ${commitmentGas.map(String).join(",")}`,
@@ -178,6 +193,10 @@ async function main() {
     slash_gas: slashReceipt.gasUsed.toString(),
     reward_claim_gas: rewardClaimReceipt.gasUsed.toString(),
     slashed_clients: 2,
+    rejected_client_slashed: true,
+    timeout_client_slashed: true,
+    oracle_stake_update_verified: true,
+    minimum_stake_after_oracle: expectedResponsiveStake.toString(),
   })}\n`);
   if (typeof ganacheProvider.disconnect === "function") ganacheProvider.disconnect();
 }

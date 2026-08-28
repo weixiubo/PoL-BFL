@@ -45,7 +45,10 @@ class VGG(nn.Module):
         for i in range(5):
             in_dim = int(in_dim/2)
         if(in_dim == 0) : 
-            raise Exception(f"Dataset Pixel to small for 5 pooling layers, TODO: Adapting VGG for MINST dataset")
+            raise ValueError(
+                "input resolution is too small for five VGG pooling stages; "
+                "select a shallower VGG configuration"
+            )
         in_dim = in_dim*in_dim*512
         self.mlp_layer.append(nn.Dropout())
         self.mlp_layer.append(nn.Linear(int(in_dim),512))

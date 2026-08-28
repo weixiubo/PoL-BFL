@@ -78,3 +78,11 @@ def test_every_gpu_matrix_execution_uses_the_runtime_exclusivity_supervisor():
     for name in runners:
         text = (ROOT / "experiments" / "final" / name).read_text(encoding="utf-8")
         assert "supervised_gpu_command" in text, name
+
+
+def test_adaptive_and_cross_hardware_aggregates_expose_formal_cell_paths():
+    for name in ("aggregate_table10.py", "aggregate_table11.py"):
+        text = (ROOT / "experiments" / "final" / name).read_text(
+            encoding="utf-8"
+        )
+        assert 'aggregate["formal_result_paths"]' in text, name

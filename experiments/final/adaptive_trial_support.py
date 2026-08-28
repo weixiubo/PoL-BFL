@@ -95,6 +95,8 @@ def training_task(
     client_index: int,
     local_epochs: int,
     device: str,
+    pair_tolerance: float = 1e-5,
+    final_tolerance: float = 1e-3,
 ) -> dict[str, Any]:
     name = "reference-" + str(client_index) + "-e" + str(local_epochs)
     return {
@@ -120,6 +122,8 @@ def training_task(
         "poseidon_binary": str(poseidon_binary),
         "packed_evidence": True,
         "record_pol": True,
+        "pair_tolerance": float(pair_tolerance),
+        "final_tolerance": float(final_tolerance),
         "result_path": str(
             output / "worker-results" / (name + ".pt")
         ),
@@ -136,6 +140,8 @@ def train_reference(
     client_index: int,
     local_epochs: int,
     device: str,
+    pair_tolerance: float = 1e-5,
+    final_tolerance: float = 1e-3,
 ) -> dict[str, Any]:
     result_path = Path(
         train_client_task(
@@ -148,6 +154,8 @@ def train_reference(
                 client_index=client_index,
                 local_epochs=local_epochs,
                 device=device,
+                pair_tolerance=pair_tolerance,
+                final_tolerance=final_tolerance,
             )
         )
     )

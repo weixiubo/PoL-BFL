@@ -15,6 +15,7 @@ from experiments.final.evidence import require_single_source_commit, seal_eviden
 
 
 IDENTITY_COUNTS = (5, 10, 15, 20)
+DATASETS = ("CIFAR10", "FEMNIST", "CIFAR100")
 
 
 def aggregate_figure6(
@@ -25,7 +26,9 @@ def aggregate_figure6(
 ) -> dict[str, Any]:
     results = tuple(results)
     source_commit = require_single_source_commit(results, context="Figure 6")
-    groups: dict[int, list[Mapping[str, Any]]] = defaultdict(list)
+    if "figure_6_vector_targets" not in targets:
+        raise ValueError("Figure 6 aggregate requires PDF-derived vector targets")
+    groups: dict[tuple[str, int], list[Mapping[str, Any]]] = defaultdict(list)
     for result in results:
         required = {
             "study",
@@ -34,6 +37,7 @@ def aggregate_figure6(
             "seed",
             "sybil_identity_count",
             "sybil_stake_eth",
+            "MA",
             "DR",
             "FPR",
             "source_commit",
@@ -45,7 +49,7 @@ def aggregate_figure6(
             not required.issubset(result)
             or result.get("formal_accepted") is not True
             or result["study"] != "sybil_scalability"
-            or result["dataset"] != "CIFAR10"
+            or result["dataset"] not in DATASETS
             or result["attack"] != "Sybil"
             or result["real_groth16"] is not True
             or result["real_contract_transition"] is not True
@@ -55,59 +59,62 @@ def aggregate_figure6(
         count = int(result["sybil_identity_count"])
         if count not in IDENTITY_COUNTS:
             raise ValueError("Figure 6 identity count is invalid")
-        groups[count].append(result)
-    if set(groups) != set(IDENTITY_COUNTS):
-        raise ValueError("Figure 6 aggregate lacks an identity-count group")
-    figure = {}
-    provenance = {}
+        groups[(str(result["dataset"]), count)].append(result)
+    expected_groups = {
+        (dataset, count) for dataset in DATASETS for count in IDENTITY_COUNTS
+    }
+    if set(groups) != expected_groups:
+        raise ValueError("Figure 6 aggregate lacks a dataset/identity-count group")
+    figure: dict[str, dict[str, Any]] = {}
+    provenance: dict[str, dict[str, Any]] = {}
     checks = {}
-    for count in IDENTITY_COUNTS:
-        rows = groups[count]
-        seeds = [int(row["seed"]) for row in rows]
-        if len(rows) != required_seed_count or len(set(seeds)) != len(seeds):
-            raise ValueError(
-                "Figure 6 seed set is incomplete for " + str(count)
+    for dataset in DATASETS:
+        figure[dataset] = {}
+        provenance[dataset] = {}
+        for count in IDENTITY_COUNTS:
+            rows = groups[(dataset, count)]
+            seeds = [int(row["seed"]) for row in rows]
+            if len(rows) != required_seed_count or len(set(seeds)) != len(seeds):
+                raise ValueError(
+                    f"Figure 6 seed set is incomplete for {dataset}/{count}"
+                )
+            observed = {
+                "MA": statistics.fmean(float(row["MA"]) for row in rows),
+                "DR": statistics.fmean(float(row["DR"]) for row in rows),
+                "FPR": statistics.fmean(float(row["FPR"]) for row in rows),
+                "stake_eth": statistics.fmean(
+                    float(row["sybil_stake_eth"]) for row in rows
+                ),
+            }
+            figure[dataset][str(count)] = observed
+            target = targets["figure_6_vector_targets"][dataset][str(count)]
+            prefix = f"{dataset}.{count}"
+            checks.update(
+                {
+                    prefix + ".MA": observed["MA"] >= float(target["MA"]),
+                    prefix + ".DR": observed["DR"] >= float(target["DR"]),
+                    prefix + ".FPR": observed["FPR"] <= float(target["FPR"]),
+                    prefix + ".stake_eth": observed["stake_eth"] + 1e-12
+                    >= float(target["stake_eth"]),
+                }
             )
-        observed = {
-            "DR": statistics.fmean(float(row["DR"]) for row in rows),
-            "FPR": statistics.fmean(float(row["FPR"]) for row in rows),
-            "stake_eth": statistics.fmean(
-                float(row["sybil_stake_eth"]) for row in rows
-            ),
-        }
-        figure[str(count)] = observed
-        checks[str(count) + ".stake_floor"] = (
-            observed["stake_eth"] + 1e-12 >= 0.05 * count
+            provenance[dataset][str(count)] = {
+                "seeds": sorted(seeds),
+                "result_digests": sorted(
+                    str(row["result_digest"]) for row in rows
+                ),
+            }
+        checks[dataset + ".DR_non_increasing_with_identity_count"] = all(
+            figure[dataset][str(left)]["DR"] + 1e-9
+            >= figure[dataset][str(right)]["DR"]
+            for left, right in zip(IDENTITY_COUNTS, IDENTITY_COUNTS[1:])
         )
-        checks[str(count) + ".FPR_range"] = (
-            0.0 <= observed["FPR"] <= 100.0
-        )
-        target = targets["figure_6_sybil_scalability"].get(str(count))
-        if target is not None:
-            checks[str(count) + ".DR"] = (
-                observed["DR"] + 1e-9 >= float(target["DR"])
-            )
-            checks[str(count) + ".stake_eth"] = (
-                observed["stake_eth"] + 1e-12
-                >= float(target["stake_eth"])
-            )
-        provenance[str(count)] = {
-            "seeds": sorted(seeds),
-            "result_digests": sorted(
-                str(row["result_digest"]) for row in rows
-            ),
-        }
-    checks["DR_non_increasing_with_identity_count"] = all(
-        figure[str(left)]["DR"] + 1e-9
-        >= figure[str(right)]["DR"]
-        for left, right in zip(IDENTITY_COUNTS, IDENTITY_COUNTS[1:])
-    )
     return {
         "source_commit": source_commit,
         "figure_6_sybil_scalability": figure,
         "provenance": {
             "source_commit": source_commit,
-            "groups": provenance,
+            "datasets": provenance,
         },
         "acceptance": {
             "passed": bool(checks) and all(checks.values()),
@@ -126,7 +133,7 @@ def main() -> None:
     parser.add_argument(
         "--targets",
         type=Path,
-        default=root / "config" / "paper_targets.json",
+        default=root / "config" / "paper_figure6_targets.json",
     )
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()

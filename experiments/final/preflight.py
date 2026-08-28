@@ -18,6 +18,11 @@ sys.path.insert(0, str(ROOT))
 
 from experiments.final.manifest import sha256_file, source_identity
 from experiments.final.evidence import seal_evidence
+from experiments.final.target_provenance import (
+    AUTHORITY_TARGET_FILES,
+    target_paths,
+    validate_all_target_files,
+)
 from experiments.final.trust_setup import validate_trust_setup
 from polbfl.zk import PoseidonBridge
 
@@ -237,6 +242,9 @@ def run_preflight(
     details["source"] = source
     checks["paper_matrix"] = (root / "experiments" / "final" / "paper_matrix.json").is_file()
     checks["paper_targets"] = (root / "config" / "paper_targets.json").is_file()
+    target_validation = validate_all_target_files(root)
+    checks["dedicated_paper_targets"] = target_validation["passed"]
+    details["dedicated_paper_targets"] = target_validation
     checks["contract_runtime"] = (
         (root / "chainEnv" / "contracts" / "PoLBFLProtocol.sol").is_file()
         and (root / "node_modules" / "solc").is_dir()
@@ -273,6 +281,7 @@ def main() -> None:
     declared_inputs = (
         args.paper.resolve(),
         root / "config" / "paper_targets.json",
+        *target_paths(root, AUTHORITY_TARGET_FILES),
         root / "config" / "toolchain.lock.json",
         root / "experiments" / "final" / "paper_matrix.json",
         (args.zk_build / "trust_setup.json").resolve(),

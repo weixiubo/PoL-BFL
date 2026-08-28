@@ -54,7 +54,7 @@ def test_scalability_aggregate_requires_three_seeds_and_real_gas():
                 }
             )
     targets = json.loads(
-        (ROOT / "config" / "paper_targets.json").read_text(encoding="utf-8")
+        (ROOT / "config" / "paper_table8_scalability.json").read_text(encoding="utf-8")
     )
     gas = {
         "passed": True,

@@ -22,6 +22,11 @@ from experiments.final.adaptive_trial_support import (
     production_backend,
     train_reference,
 )
+from experiments.final.cross_hardware_profiles import (
+    KAIZEN_CONFIG,
+    evaluate_numerical_probe,
+    profile_for_pair,
+)
 from experiments.final.hardware_attestation import (
     cross_device_numerical_probe,
     gpu_attestation,
@@ -33,22 +38,17 @@ from experiments.final.manifest import (
     write_manifest_atomic,
 )
 from experiments.final.preflight import md5_file
+from experiments.final.target_provenance import (
+    CROSS_HARDWARE_TARGET_FILES,
+    load_merged_targets,
+    target_paths,
+)
 from experiments.final.trust_setup import validate_trust_setup
 from experiments.scripts.utils.models import create_model
 from polbfl.crypto import domain_hash
 from polbfl.protocol import HybridChallengeSampler
 from polbfl.storage import ContentAddressedStore
 from polbfl.zk import ZKBundleVerifier, ZKCircuitConfig, ZKPoLProver
-
-
-POLBFL_PAIRS = {
-    "RTX4090_RTX4090",
-    "V100_V100",
-    "RTX4090_RTX3080",
-    "RTX4090_V100",
-    "RTX4090_A100",
-    "V100_A100",
-}
 
 
 def _idle(indices: set[int]) -> None:
@@ -90,10 +90,15 @@ def _artifact_files(output: Path) -> tuple[Path, ...]:
     )
 
 
-def run_trial(args: argparse.Namespace) -> dict:
-    if args.hardware_pair not in POLBFL_PAIRS:
+def run_trial(
+    args: argparse.Namespace,
+    *,
+    required_method: str = "PoLBFL",
+) -> dict:
+    profile = profile_for_pair(ROOT, args.hardware_pair)
+    if profile.method != required_method:
         raise ValueError(
-            "Kaizen cross-hardware evidence requires its separate baseline runner"
+            "Table 11 verification profile must use its dedicated runner"
         )
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=False)
@@ -140,13 +145,16 @@ def run_trial(args: argparse.Namespace) -> dict:
         client_index=0,
         local_epochs=5,
         device="cuda:" + str(args.trainer_device),
+        pair_tolerance=profile.pair_tolerance,
+        final_tolerance=profile.final_tolerance,
     )
     probe = cross_device_numerical_probe(
         trained["fingerprint"].checkpoint_vectors,
         trainer_device=args.trainer_device,
         verifier_device=args.verifier_device,
     )
-    if not probe["within_final_tolerance"]:
+    numerical_decision = evaluate_numerical_probe(profile, probe)
+    if not numerical_decision["passed"]:
         raise RuntimeError("cross-device numerical tolerance was exceeded")
 
     backend = production_backend(
@@ -175,9 +183,13 @@ def run_trial(args: argparse.Namespace) -> dict:
             issued_at_ns=issued,
             deadline_ns=issued + 600_000_000_000,
         )
+        circuit_config = ZKCircuitConfig(
+            pair_tolerance=profile.pair_tolerance,
+            final_tolerance=profile.final_tolerance,
+        )
         bundles = ZKPoLProver(
             backend,
-            ZKCircuitConfig(),
+            circuit_config,
             store=ContentAddressedStore(trained["store_root"]),
         ).prove_challenge(
             recorded=recorded,
@@ -214,12 +226,20 @@ def run_trial(args: argparse.Namespace) -> dict:
     ):
         raise RuntimeError("cross-hardware proof controls failed")
 
+    honest_accepted = bool(
+        honest_report.valid and numerical_decision["passed"]
+    )
+    malicious_accepted = bool(
+        malicious_report.valid and numerical_decision["passed"]
+    )
     observations = [
         {
             "hardware_pair": args.hardware_pair,
+            "method": profile.method,
+            "verification_profile_id": profile.profile_id,
             "client_id": "honest-s" + str(args.seed),
             "behavior": "honest",
-            "accepted": True,
+            "accepted": honest_accepted,
             "proof_digest": bundle.proof.proof_digest,
             "trainer_attestation": trainer_attestation,
             "verifier_attestation": verifier_attestation,
@@ -229,9 +249,11 @@ def run_trial(args: argparse.Namespace) -> dict:
         },
         {
             "hardware_pair": args.hardware_pair,
+            "method": profile.method,
+            "verification_profile_id": profile.profile_id,
             "client_id": "malicious-s" + str(args.seed),
             "behavior": "malicious",
-            "accepted": False,
+            "accepted": malicious_accepted,
             "proof_digest": bundle.proof.proof_digest,
             "trainer_attestation": trainer_attestation,
             "verifier_attestation": verifier_attestation,
@@ -240,28 +262,41 @@ def run_trial(args: argparse.Namespace) -> dict:
             "cross_device_probe_digest": probe["probe_digest"],
         },
     ]
-    targets = json.loads(
-        (ROOT / "config" / "paper_targets.json").read_text(
-            encoding="utf-8"
-        )
+    targets = load_merged_targets(
+        ROOT, CROSS_HARDWARE_TARGET_FILES
     )["table_11_cross_hardware"][args.hardware_pair]
+    observed = {
+        "FPR": 100.0 * float(not honest_accepted),
+        "honest_pass_rate": 100.0 * float(honest_accepted),
+        "DR": 100.0 * float(not malicious_accepted),
+        "block_rate": 100.0 * float(not malicious_accepted),
+    }
     checks = {
-        "FPR": 0.0 <= float(targets["FPR"]),
-        "honest_pass_rate": 100.0
+        "FPR": observed["FPR"] <= float(targets["FPR"]),
+        "honest_pass_rate": observed["honest_pass_rate"]
         >= float(targets["honest_pass_rate"]),
-        "DR": 100.0 >= float(targets["DR"]),
-        "block_rate": 100.0 >= float(targets["block_rate"]),
-        "cross_device_tolerance": probe["within_final_tolerance"],
+        "DR": observed["DR"] >= float(targets["DR"]),
+        "block_rate": observed["block_rate"]
+        >= float(targets["block_rate"]),
+        "numerical_profile": numerical_decision["passed"],
         "proof_size": len(bundle.proof.compact_bytes) == 192,
     }
     evidence = {
         "schema_version": 1,
         "hardware_pair": args.hardware_pair,
+        "method": profile.method,
+        "verification_profile": profile.to_dict(),
         "seed": args.seed,
         "source_commit": source["commit"],
         "trainer_attestation": trainer_attestation,
         "verifier_attestation": verifier_attestation,
         "cross_device_probe": probe,
+        "numerical_decision": numerical_decision,
+        "groth16_relation_tolerances": {
+            "pair_tolerance": circuit_config.pair_tolerance,
+            "final_tolerance": circuit_config.final_tolerance,
+        },
+        "observed_metrics": observed,
         "trace_digest": trained["commitment"].trace_digest,
         "proof": bundle.proof.to_dict(),
         "proof_bytes": len(bundle.proof.compact_bytes),
@@ -297,6 +332,8 @@ def run_trial(args: argparse.Namespace) -> dict:
     result = {
         "study": "cross_hardware",
         "hardware_pair": args.hardware_pair,
+        "method": profile.method,
+        "verification_profile_id": profile.profile_id,
         "seed": args.seed,
         "source_commit": source["commit"],
         "observations": observations,
@@ -310,6 +347,11 @@ def run_trial(args: argparse.Namespace) -> dict:
     ).hexdigest()
     result_path = output / "result.json"
     write_manifest_atomic(result_path, result)
+    profile_configuration_files = (
+        (ROOT / KAIZEN_CONFIG,)
+        if profile.method == "Kaizen"
+        else ()
+    )
     manifest = create_run_manifest(
         root=ROOT,
         run_id=(
@@ -322,9 +364,11 @@ def run_trial(args: argparse.Namespace) -> dict:
         configuration_files=(
             ROOT / "config" / "paper_protocol.json",
             ROOT / "config" / "paper_targets.json",
+            *target_paths(ROOT, CROSS_HARDWARE_TARGET_FILES),
             ROOT / "config" / "toolchain.lock.json",
             ROOT / "config" / "baseline_sources.lock.json",
             ROOT / "experiments" / "final" / "paper_matrix.json",
+            *profile_configuration_files,
         ),
         dataset={
             "name": "CIFAR10",
@@ -356,10 +400,12 @@ def run_trial(args: argparse.Namespace) -> dict:
         ),
         run_parameters={
             "hardware_pair": args.hardware_pair,
+            "method": profile.method,
+            "verification_profile": profile.to_dict(),
             "trainer_device": args.trainer_device,
             "verifier_device": args.verifier_device,
-            "pair_tolerance": 1e-5,
-            "final_tolerance": 1e-3,
+            "groth16_relation_pair_tolerance": circuit_config.pair_tolerance,
+            "groth16_relation_final_tolerance": circuit_config.final_tolerance,
             "trust_setup_record_digest": trust_record["record_digest"],
         },
         state="completed",

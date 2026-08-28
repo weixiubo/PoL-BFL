@@ -18,6 +18,10 @@ sys.path.insert(0, str(ROOT))
 
 from experiments.final.run_sensitivity_matrix import PAPER_PROBABILITIES
 from experiments.final.evidence import require_single_source_commit, seal_evidence
+from experiments.final.target_provenance import (
+    FIGURE4_TARGET_FILES,
+    load_merged_targets,
+)
 
 
 def aggregate_sensitivity_cells(
@@ -27,6 +31,8 @@ def aggregate_sensitivity_cells(
     required_seed_count: int = 3,
 ) -> dict[str, Any]:
     results = tuple(results)
+    if "figure_4_spot_check_sensitivity" not in targets:
+        raise ValueError("Figure 4 aggregation requires PDF-derived vector targets")
     source_commit = require_single_source_commit(results, context="Figure 4")
     groups: dict[Decimal, list[Mapping[str, Any]]] = defaultdict(list)
     for result in results:
@@ -60,6 +66,16 @@ def aggregate_sensitivity_cells(
                 observed["runtime_seconds"] + 2.0 >= prior["runtime_seconds"]
             )
         prior = observed
+        vector_target = targets["figure_4_spot_check_sensitivity"][key]
+        checks.update(
+            {
+                f"{key}.MA": observed["MA"] >= float(vector_target["MA"]),
+                f"{key}.DR": observed["DR"] >= float(vector_target["DR"]),
+                f"{key}.FPR": observed["FPR"] <= float(vector_target["FPR"]),
+                f"{key}.runtime_seconds": observed["runtime_seconds"]
+                <= float(vector_target["runtime_seconds"]),
+            }
+        )
     default = table["0.20"]
     target = targets["table_2_pol_bfl"]["CIFAR10"]["FreeRidingNT"]
     overhead = targets["table_7_overhead"]
@@ -88,13 +104,18 @@ def main() -> None:
     root = Path(__file__).resolve().parents[2]
     parser = argparse.ArgumentParser()
     parser.add_argument("results", nargs="+", type=Path)
-    parser.add_argument("--targets", type=Path, default=root / "config" / "paper_targets.json")
+    parser.add_argument("--targets", type=Path)
     parser.add_argument("--required-seed-count", type=int, default=3)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
+    targets = (
+        json.loads(args.targets.read_text(encoding="utf-8"))
+        if args.targets is not None
+        else load_merged_targets(root, FIGURE4_TARGET_FILES)
+    )
     aggregate = aggregate_sensitivity_cells(
         [json.loads(path.read_text(encoding="utf-8")) for path in args.results],
-        json.loads(args.targets.read_text(encoding="utf-8")),
+        targets,
         required_seed_count=args.required_seed_count,
     )
     aggregate["input_sha256"] = {

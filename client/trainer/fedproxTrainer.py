@@ -1,7 +1,6 @@
 #继承下面的虚基类并实现一个fedprox的trainer
 #注意在这里train函数的上传下载功能你不需要操心
 #即主要去复写_train_epoch 方法即可，该函数的接口和返回形式可以在注释中看到，
-#有问题联系我
 import copy
 import logging
 

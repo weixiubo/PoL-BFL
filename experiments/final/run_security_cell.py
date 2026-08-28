@@ -96,6 +96,11 @@ from experiments.final.manifest import create_run_manifest, sha256_file, source_
 from experiments.final.partitions import partition_dataset_dirichlet
 from experiments.final.preflight import md5_file
 from experiments.final.recovery import align_round_log, discard_uncommitted_scratch
+from experiments.final.target_provenance import (
+    SECURITY_TARGET_FILES,
+    load_merged_targets,
+    target_paths,
+)
 from experiments.final.trust_setup import validate_trust_setup
 from experiments.scripts.utils.models import create_model
 from polbfl.aggregation import (
@@ -162,6 +167,13 @@ LAYER_PROFILES = {
     "L1L3": {"robust_aggregation": False, "sybil_and_reputation": True, "economic_enforcement": True},
     "Full": {"robust_aggregation": True, "sybil_and_reputation": True, "economic_enforcement": True},
 }
+
+def acceptance_target_paths(root: Path) -> tuple[Path, ...]:
+    return target_paths(root, SECURITY_TARGET_FILES)
+
+
+def load_acceptance_targets(root: Path) -> dict[str, Any]:
+    return load_merged_targets(root, SECURITY_TARGET_FILES)
 
 
 def summarize_security_rates(
@@ -248,14 +260,15 @@ def evaluate_cell_acceptance(
             "real_groth16": result.get("real_groth16") is True,
             "real_contract_transition": result.get("real_contract_transition") is True,
         }
-        target = targets["figure_6_sybil_scalability"].get(str(identity_count))
-        if target is not None:
-            checks.update(
-                {
-                    "DR": float(result["DR"]) >= float(target["DR"]),
-                    "stake_eth": observed_stake >= float(target["stake_eth"]),
-                }
-            )
+        target = targets["figure_6_vector_targets"][dataset][str(identity_count)]
+        checks.update(
+            {
+                "MA": float(result["MA"]) >= float(target["MA"]),
+                "DR": float(result["DR"]) >= float(target["DR"]),
+                "FPR": float(result["FPR"]) <= float(target["FPR"]),
+                "stake_eth": observed_stake >= float(target["stake_eth"]),
+            }
+        )
         return {"passed": all(checks.values()), "checks": checks}
     if study == "noniid":
         partition_label = str(result["partition_label"])
@@ -320,6 +333,18 @@ def evaluate_cell_acceptance(
             "FPR_range": 0.0 <= float(result["FPR"]) <= 100.0,
             "runtime_positive": float(result["runtime_seconds"]) > 0.0,
         }
+        figure_target = targets["figure_4_spot_check_sensitivity"][
+            format(probability, "f")
+        ]
+        checks.update(
+            {
+                "figure.MA": float(result["MA"]) >= float(figure_target["MA"]),
+                "figure.DR": float(result["DR"]) >= float(figure_target["DR"]),
+                "figure.FPR": float(result["FPR"]) <= float(figure_target["FPR"]),
+                "figure.runtime_seconds": float(result["runtime_seconds"])
+                <= float(figure_target["runtime_seconds"]),
+            }
+        )
         if probability == Decimal("0.20"):
             target = targets["table_2_pol_bfl"]["CIFAR10"]["FreeRidingNT"]
             overhead = targets["table_7_overhead"]
@@ -2071,18 +2096,7 @@ class SecurityCell:
                     ),
                 }
             )
-        targets = json.loads(
-            (self.root / "config" / "paper_targets.json").read_text(encoding="utf-8")
-        )
-        targets.update(json.loads(
-            (self.root / "config" / "paper_table2_all_methods.json").read_text(encoding="utf-8")
-        ))
-        targets.update(json.loads(
-            (self.root / "config" / "paper_table4_all_modes.json").read_text(encoding="utf-8")
-        ))
-        targets.update(json.loads(
-            (self.root / "config" / "paper_table5_all_methods.json").read_text(encoding="utf-8")
-        ))
+        targets = load_acceptance_targets(self.root)
         final["acceptance"] = evaluate_cell_acceptance(final, targets)
         final["formal_accepted"] = bool(
             not self.args.diagnostic and final["acceptance"]["passed"]
@@ -2104,9 +2118,7 @@ class SecurityCell:
             configuration_files=(
                 self.root / "config" / "paper_protocol.json",
                 self.root / "config" / "paper_targets.json",
-                self.root / "config" / "paper_table2_all_methods.json",
-                self.root / "config" / "paper_table4_all_modes.json",
-                self.root / "config" / "paper_table5_all_methods.json",
+                *acceptance_target_paths(self.root),
                 self.root / "config" / "baseline_sources.lock.json",
                 self.root / "config" / "toolchain.lock.json",
                 self.root / "experiments" / "final" / "paper_matrix.json",
@@ -2128,9 +2140,7 @@ class SecurityCell:
             configuration_files=(
                 self.root / "config" / "paper_protocol.json",
                 self.root / "config" / "paper_targets.json",
-                self.root / "config" / "paper_table2_all_methods.json",
-                self.root / "config" / "paper_table4_all_modes.json",
-                self.root / "config" / "paper_table5_all_methods.json",
+                *acceptance_target_paths(self.root),
                 self.root / "config" / "baseline_sources.lock.json",
                 self.root / "config" / "toolchain.lock.json",
                 self.root / "experiments" / "final" / "paper_matrix.json",
@@ -2631,18 +2641,7 @@ class SecurityCell:
                     "training_rounds": self.args.rounds,
                 }
             )
-        targets = json.loads(
-            (self.root / "config" / "paper_targets.json").read_text(encoding="utf-8")
-        )
-        targets.update(json.loads(
-            (self.root / "config" / "paper_table2_all_methods.json").read_text(encoding="utf-8")
-        ))
-        targets.update(json.loads(
-            (self.root / "config" / "paper_table4_all_modes.json").read_text(encoding="utf-8")
-        ))
-        targets.update(json.loads(
-            (self.root / "config" / "paper_table5_all_methods.json").read_text(encoding="utf-8")
-        ))
+        targets = load_acceptance_targets(self.root)
         final["acceptance"] = evaluate_cell_acceptance(final, targets)
         if (
             self.is_polbfl
@@ -2676,9 +2675,7 @@ class SecurityCell:
             configuration_files=(
                 self.root / "config" / "paper_protocol.json",
                 self.root / "config" / "paper_targets.json",
-                self.root / "config" / "paper_table2_all_methods.json",
-                self.root / "config" / "paper_table4_all_modes.json",
-                self.root / "config" / "paper_table5_all_methods.json",
+                *acceptance_target_paths(self.root),
                 self.root / "config" / "baseline_sources.lock.json",
                 self.root / "config" / "toolchain.lock.json",
                 self.root / "experiments" / "final" / "paper_matrix.json",

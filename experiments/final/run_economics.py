@@ -82,7 +82,11 @@ def validate_economics(result: dict, targets: dict) -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=Path, default=ROOT / "config" / "economics_reference.json")
-    parser.add_argument("--targets", type=Path, default=ROOT / "config" / "paper_targets.json")
+    parser.add_argument(
+        "--targets",
+        type=Path,
+        default=ROOT / "config" / "paper_table6_profit.json",
+    )
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--allow-dirty", action="store_true")
     args = parser.parse_args()

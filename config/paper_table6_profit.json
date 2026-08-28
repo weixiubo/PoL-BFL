@@ -1,0 +1,24 @@
+{
+  "authority_pdf_sha256": "0b013e58d4f99f91470c61a891a4ee89dfd09eff58e131abbe730d1f6f91e6d4",
+  "schema_version": 1,
+  "table_6_profit_usd": {
+    "Honest": {
+      "cost": -0.022,
+      "profit": 0.15,
+      "reward": 0.172,
+      "slash": 0.0
+    },
+    "MaliciousNT": {
+      "cost": -0.015,
+      "profit": -0.135,
+      "reward": 0.025,
+      "slash": -0.145
+    },
+    "RationalLT": {
+      "cost": -0.016,
+      "profit": 0.074,
+      "reward": 0.098,
+      "slash": -0.008
+    }
+  }
+}

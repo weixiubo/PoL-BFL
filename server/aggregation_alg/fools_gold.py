@@ -46,6 +46,10 @@ class FoolsGoldAggregator(ServerAggregator):
             learning_rate: Learning rate for aggregation
             clip_threshold: Number of clients to clip (0 = no clipping)
         """
+        if learning_rate <= 0:
+            raise ValueError("learning_rate must be positive")
+        if clip_threshold < 0:
+            raise ValueError("clip_threshold cannot be negative")
         super().__init__()
         self.use_memory = use_memory
         self.learning_rate = learning_rate
@@ -66,13 +70,22 @@ class FoolsGoldAggregator(ServerAggregator):
         """No preprocessing needed"""
         return raw_client_model_or_grad_list
     
-    def _on_after_aggregation(self):
-        """No postprocessing needed"""
-        pass
+    def _on_after_aggregation(self, aggregated_model):
+        """Return the similarity-weighted model unchanged."""
+        return aggregated_model
     
-    def test(self):
-        """Test method (placeholder)"""
-        pass
+    def test(self, test_data=None, device=None, args=None):
+        """Return the latest auditable client-weight diagnostics."""
+        latest = self.weights_history[-1] if self.weights_history else np.array([])
+        return {
+            'rounds': len(self.weights_history),
+            'latest_weights': latest.tolist(),
+            'memory_shape': (
+                list(self.summed_deltas.shape)
+                if self.summed_deltas is not None
+                else None
+            ),
+        }
     
     def _aggregate_alg(self, raw_client_model_or_grad_list: List[OrderedDict] = None) -> OrderedDict:
         """
@@ -97,7 +110,7 @@ class FoolsGoldAggregator(ServerAggregator):
         delta_matrix = self._models_to_matrix(raw_client_model_or_grad_list)
         
         # Initialize summed_deltas if first round
-        if self.summed_deltas is None:
+        if self.summed_deltas is None or self.summed_deltas.shape != delta_matrix.shape:
             self.num_clients = num_clients
             self.num_params = delta_matrix.shape[1]
             self.summed_deltas = np.zeros((num_clients, self.num_params))
@@ -152,7 +165,9 @@ class FoolsGoldAggregator(ServerAggregator):
                 else:
                     params.append(np.array(model[key]).flatten())
             flattened_models.append(np.concatenate(params))
-        
+        expected_size = flattened_models[0].size
+        if any(values.size != expected_size for values in flattened_models):
+            raise ValueError("all FoolsGold updates must share one parameter shape")
         return np.array(flattened_models)
     
     def _normalize_deltas(self, delta_matrix: np.ndarray) -> np.ndarray:
@@ -296,4 +311,3 @@ class FoolsGoldAggregator(ServerAggregator):
         self.summed_deltas = None
         self.weights_history = []
         logger.info("FoolsGold memory reset")
-

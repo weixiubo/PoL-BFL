@@ -1,0 +1,48 @@
+{
+  "authority_pdf_sha256": "0b013e58d4f99f91470c61a891a4ee89dfd09eff58e131abbe730d1f6f91e6d4",
+  "schema_version": 1,
+  "table_11_cross_hardware": {
+    "Kaizen_RTX4090_V100": {
+      "DR": 93.5,
+      "FPR": 5.2,
+      "block_rate": 93.5,
+      "honest_pass_rate": 94.8
+    },
+    "RTX4090_A100": {
+      "DR": 96.0,
+      "FPR": 1.3,
+      "block_rate": 96.0,
+      "honest_pass_rate": 98.7
+    },
+    "RTX4090_RTX3080": {
+      "DR": 95.8,
+      "FPR": 1.5,
+      "block_rate": 95.8,
+      "honest_pass_rate": 98.5
+    },
+    "RTX4090_RTX4090": {
+      "DR": 97.2,
+      "FPR": 0.8,
+      "block_rate": 97.2,
+      "honest_pass_rate": 99.2
+    },
+    "RTX4090_V100": {
+      "DR": 94.2,
+      "FPR": 1.8,
+      "block_rate": 94.2,
+      "honest_pass_rate": 98.2
+    },
+    "V100_A100": {
+      "DR": 95.5,
+      "FPR": 1.6,
+      "block_rate": 95.5,
+      "honest_pass_rate": 98.4
+    },
+    "V100_V100": {
+      "DR": 96.5,
+      "FPR": 1.2,
+      "block_rate": 96.5,
+      "honest_pass_rate": 98.8
+    }
+  }
+}

@@ -8,6 +8,10 @@ from experiments.final.run_sensitivity_matrix import (
     plan_sensitivity_cells,
     sensitivity_command,
 )
+from experiments.final.target_provenance import (
+    FIGURE4_TARGET_FILES,
+    load_merged_targets,
+)
 
 
 ROOT = Path(__file__).parents[1]
@@ -38,14 +42,12 @@ def test_sensitivity_matrix_covers_plot_probabilities_and_aggregates_three_seeds
                     "study": "sensitivity",
                     "audit_probability": float(probability),
                     "seed": seed,
-                    "MA": 88.0,
-                    "DR": 97.0 + index * 0.1,
-                    "FPR": 2.0,
-                    "runtime_seconds": 70.0 + index,
+                    "MA": 90.0,
+                    "DR": 100.0,
+                    "FPR": 1.0,
+                    "runtime_seconds": 50.0 + index,
                     "source_commit": "a" * 40,
                 }
             )
-    targets = json.loads(
-        (ROOT / "config" / "paper_targets.json").read_text(encoding="utf-8")
-    )
+    targets = load_merged_targets(ROOT, FIGURE4_TARGET_FILES)
     assert aggregate_sensitivity_cells(rows, targets)["acceptance"]["passed"]

@@ -1,0 +1,109 @@
+{
+  "authority_pdf_sha256": "0b013e58d4f99f91470c61a891a4ee89dfd09eff58e131abbe730d1f6f91e6d4",
+  "extraction": {
+    "datasets": [
+      "CIFAR10",
+      "FEMNIST",
+      "CIFAR100"
+    ],
+    "identity_counts": [
+      5,
+      10,
+      15,
+      20
+    ],
+    "stake_rule_eth_per_identity": 0.05
+  },
+  "figure_6_sybil_scalability": {
+    "20": {
+      "DR": 87.5,
+      "stake_eth": 1.0
+    },
+    "5": {
+      "DR": 94.5,
+      "stake_eth": 0.25
+    }
+  },
+  "figure_6_vector_targets": {
+    "CIFAR10": {
+      "10": {
+        "DR": 92.8,
+        "FPR": 2.5,
+        "MA": 84.5,
+        "stake_eth": 0.5
+      },
+      "15": {
+        "DR": 90.2,
+        "FPR": 2.8,
+        "MA": 82.8,
+        "stake_eth": 0.75
+      },
+      "20": {
+        "DR": 87.5,
+        "FPR": 3.2,
+        "MA": 80.5,
+        "stake_eth": 1.0
+      },
+      "5": {
+        "DR": 94.5,
+        "FPR": 2.2,
+        "MA": 85.8,
+        "stake_eth": 0.25
+      }
+    },
+    "CIFAR100": {
+      "10": {
+        "DR": 91.5,
+        "FPR": 2.8,
+        "MA": 58.2,
+        "stake_eth": 0.5
+      },
+      "15": {
+        "DR": 88.8,
+        "FPR": 3.2,
+        "MA": 56.5,
+        "stake_eth": 0.75
+      },
+      "20": {
+        "DR": 85.5,
+        "FPR": 3.8,
+        "MA": 54.2,
+        "stake_eth": 1.0
+      },
+      "5": {
+        "DR": 93.2,
+        "FPR": 2.5,
+        "MA": 59.8,
+        "stake_eth": 0.25
+      }
+    },
+    "FEMNIST": {
+      "10": {
+        "DR": 93.5,
+        "FPR": 2.2,
+        "MA": 90.5,
+        "stake_eth": 0.5
+      },
+      "15": {
+        "DR": 91.2,
+        "FPR": 2.5,
+        "MA": 88.8,
+        "stake_eth": 0.75
+      },
+      "20": {
+        "DR": 88.5,
+        "FPR": 2.8,
+        "MA": 86.5,
+        "stake_eth": 1.0
+      },
+      "5": {
+        "DR": 95.2,
+        "FPR": 2.0,
+        "MA": 91.8,
+        "stake_eth": 0.25
+      }
+    }
+  },
+  "physical_pdf_page": 11,
+  "schema_version": 1
+}

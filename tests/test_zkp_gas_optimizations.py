@@ -244,19 +244,21 @@ class TestIntegration:
 
 
 class TestDocumentation:
-    """Test that documentation is complete"""
+    """Verify the ZK and gas measurement documentation invariants."""
     
     def test_optimization_report_exists(self):
-        """Test that optimization report exists"""
+        """The report identifies scope, provenance, transactions, and security."""
         report_path = Path('ZKP_GAS_OPTIMIZATION_REPORT.md')
         assert report_path.exists()
-        
-        # Check that it contains key sections
+
         content = report_path.read_text()
-        assert 'ZKP Circuit Optimization' in content
-        assert 'Gas Cost Optimization' in content
-        assert 'Security' in content
-        assert 'Results' in content
+        normalized = ' '.join(content.split())
+        assert '# Zero-Knowledge Proof and Gas Measurements' in content
+        assert '## Scope' in content
+        assert '## Reference ZK benchmark' in content
+        assert 'benchmark-only proving key' in normalized
+        assert '## Gas Cost Optimization' in content
+        assert '## Security Properties' in content
     
     def test_build_script_exists(self):
         """Test that build script exists"""
@@ -271,4 +273,3 @@ class TestDocumentation:
 
 if __name__ == '__main__':
     pytest.main([__file__, '-v', '--tb=short'])
-

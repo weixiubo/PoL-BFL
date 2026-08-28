@@ -21,6 +21,7 @@ from experiments.final.supervision import supervised_gpu_command
 
 @dataclass(frozen=True)
 class SybilCell:
+    dataset: str
     identity_count: int
     seed: int
 
@@ -30,8 +31,13 @@ class SybilCell:
 
     @property
     def run_id(self) -> str:
+        dataset = (
+            "" if self.dataset == "CIFAR10" else self.dataset.lower() + "-"
+        )
         return (
-            "formal-figure6-sybil-"
+            "formal-figure6-"
+            + dataset
+            + "sybil-"
             + str(self.identity_count)
             + "-s"
             + str(self.seed)
@@ -41,10 +47,15 @@ class SybilCell:
 def plan_sybil_cells(
     matrix: Mapping[str, object],
     *,
+    datasets: Sequence[str] | None = None,
     identity_counts: Sequence[int] | None = None,
     seeds: Sequence[int] | None = None,
 ) -> tuple[SybilCell, ...]:
     study = matrix["studies"]["figure_6_sybil_scalability"]
+    allowed_datasets = tuple(
+        study.get("datasets", (study.get("dataset", "CIFAR10"),))
+    )
+    selected_datasets = tuple(datasets or allowed_datasets)
     selected_counts = tuple(
         int(value)
         for value in (
@@ -55,14 +66,16 @@ def plan_sybil_cells(
         int(seed) for seed in (seeds or matrix["seeds"])
     )
     if (
-        set(selected_counts)
+        set(selected_datasets) - set(allowed_datasets)
+        or set(selected_counts)
         - {int(value) for value in study["identities_per_attacker"]}
         or set(selected_seeds)
         - {int(seed) for seed in matrix["seeds"]}
     ):
         raise ValueError("Figure 6 matrix filter contains unknown values")
     return tuple(
-        SybilCell(identity_count, seed)
+        SybilCell(dataset, identity_count, seed)
+        for dataset in selected_datasets
         for identity_count in selected_counts
         for seed in selected_seeds
     )
@@ -85,7 +98,7 @@ def sybil_command(
         "--study",
         "sybil_scalability",
         "--dataset",
-        "CIFAR10",
+        cell.dataset,
         "--attack",
         "Sybil",
         "--method",
@@ -139,12 +152,14 @@ def main() -> None:
     )
     parser.add_argument("--python", type=Path, default=Path(sys.executable))
     parser.add_argument("--identity-count", action="append", type=int)
+    parser.add_argument("--dataset", action="append")
     parser.add_argument("--seed", action="append", type=int)
     parser.add_argument("--execute", action="store_true")
     args = parser.parse_args()
     matrix = json.loads(args.matrix.read_text(encoding="utf-8"))
     cells = plan_sybil_cells(
         matrix,
+        datasets=args.dataset,
         identity_counts=args.identity_count,
         seeds=args.seed,
     )

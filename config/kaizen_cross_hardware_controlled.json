@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "authority_pdf_sha256": "0b013e58d4f99f91470c61a891a4ee89dfd09eff58e131abbe730d1f6f91e6d4",
+  "classification": "controlled_kaizen_style_single_threshold_baseline",
+  "method": "Kaizen",
+  "hardware_pair": "Kaizen_RTX4090_V100",
+  "trainer_gpu": "RTX 4090",
+  "verifier_gpu": "V100",
+  "dataset": "CIFAR10",
+  "proof_system": "Groth16",
+  "numerical_acceptance": {
+    "profile_id": "kaizen_single_threshold_v1",
+    "single_tolerance": 0.001,
+    "decision": "groth16_shared_single_tolerance"
+  },
+  "note": "The final paper reports a controlled single-threshold Kaizen-style implementation for this Table 11 row while retaining the same deterministic Groth16 verification procedure. This configuration binds that controlled comparison to the paper's final tolerance and named hardware pair; it is not represented as a wire-compatible implementation of the Kaizen repository."
+}

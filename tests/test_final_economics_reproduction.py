@@ -15,7 +15,7 @@ def test_inferred_economic_parameters_reproduce_published_profit_rows_exactly():
     assert result["MaliciousNT"] == {"reward": 0.025, "cost": -0.015, "slash": -0.145, "profit": -0.135}
     assert result["incentive_compatible"] is True
     targets = json.loads(
-        (ROOT / "config" / "paper_targets.json").read_text(encoding="utf-8")
+        (ROOT / "config" / "paper_table6_profit.json").read_text(encoding="utf-8")
     )
     report = validate_economics({"table_6_profit_usd": result}, targets)
     assert report["passed"]

@@ -15,6 +15,7 @@ from typing import Any, Mapping, Sequence
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
+from experiments.final.cross_hardware_profiles import KAIZEN_PAIR
 from experiments.final.manifest import source_identity
 from experiments.final.supervision import supervised_gpu_command
 
@@ -69,10 +70,6 @@ def hardware_command(
     data_root: Path,
     zk_build: Path,
 ) -> list[str]:
-    if cell.hardware_pair == "Kaizen_RTX4090_V100":
-        raise ValueError(
-            "the Kaizen hardware pair requires its controlled baseline runner"
-        )
     required = {
         "trainer_device",
         "verifier_device",
@@ -81,11 +78,16 @@ def hardware_command(
     }
     if not required.issubset(hardware):
         raise ValueError("hardware map entry is incomplete")
+    module = (
+        "experiments.final.run_kaizen_cross_hardware_trial"
+        if cell.hardware_pair == KAIZEN_PAIR
+        else "experiments.final.run_cross_hardware_trial"
+    )
     return [
         str(python),
         "-u",
         "-m",
-        "experiments.final.run_cross_hardware_trial",
+        module,
         "--hardware-pair",
         cell.hardware_pair,
         "--trainer-device",

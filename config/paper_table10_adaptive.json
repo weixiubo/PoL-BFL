@@ -1,0 +1,35 @@
+{
+  "authority_pdf_sha256": "0b013e58d4f99f91470c61a891a4ee89dfd09eff58e131abbe730d1f6f91e6d4",
+  "schema_version": 1,
+  "table_10_adaptive": {
+    "BaselineNT": {
+      "DR": 96.5,
+      "FPR": 2.1,
+      "profitable": false
+    },
+    "CheckpointInterpolation": {
+      "DR": 94.2,
+      "FPR": 2.8,
+      "forge_train_ratio": 1.8,
+      "profitable": false
+    },
+    "CombinedAdaptive": {
+      "DR": 85.2,
+      "FPR": 4.0,
+      "forge_train_ratio": 2.8,
+      "profitable": false
+    },
+    "GradientMimicry": {
+      "DR": 91.5,
+      "FPR": 3.2,
+      "forge_train_ratio": 2.3,
+      "profitable": false
+    },
+    "PartialReplay": {
+      "DR": 88.8,
+      "FPR": 3.5,
+      "forge_train_ratio": 1.2,
+      "profitable": false
+    }
+  }
+}
