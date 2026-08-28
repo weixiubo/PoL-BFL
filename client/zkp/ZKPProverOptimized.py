@@ -48,7 +48,7 @@ def compute_merkle_root(leaves: List[int]) -> str:
         root: Merkle root as decimal string
     """
     # Use the existing poseidon_fold function from zkp.hash
-    # For Merkle tree, we need to hash pairs, so we'll use a simple approach
+    # Hash node pairs to construct the Merkle tree.
     # that's compatible with the existing infrastructure
 
     key = tuple(int(x) for x in leaves)
@@ -90,17 +90,17 @@ def compute_merkle_root(leaves: List[int]) -> str:
 class ZKPProverOptimized:
     """
     Optimized Zero-Knowledge Proof Prover for parameter updates
-    
+
     Uses optimized circuit with Merkle tree hashing and optimized L2 distance.
     Maintains full security (no sampling).
-    
+
     Proves that:
     1) MerkleRoot(W_t) == W_t_root
     2) MerkleRoot(W_t1) == W_t1_root
     3) Poseidon-fold(data_indices) == data_hash
     4) ||W_t1 - W_t||^2 <= max_distance (full verification)
     """
-    
+
     def __init__(self,
                  circuit_js_dir: str = 'circuits/build/parameter_update_optimized_js',
                  proving_key_path: str = 'circuits/build/parameter_update_optimized_0001.zkey',
@@ -110,7 +110,7 @@ class ZKPProverOptimized:
                  scale: float = DEFAULT_SCALE):
         """
         Initialize optimized ZKP prover
-        
+
         Args:
             circuit_js_dir: Directory containing compiled circuit JS
             proving_key_path: Path to proving key (.zkey file)
@@ -127,7 +127,7 @@ class ZKPProverOptimized:
         self.scale = scale
         if os.getenv('POL_INTEGRITY', '0') == '1' and self.use_simulation:
             raise RuntimeError("POL_INTEGRITY=1 forbids simulation; initialize ZKPProverOptimized with use_simulation=False and required dependencies.")
-        
+
         logger.info(f"Initialized optimized ZKP prover (simulation={use_simulation})")
         logger.info(f"  Circuit: {circuit_js_dir}")
         logger.info(f"  Proving key: {proving_key_path}")
@@ -140,13 +140,13 @@ class ZKPProverOptimized:
                        max_distance: float) -> Tuple[Dict, Dict]:
         """
         Generate ZKP for parameter update
-        
+
         Args:
             W_t: Current parameters (tensor or array)
             W_t1: Updated parameters (tensor or array)
             data_indices: Data indices used for training
             max_distance: Maximum allowed L2 distance squared
-        
+
         Returns:
             proof: Groth16 proof object
             public_signals: Public signals (W_t_root, W_t1_root, data_hash, max_distance)
@@ -164,21 +164,21 @@ class ZKPProverOptimized:
         t1 = t1[:self.param_size]
         q_t = quantize_to_field(t, self.scale)
         q_t1 = quantize_to_field(t1, self.scale)
-        
+
         # Compute Merkle roots
         W_t_root = compute_merkle_root(q_t)
         W_t1_root = compute_merkle_root(q_t1)
-        
+
         # Compute data hash (using folded Poseidon as in original)
         di = (data_indices or [])[:self.batch_size]
         di = di + [0] * (self.batch_size - len(di))
         data_hash = poseidon_fold(di)
-        
+
         # Compute L2 distance squared
         dist2 = float(
             torch.sum((t1.to(torch.float64) - t.to(torch.float64)) ** 2)
         )
-        
+
         # Public signals
         public = {
             'W_t_root': W_t_root,
@@ -187,7 +187,7 @@ class ZKPProverOptimized:
             'max_distance': int(max_distance),
             'actual_distance': dist2,
         }
-        
+
         # Simulated proof (structure-correct but not cryptographically valid)
         proof = {
             'pi_a': ['0', '0', '1'],
@@ -197,12 +197,12 @@ class ZKPProverOptimized:
             'curve': 'bn128',
             'optimized': True,
         }
-        
+
         logger.info(f"Simulated optimized proof generated")
         logger.info(f"  W_t_root: {W_t_root[:16]}...")
         logger.info(f"  W_t1_root: {W_t1_root[:16]}...")
         logger.info(f"  Actual distance: {dist2}, Max: {int(max_distance)}")
-        
+
         return proof, public
 
     def _generate_real_proof(self, W_t, W_t1, data_indices: List[int], max_distance: float) -> Tuple[Dict, Dict]:
@@ -258,18 +258,18 @@ class ZKPProverOptimized:
                 proof = json.load(f)
             with open(public_file, 'r') as f:
                 public_arr = json.load(f)
-            
+
             public = {
                 'W_t_root': str(public_arr[0]),
                 'W_t1_root': str(public_arr[1]),
                 'data_hash': str(public_arr[2]),
                 'max_distance': int(public_arr[3]),
             }
-            
+
             logger.info(f"Real optimized proof generated")
             logger.info(f"  W_t_root: {public['W_t_root'][:16]}...")
             logger.info(f"  W_t1_root: {public['W_t1_root'][:16]}...")
-            
+
             return proof, public
 
     def _flatten_or_tensor(self, x) -> torch.Tensor:
@@ -288,23 +288,23 @@ class ZKPProverOptimized:
     def verify_proof_locally(self, proof: Dict, public_signals: Dict) -> bool:
         """
         Verify proof locally using snarkjs (for testing)
-        
+
         Args:
             proof: Groth16 proof
             public_signals: Public signals
-        
+
         Returns:
             valid: True if proof is valid
         """
         if self.use_simulation:
             logger.warning("Local verification not available in simulation mode")
             return True
-        
+
         try:
             # Write proof and public signals to files
             with open('proof_verify.json', 'w') as f:
                 json.dump(proof, f)
-            
+
             public_arr = [
                 public_signals['W_t_root'],
                 public_signals['W_t1_root'],
@@ -313,7 +313,7 @@ class ZKPProverOptimized:
             ]
             with open('public_verify.json', 'w') as f:
                 json.dump(public_arr, f)
-            
+
             # Verify using snarkjs
             result = subprocess.run([
                 'snarkjs', 'groth16', 'verify',
@@ -321,12 +321,12 @@ class ZKPProverOptimized:
                 'public_verify.json',
                 'proof_verify.json'
             ], capture_output=True, text=True)
-            
+
             valid = 'OK' in result.stdout
             logger.info(f"Local verification: {'PASSED' if valid else 'FAILED'}")
-            
+
             return valid
-            
+
         except Exception as e:
             logger.error(f"Local verification failed: {e}")
             return False

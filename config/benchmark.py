@@ -48,11 +48,11 @@ class FashionMNIST(BenchMark):
             'optimizer': 'SGD',
             'device': 'cuda',
             'lr': 1e-2,
-            'weight_decay': 1e-5,  
+            'weight_decay': 1e-5,
             'num_steps': 1,
         }
         self.algorithm = FedAvg()
-        
+
 class CIFAR10(BenchMark):
     def __init__(self):
         super(CIFAR10,self).__init__('CIFAR10')
@@ -71,11 +71,11 @@ class CIFAR10(BenchMark):
             'optimizer': 'SGD',
             'device': 'cuda',
             'lr': 1e-2,
-            'weight_decay': 1e-5,  
+            'weight_decay': 1e-5,
             'num_steps': 1,
         }
         self.algorithm = FedAvg()
-        
+
 class Sign(BenchMark):
     def __init__(self):
         super(Sign,self).__init__('Sign')
@@ -99,12 +99,12 @@ class Sign(BenchMark):
             'optimizer': 'SGD',
             'device': 'cuda',
             'lr': 1e-2,
-            'weight_decay': 1e-5,  
+            'weight_decay': 1e-5,
             'num_steps': 1,
         }
         self.algorithm = FedIPR()
-        
-        
+
+
 def get_benchmark(args: str) -> BenchMark:
     if(args == "FashionMNIST"):
         return FashionMNIST()
@@ -114,5 +114,4 @@ def get_benchmark(args: str) -> BenchMark:
         return Sign()
     else:
         logger.error(f"Unknown Benchmark {args}")
-        raise Exception(f"Unknown Benchmark {args}") 
-    
+        raise Exception(f"Unknown Benchmark {args}")

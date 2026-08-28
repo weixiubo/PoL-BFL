@@ -27,15 +27,15 @@ def reset_blockchain():
     try:
         # 导入区块链交互模块
         from chainfl.interact import ChainProxy
-        
+
         logger.info("正在重置区块链状态...")
-        
+
         # 创建新的ChainProxy实例（这会重新部署合约）
         chain_proxy = ChainProxy()
-        
+
         logger.info("区块链状态重置完成")
         return True
-        
+
     except Exception as e:
         logger.error(f"重置区块链状态失败: {e}")
         return False
@@ -44,14 +44,14 @@ def clean_pol_data():
     """清理PoL数据目录"""
     try:
         pol_data_dir = project_root / "experiments" / "results" / "rq1_security" / "pol_data"
-        
+
         if pol_data_dir.exists():
             import shutil
             shutil.rmtree(pol_data_dir)
             logger.info(f"已清理PoL数据目录: {pol_data_dir}")
-        
+
         return True
-        
+
     except Exception as e:
         logger.error(f"清理PoL数据失败: {e}")
         return False
@@ -59,18 +59,18 @@ def clean_pol_data():
 def main():
     """主函数"""
     logger.info("开始重置实验环境...")
-    
+
     # 1. 清理PoL数据
     if not clean_pol_data():
         logger.error("清理PoL数据失败")
         return False
-    
+
     # 2. 重置区块链状态
     if not reset_blockchain():
         logger.error("重置区块链状态失败")
         return False
-    
-    logger.info("实验环境重置完成！")
+
+    logger.info("实验环境重置完成。")
     return True
 
 if __name__ == "__main__":

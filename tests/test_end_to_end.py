@@ -30,14 +30,14 @@ from config.pol_config import POL_CONFIG, EXPERIMENT_CONFIG
 
 
 class SimpleCNN(nn.Module):
-    """简单的CNN模型（用于MNIST）"""
+    """Reference CNN model for MNIST."""
     def __init__(self):
         super().__init__()
         self.conv1 = nn.Conv2d(1, 10, kernel_size=5)
         self.conv2 = nn.Conv2d(10, 20, kernel_size=5)
         self.fc1 = nn.Linear(320, 50)
         self.fc2 = nn.Linear(50, 10)
-    
+
     def forward(self, x):
         x = torch.relu(torch.max_pool2d(self.conv1(x), 2))
         x = torch.relu(torch.max_pool2d(self.conv2(x), 2))
@@ -49,40 +49,40 @@ class SimpleCNN(nn.Module):
 
 class TestEndToEnd(unittest.TestCase):
     """端到端集成测试"""
-    
+
     @classmethod
     def setUpClass(cls):
         """测试类初始化"""
         # 创建临时目录
         cls.test_dir = tempfile.mkdtemp()
-        
+
         # 创建模拟MNIST数据
         cls.num_samples = 100
         cls.batch_size = 10
-        
+
         # 生成随机数据（模拟MNIST）
         cls.train_data = torch.randn(cls.num_samples, 1, 28, 28)
         cls.train_labels = torch.randint(0, 10, (cls.num_samples,))
-        
+
         cls.test_data = torch.randn(20, 1, 28, 28)
         cls.test_labels = torch.randint(0, 10, (20,))
-    
+
     @classmethod
     def tearDownClass(cls):
         """测试类清理"""
         if os.path.exists(cls.test_dir):
             shutil.rmtree(cls.test_dir)
-    
+
     def test_pol_trainer_basic(self):
         """测试PoLTrainer基本功能"""
         # 创建数据加载器
         dataset = TensorDataset(self.train_data[:50], self.train_labels[:50])
         dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False)
-        
+
         # 创建模型
         model = SimpleCNN()
         criterion = nn.CrossEntropyLoss()
-        
+
         # 创建PoLTrainer
         args = {
             'enable_pol': True,
@@ -95,29 +95,29 @@ class TestEndToEnd(unittest.TestCase):
             'weight_decay': 1e-4,
             'optimizer': 'SGD'
         }
-        
+
         trainer = PoLTrainer(model, dataloader, criterion, args)
-        
+
         # 训练1个epoch
         results = trainer.train(total_epoch=1)
-        
+
         # 验证训练结果
         self.assertEqual(len(results), 1)
         self.assertIn('loss', results[0])
-        
+
         # 生成PoL承诺
         pol_commitment = trainer.finalize_pol(epoch=0, dataset=dataset)
-        
+
         # 验证PoL承诺
         self.assertIsNotNone(pol_commitment)
         self.assertIn('commitment', pol_commitment)
         self.assertIn('num_checkpoints', pol_commitment)
         self.assertGreater(pol_commitment['num_checkpoints'], 0)
-        
-        print(f"\n✓ PoLTrainer test passed")
+
+        print(f"\n[PASS] PoLTrainer test passed")
         print(f"  Checkpoints: {pol_commitment['num_checkpoints']}")
         print(f"  Commitment: {pol_commitment['commitment'][:16]}...")
-    
+
     def test_pol_trainer_workflow(self):
         """测试PoLTrainer完整工作流（不使用PoLClient避免chainProxy冲突）"""
         # 创建数据加载器
@@ -162,15 +162,15 @@ class TestEndToEnd(unittest.TestCase):
         self.assertIsNotNone(response)
         self.assertIn('checkpoints', response)
 
-        print(f"\n✓ PoLTrainer workflow test passed")
+        print(f"\n[PASS] PoLTrainer workflow test passed")
         print(f"  Client ID: {args['client_id']}")
         print(f"  Commitment: {commitment['commitment'][:16]}...")
-    
+
     def test_aggregator_with_pol(self):
         """测试带PoL验证的聚合器"""
         # 创建全局模型
         global_model = SimpleCNN()
-        
+
         # 创建聚合器
         args = {
             'enable_pol': True,
@@ -180,9 +180,9 @@ class TestEndToEnd(unittest.TestCase):
             'device': 'cpu',
             'use_top_q': False
         }
-        
+
         aggregator = PoLVerifyAggregator(model=global_model, args=args)
-        
+
         # 创建模拟客户端模型
         client_models = []
         for i in range(3):
@@ -192,21 +192,21 @@ class TestEndToEnd(unittest.TestCase):
                 for param in model.parameters():
                     param.add_(torch.randn_like(param) * 0.01)
             client_models.append(model.state_dict())
-        
+
         # 执行聚合
         aggregated_model = aggregator.aggregate(client_models)
-        
+
         # 验证聚合结果
         self.assertIsNotNone(aggregated_model)
         self.assertEqual(len(aggregated_model), len(global_model.state_dict()))
-        
+
         # 获取验证结果
         verification_results = aggregator.get_verification_results()
-        
-        print(f"\n✓ Aggregator test passed")
+
+        print(f"\n[PASS] Aggregator test passed")
         print(f"  Aggregated {len(client_models)} client models")
         print(f"  Verification results: {len(verification_results)} clients verified")
-    
+
     def test_full_fl_round(self):
         """测试完整的FL训练轮次（不使用PoLClient避免chainProxy冲突）"""
         print(f"\n{'='*60}")
@@ -287,7 +287,7 @@ class TestEndToEnd(unittest.TestCase):
         print(f"  Verified clients: {len(verification_results)}")
 
         print(f"\n{'='*60}")
-        print("✓ Full FL round completed successfully!")
+        print("[PASS] Full FL round completed successfully.")
         print(f"{'='*60}")
 
         # 断言
@@ -298,4 +298,3 @@ class TestEndToEnd(unittest.TestCase):
 if __name__ == '__main__':
     # 运行测试
     unittest.main(verbosity=2)
-

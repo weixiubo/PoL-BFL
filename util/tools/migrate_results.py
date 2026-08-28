@@ -10,27 +10,27 @@ import argparse
 import json
 from pathlib import Path
 
-def find_legacy_results(root_dir):
+def find_previous_layout_results(root_dir):
     """查找需要迁移的历史结果"""
-    legacy_paths = []
-    
+    previous_paths = []
+
     # 查找可能的历史结果目录
     potential_dirs = [
         'experiments/experiments/results',
-        'experiments/rq1_results', 
+        'experiments/rq1_results',
         'experiments/rq2_results',
         'experiments/rq3_results',
         'experiments/rq4_results',
         'pol_data',
         'experiments/pol_data'
     ]
-    
-    for legacy_dir in potential_dirs:
-        full_path = os.path.join(root_dir, legacy_dir)
+
+    for previous_dir in potential_dirs:
+        full_path = os.path.join(root_dir, previous_dir)
         if os.path.exists(full_path):
-            legacy_paths.append(full_path)
-    
-    return legacy_paths
+            previous_paths.append(full_path)
+
+    return previous_paths
 
 def migrate_directory(src, dst, dry_run=True):
     """迁移目录"""
@@ -42,7 +42,7 @@ def migrate_directory(src, dst, dry_run=True):
                            for dirpath, dirnames, filenames in os.walk(src)
                            for filename in filenames)
             print(f"  Size: {total_size / (1024*1024*1024):.2f} GB")
-            
+
             # 计算文件数
             file_count = sum(len(filenames) for _, _, filenames in os.walk(src))
             print(f"  Files: {file_count}")
@@ -52,13 +52,13 @@ def migrate_directory(src, dst, dry_run=True):
         try:
             # 确保目标目录存在
             os.makedirs(os.path.dirname(dst), exist_ok=True)
-            
+
             # 移动目录
             shutil.move(src, dst)
-            print(f"  ✅ Success")
+            print(f"  [PASS] Success")
             return True
         except Exception as e:
-            print(f"  ❌ Error: {e}")
+            print(f"  [FAIL] Error: {e}")
             return False
 
 def create_compatibility_links(root_dir, dry_run=True):
@@ -67,11 +67,11 @@ def create_compatibility_links(root_dir, dry_run=True):
         ('log', 'experiments/logs'),
         ('data', 'experiments/data'),
     ]
-    
+
     for target, link_path in links:
         full_link_path = os.path.join(root_dir, link_path)
         full_target_path = os.path.join(root_dir, target)
-        
+
         if dry_run:
             print(f"[DRY-RUN] Would create symlink: {link_path} -> {target}")
         else:
@@ -83,53 +83,55 @@ def create_compatibility_links(root_dir, dry_run=True):
                     else:
                         print(f"  Warning: {link_path} exists and is not a symlink, skipping")
                         continue
-                
+
                 # 创建相对路径软链接
                 rel_target = os.path.relpath(full_target_path, os.path.dirname(full_link_path))
                 os.symlink(rel_target, full_link_path)
                 print(f"[EXECUTE] Created symlink: {link_path} -> {rel_target}")
             except Exception as e:
-                print(f"  ❌ Error creating symlink: {e}")
+                print(f"  [FAIL] Error creating symlink: {e}")
 
 def main():
-    parser = argparse.ArgumentParser(description='Migrate legacy results to standard directories')
+    parser = argparse.ArgumentParser(description='Migrate previous-layout results to standard directories')
     parser.add_argument('--execute', action='store_true', help='Actually execute the migration (default: dry-run)')
     parser.add_argument('--create-links', action='store_true', help='Create compatibility symlinks')
     args = parser.parse_args()
-    
+
     root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    
+
     if args.execute:
-        print("🚨 EXECUTE MODE - Changes will be made!")
+        print("[ALERT] EXECUTE MODE - Changes will be made.")
     else:
-        print("🔍 DRY-RUN MODE - No changes will be made")
+        print("[CHECK] DRY-RUN MODE - No changes will be made")
         print("Use --execute to actually perform migration")
-    
+
     print(f"Working directory: {root_dir}")
     print()
-    
+
     # 查找历史结果
-    legacy_paths = find_legacy_results(root_dir)
-    
-    if not legacy_paths:
-        print("✅ No legacy results found to migrate")
+    previous_paths = find_previous_layout_results(root_dir)
+
+    if not previous_paths:
+        print("[PASS] No previous-layout results found to migrate")
     else:
-        print(f"Found {len(legacy_paths)} legacy result directories:")
-        for path in legacy_paths:
+        print(f"Found {len(previous_paths)} previous-layout result directories:")
+        for path in previous_paths:
             rel_path = os.path.relpath(path, root_dir)
-            print(f"  📁 {rel_path}")
+            print(f"  [PATH] {rel_path}")
         print()
-        
-        # 迁移逻辑（这里可以根据需要扩展）
-        for legacy_path in legacy_paths:
-            rel_path = os.path.relpath(legacy_path, root_dir)
+
+        # Migrate each detected result directory into the archive layout.
+        for previous_path in previous_paths:
+            rel_path = os.path.relpath(previous_path, root_dir)
             # 简单示例：将所有内容移到archives/
-            archive_path = os.path.join(root_dir, 'archives', 'legacy_' + rel_path.replace('/', '_'))
-            migrate_directory(legacy_path, archive_path, dry_run=not args.execute)
-    
+            archive_path = os.path.join(
+                root_dir, 'archives', 'previous_' + rel_path.replace('/', '_')
+            )
+            migrate_directory(previous_path, archive_path, dry_run=not args.execute)
+
     # 创建兼容性链接
     if args.create_links:
-        print("\n📎 Creating compatibility symlinks:")
+        print("\n[LINK] Creating compatibility symlinks:")
         create_compatibility_links(root_dir, dry_run=not args.execute)
 
 if __name__ == "__main__":

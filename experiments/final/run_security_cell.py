@@ -566,7 +566,7 @@ def table5_metrics(
     }
 
 
-def fake_commitment(round_id: str, client_id: str, expected_steps: int, seed: int) -> TraceCommitment:
+def synthetic_commitment(round_id: str, client_id: str, expected_steps: int, seed: int) -> TraceCommitment:
     def digest(label: str) -> str:
         return hashlib.sha256(f"{round_id}:{client_id}:{seed}:{label}".encode()).hexdigest()
 
@@ -585,14 +585,14 @@ def fake_commitment(round_id: str, client_id: str, expected_steps: int, seed: in
     )
 
 
-def fake_fingerprint(commitment: TraceCommitment, *, seed: int, batch_size: int) -> TraceFingerprint:
+def synthetic_fingerprint(commitment: TraceCommitment, *, seed: int, batch_size: int) -> TraceFingerprint:
     rng = np.random.default_rng(seed)
     vectors = tuple(
         tuple(float(value) for value in rng.normal(size=14))
         for _ in range(commitment.checkpoint_count)
     )
     index_domain = int.from_bytes(
-        hashlib.sha256(f"POLBFL_FAKE_INDEX_V1:{commitment.client_id}".encode()).digest()[:4],
+        hashlib.sha256(f"POLBFL_SYNTHETIC_INDEX_V1:{commitment.client_id}".encode()).digest()[:4],
         "big",
     )
     indices = tuple(
@@ -1109,7 +1109,7 @@ class SecurityCell:
             str(trainer.trace_recorder.store.root),
         )
 
-    def _fake_client(
+    def _synthetic_client(
         self,
         client_index: int,
         round_number: int,
@@ -1131,7 +1131,7 @@ class SecurityCell:
                 for name, value in update_override.items()
             )
         )
-        commitment = fake_commitment(f"round-{round_number}", client_id, expected_steps, self.args.seed)
+        commitment = synthetic_commitment(f"round-{round_number}", client_id, expected_steps, self.args.seed)
         update, communication_bytes = transport_update(update)
         return ClientArtifact(
             client_id,
@@ -1139,7 +1139,7 @@ class SecurityCell:
             None,
             None,
             commitment,
-            fake_fingerprint(commitment, seed=self.args.seed + round_number * 100 + client_index, batch_size=32),
+            synthetic_fingerprint(commitment, seed=self.args.seed + round_number * 100 + client_index, batch_size=32),
             0,
             communication_bytes,
             False,
@@ -1173,14 +1173,14 @@ class SecurityCell:
         update = model_delta(cpu_state(model), self.global_state)
         update, communication_bytes = transport_update(update)
         expected_steps = len(loader) * self.args.local_epochs
-        commitment = fake_commitment(f"round-{round_number}", client_id, expected_steps, self.args.seed)
+        commitment = synthetic_commitment(f"round-{round_number}", client_id, expected_steps, self.args.seed)
         return ClientArtifact(
             client_id,
             update,
             None,
             None,
             commitment,
-            fake_fingerprint(
+            synthetic_fingerprint(
                 commitment,
                 seed=self.args.seed + round_number * 100 + client_index,
                 batch_size=32,
@@ -1281,13 +1281,13 @@ class SecurityCell:
                     expected_steps = (
                         len(self.train_loaders[client_index]) * self.args.local_epochs
                     )
-                    commitment = fake_commitment(
+                    commitment = synthetic_commitment(
                         f"round-{round_number}",
                         payload["client_id"],
                         expected_steps,
                         self.args.seed,
                     )
-                    fingerprint = fake_fingerprint(
+                    fingerprint = synthetic_fingerprint(
                         commitment,
                         seed=self.args.seed + round_number * 100 + client_index,
                         batch_size=32,
@@ -1319,7 +1319,7 @@ class SecurityCell:
                 crafted_update = minmax_update(benign_updates)
             for index in active_indices:
                 if f"client-{index}" not in present:
-                    artifacts.append(self._fake_client(index, round_number, crafted_update))
+                    artifacts.append(self._synthetic_client(index, round_number, crafted_update))
             return sorted(artifacts, key=lambda item: item.client_id)
 
         worker_count = 2 * self.args.train_workers_per_gpu
@@ -1360,7 +1360,7 @@ class SecurityCell:
             crafted_update = minmax_update(benign_updates)
         for index in active_indices:
             if f"client-{index}" not in present:
-                artifacts.append(self._fake_client(index, round_number, crafted_update))
+                artifacts.append(self._synthetic_client(index, round_number, crafted_update))
         return sorted(artifacts, key=lambda item: item.client_id)
 
     def _baseline_batch(self) -> tuple[torch.Tensor, torch.Tensor]:

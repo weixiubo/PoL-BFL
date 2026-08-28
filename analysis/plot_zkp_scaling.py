@@ -7,7 +7,7 @@ import sys
 try:
     import matplotlib.pyplot as plt
 except Exception as e:
-    print("matplotlib is required for plotting. Please install it or skip plotting.")
+    print("matplotlib is required for plotting; install it before running this program.")
     sys.exit(0)
 
 
@@ -54,4 +54,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

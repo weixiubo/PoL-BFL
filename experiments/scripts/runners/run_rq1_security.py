@@ -108,7 +108,7 @@ RQ1_CONFIG = {
     # Baselines to test (Original + SOTA)
     'baselines': ['Vanilla_FL', 'Krum', 'Trimmed_Mean', 'Median', 'ShapleyFL', 'FoolsGold', 'SDEA', 'PoL_FL'],
 
-    # PoL configuration (RQ1 defaults after clearance: delta=5.0, verification_rate=1.0)
+    # PoL configuration (RQ1 defaults after validation: delta=5.0, verification_rate=1.0)
     'pol_config': {
         'enable': True,
         'save_freq': 5,
@@ -461,7 +461,7 @@ class SecurityExperiment:
 
         The older recovery path used one shared median-distance detector and
         the realized malicious count for every baseline.  That made baseline
-        DR/FPR look artificially good and decoupled the metric from the method
+        DR/FPR values were inflated and decoupled from the method
         being evaluated.  This keeps the clean-room implementation honest by
         deriving suspects from Krum scores, SDEA rejections, ShapleyFL scores,
         or FoolsGold weights.
@@ -1167,7 +1167,7 @@ class SecurityExperiment:
                 base_client_id="attacker"
             )
             sybil_identities = sybil_attack.create_identities()
-            logger.info(f"Created Sybil attack with {num_identities} fake identities: {sybil_identities}")
+            logger.info(f"Created Sybil attack with {num_identities} Sybil identities: {sybil_identities}")
 
         for round_num in range(self.config['num_rounds']):
             logger.info(f"Round {round_num + 1}/{self.config['num_rounds']}")
@@ -1268,7 +1268,7 @@ class SecurityExperiment:
                                 client.model.load_state_dict(attacked_state)
                                 logger.info(f"Applied {attack_name} attack to {client.client_id} with {len(benign_updates)} benign updates")
                     else:
-                        # FIX: Apply non-Blades Byzantine attacks (random_noise, model_replacement, etc.)
+                        # Apply non-Blades Byzantine attacks.
                         attack = create_attack(attack_name, **{k: v for k, v in attack_params.items() if k != 'malicious_ratios'})
                         for i, idx in enumerate(selected_indices):
                             if idx in malicious_indices:
@@ -1520,7 +1520,7 @@ class SecurityExperiment:
 
         # Add detection metrics for PoL-FL
         if baseline_method == 'PoL_FL' and verification_results_per_round:
-            # FIX: Use "blacklist" mechanism to accumulate detections across rounds
+            # Accumulate rejected clients across rounds.
             # Once a client is detected as malicious, it should remain marked as malicious
             # This prevents later benign verifications from "whitewashing" previous detections
             detected_malicious_clients = set()
@@ -1541,7 +1541,7 @@ class SecurityExperiment:
                     all_verification_results[client_id] = True   # Verified as benign
                 # Note: Clients never verified are not included in all_verification_results
 
-            # Compute detection metrics over union across rounds (not just last round)
+            # Compute detection metrics over the union of all rounds.
             malicious_client_ids_all = sorted(list(malicious_ids_union))
             client_ids_all = sorted(list(client_ids_union))
             detection_metrics = PoLExperimentHelper.compute_detection_metrics(
@@ -1550,7 +1550,7 @@ class SecurityExperiment:
                 client_ids_all
             )
 
-            # FIX: Compute TPR_conditional correctly by collecting all verification instances
+            # Compute conditional TPR from all verification instances.
             # Use per-round malicious client IDs (not union) to avoid counting honest clients as malicious
             tp_cond = 0
             fn_cond = 0
@@ -1738,7 +1738,7 @@ def main():
         default=[],
         help='Override selected attack parameter as key=value. Can be repeated for calibration runs.',
     )
-    # Minimal PoL overrides for quick diagnostics
+    # Minimal PoL overrides for smoke diagnostics
     ap.add_argument('--pol_delta', type=float, default=None, help='Override PoL L2 distance threshold (delta)')
     ap.add_argument('--verification_rate', type=float, default=None, help='Override PoL verification_rate (0-1)')
     # Output directory override for parallel experiments
@@ -1837,7 +1837,7 @@ def main():
             raise ValueError(f"Unknown baselines: {unknown_b}. Allowed: {sorted(allowed_b)}")
         cfg['baselines'] = chosen_b
 
-    # Safety guard: warn when using verification_rate < 1.0 in known-bad RQ1 settings
+    # Warn when verification_rate < 1.0 is used with incompatible RQ1 settings.
     pol_cfg = cfg.get('pol_config', {})
     vr = pol_cfg.get('verification_rate', None)
     if vr is not None and vr < 1.0:
@@ -1845,13 +1845,13 @@ def main():
         if args.dataset == 'MNIST' and has_rn:
             logger.warning(
                 "RQ1 runner: verification_rate=%.3f < 1.0 with MNIST + byzantine_random_noise. "
-                "During clearance we observed systematic model collapse under this setting. "
+                "Validation records systematic model collapse under this setting. "
                 "Use this only for ablations, not main RQ1 configs.",
                 vr,
             )
 
 
-    # Phase 1 parameter calibration (low-risk defaults)
+    # Default parameter calibration
     try:
         # Align minimal-steps threshold with this run's local_epochs
         os.environ['POL_MIN_EPOCHS'] = str(FL_CONFIG.get('local_epochs', 5))
@@ -1869,7 +1869,7 @@ def main():
     experiment = SecurityExperiment(cfg, output_dir=args.output_dir)
     results = experiment.run_all_experiments()
 
-    logger.info("\nRQ1: Security Evaluation Completed!")
+    logger.info("\nRQ1: Security Evaluation Completed.")
     logger.info(f"Total experiments: {len(results)}")
 
 

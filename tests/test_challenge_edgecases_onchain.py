@@ -41,6 +41,5 @@ def test_malicious_indices_invalid_issue():
     assert ci.chain_proxy.pol_register_client('7') is True or True
 
     now = int(time.time())
-    bad = ci.chain_proxy.issue_challenge('7', idx0=5, idx1=3, deadline_ts=now + 3600)
-    assert bad == ""
-
+    invalid = ci.chain_proxy.issue_challenge('7', idx0=5, idx1=3, deadline_ts=now + 3600)
+    assert invalid == ""

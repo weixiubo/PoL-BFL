@@ -1,6 +1,6 @@
 #!/bin/bash
 # Run RQ1 Security experiment with multiple seeds and save per-seed result files.
-# Requires: conda env wxb__veryfl_pol with dependencies; data prepared.
+# Requires: conda env polbfl with dependencies; data prepared.
 
 set -euo pipefail
 

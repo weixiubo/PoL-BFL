@@ -9,7 +9,7 @@ from pathlib import Path
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-# Ensure we can import sibling modules when invoked from repo root
+# Add the analysis directory for sibling-module imports.
 try:
     from plot_style import apply_style, COLORS
 except ImportError:  # pragma: no cover
@@ -66,4 +66,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

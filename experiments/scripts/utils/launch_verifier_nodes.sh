@@ -7,7 +7,7 @@ set -euo pipefail
 NUM_NODES=${1:-4}
 BASE_PORT=${2:-8088}
 HOST=127.0.0.1
-PY="/home/wxb/miniconda3/envs/wxb__veryfl_pol/bin/python"
+PY="python"
 
 for ((i=0;i<NUM_NODES;i++)); do
   PORT=$((BASE_PORT + i))

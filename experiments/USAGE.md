@@ -16,7 +16,8 @@ Dataset preparation is described in
 
 ## Inspecting the matrix
 
-The main experiment matrix can be displayed without starting training:
+The following command prints the main experiment matrix and its resolved
+metadata:
 
 ```bash
 python -m experiments.final.run_matrix

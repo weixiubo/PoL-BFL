@@ -26,16 +26,16 @@ def compute_statistical_significance(
 ) -> Tuple[float, float]:
     """
     Compute statistical significance using t-test
-    
+
     Args:
         method_results: Results from the method being tested (e.g., PoL-BFL)
         baseline_results: Results from the baseline method
         test_type: 'paired' for paired t-test, 'independent' for independent t-test
         alternative: 'two-sided', 'greater', or 'less'
-    
+
     Returns:
         (t_statistic, p_value)
-    
+
     Example:
         >>> pol_acc = [92.3, 92.5, 92.1]
         >>> baseline_acc = [88.1, 88.3, 87.9]
@@ -47,12 +47,12 @@ def compute_statistical_significance(
                       f"Got {len(method_results)} vs {len(baseline_results)}. "
                       f"Falling back to independent t-test.")
         test_type = 'independent'
-    
+
     if test_type == 'paired':
         t_stat, p_val = stats.ttest_rel(method_results, baseline_results, alternative=alternative)
     else:
         t_stat, p_val = stats.ttest_ind(method_results, baseline_results, alternative=alternative)
-    
+
     return float(t_stat), float(p_val)
 
 
@@ -64,16 +64,16 @@ def format_with_significance(
 ) -> str:
     """
     Format result with mean±std and optional significance marker
-    
+
     Args:
         mean: Mean value
         std: Standard deviation
         p_value: P-value from statistical test (optional)
         decimals: Number of decimal places
-    
+
     Returns:
         Formatted string like "92.3±0.5***" or "92.3±0.5"
-    
+
     Significance markers:
         * : p < 0.05
         ** : p < 0.01
@@ -90,7 +90,7 @@ def format_with_significance(
             marker = ''
     else:
         marker = ''
-    
+
     return f"{mean:.{decimals}f}±{std:.{decimals}f}{marker}"
 
 
@@ -100,11 +100,11 @@ def compute_confidence_interval(
 ) -> Tuple[float, float, float]:
     """
     Compute confidence interval for data
-    
+
     Args:
         data: List of values
         confidence: Confidence level (default: 0.95 for 95% CI)
-    
+
     Returns:
         (mean, lower_bound, upper_bound)
     """
@@ -112,7 +112,7 @@ def compute_confidence_interval(
     mean = np.mean(data_array)
     sem = stats.sem(data_array)  # Standard error of mean
     ci = stats.t.interval(confidence, len(data_array) - 1, loc=mean, scale=sem)
-    
+
     return float(mean), float(ci[0]), float(ci[1])
 
 
@@ -122,14 +122,14 @@ def aggregate_multi_seed_results(
 ) -> Dict[str, Dict[str, Union[float, List[float]]]]:
     """
     Aggregate results from multiple seed runs
-    
+
     Args:
         result_files: List of JSON result file paths
         metric_keys: List of metric keys to extract (if None, extract all)
-    
+
     Returns:
         Aggregated results with mean, std, and raw values for each metric
-        
+
     Example output:
         {
             'final_accuracy': {
@@ -147,7 +147,7 @@ def aggregate_multi_seed_results(
         }
     """
     all_results = []
-    
+
     # Load all result files
     for file_path in result_files:
         try:
@@ -157,11 +157,11 @@ def aggregate_multi_seed_results(
         except Exception as e:
             logger.warning(f"Failed to load {file_path}: {e}")
             continue
-    
+
     if not all_results:
         logger.error("No valid result files found")
         return {}
-    
+
     # Determine metric keys
     if metric_keys is None:
         # Extract all numeric keys from first result
@@ -176,13 +176,13 @@ def aggregate_multi_seed_results(
             for key, value in first_result[0].items():
                 if isinstance(value, (int, float)):
                     metric_keys.append(key)
-    
+
     # Aggregate metrics
     aggregated = {}
-    
+
     for metric in metric_keys:
         values = []
-        
+
         for result in all_results:
             try:
                 if isinstance(result, dict):
@@ -197,12 +197,12 @@ def aggregate_multi_seed_results(
             except (KeyError, TypeError, ValueError) as e:
                 logger.debug(f"Could not extract {metric}: {e}")
                 continue
-        
+
         if values:
             mean = np.mean(values)
             std = np.std(values, ddof=1) if len(values) > 1 else 0.0
             _, ci_lower, ci_upper = compute_confidence_interval(values)
-            
+
             aggregated[metric] = {
                 'mean': float(mean),
                 'std': float(std),
@@ -210,7 +210,7 @@ def aggregate_multi_seed_results(
                 'ci_95': (float(ci_lower), float(ci_upper)),
                 'count': len(values)
             }
-    
+
     return aggregated
 
 
@@ -222,17 +222,17 @@ def compare_methods_with_significance(
 ) -> Dict[str, Dict[str, float]]:
     """
     Compare multiple methods against a baseline with significance testing
-    
+
     Args:
         method_results: Dict mapping method names to lists of results
                        e.g., {'PoL-BFL': [92.1, 92.3], 'Krum': [87.5, 87.8]}
         baseline_name: Name of the baseline method
         metric_name: Name of the metric being compared
         test_type: 'paired' or 'independent'
-    
+
     Returns:
         Dict with comparison results including p-values
-        
+
     Example:
         >>> results = {
         ...     'Vanilla_FL': [85.2, 85.4, 85.0],
@@ -243,10 +243,10 @@ def compare_methods_with_significance(
     """
     if baseline_name not in method_results:
         raise ValueError(f"Baseline '{baseline_name}' not found in method_results")
-    
+
     baseline_values = method_results[baseline_name]
     comparison = {}
-    
+
     for method_name, method_values in method_results.items():
         if method_name == baseline_name:
             # Baseline compared to itself
@@ -262,11 +262,11 @@ def compare_methods_with_significance(
             mean_method = np.mean(method_values)
             std_method = np.std(method_values, ddof=1) if len(method_values) > 1 else 0.0
             mean_baseline = np.mean(baseline_values)
-            
+
             t_stat, p_val = compute_statistical_significance(
                 method_values, baseline_values, test_type=test_type
             )
-            
+
             comparison[method_name] = {
                 'mean': float(mean_method),
                 'std': float(std_method),
@@ -276,7 +276,7 @@ def compare_methods_with_significance(
                 'improvement': float(mean_method - mean_baseline),
                 'improvement_pct': float((mean_method - mean_baseline) / mean_baseline * 100)
             }
-    
+
     return comparison
 
 
@@ -288,16 +288,16 @@ def generate_latex_table_row(
 ) -> str:
     """
     Generate a LaTeX table row with significance markers
-    
+
     Args:
         method_name: Name of the method
         metrics: Dict of metrics with 'mean', 'std', 'p_value'
         baseline_name: If provided, compare against this baseline
         bold_best: Whether to bold the best values
-    
+
     Returns:
         LaTeX table row string
-    
+
     Example:
         >>> metrics = {
         ...     'MA': {'mean': 92.3, 'std': 0.5, 'p_value': 0.0001},
@@ -308,20 +308,20 @@ def generate_latex_table_row(
         PoL-BFL & \textbf{92.3±0.5***} & \textbf{95.8±1.2***} \\
     """
     row_parts = [method_name]
-    
+
     for metric_name, metric_data in metrics.items():
         mean = metric_data['mean']
         std = metric_data['std']
         p_value = metric_data.get('p_value')
-        
+
         formatted = format_with_significance(mean, std, p_value)
-        
+
         # Bold if best (this would need comparison logic in practice)
         if bold_best and p_value is not None and p_value < 0.001:
             formatted = f"\\textbf{{{formatted}}}"
-        
+
         row_parts.append(formatted)
-    
+
     return " & ".join(row_parts) + " \\\\"
 
 
@@ -334,12 +334,12 @@ if __name__ == "__main__":
         'Trimmed_Mean': [88.1, 88.3, 87.9],
         'PoL-BFL': [92.3, 92.5, 92.1]
     }
-    
+
     print("=== Statistical Significance Analysis ===\n")
-    
+
     # Compare against best baseline (Trimmed Mean)
     comparison = compare_methods_with_significance(results, 'Trimmed_Mean')
-    
+
     for method, stats in comparison.items():
         print(f"{method}:")
         print(f"  Mean±Std: {stats['mean']:.1f}±{stats['std']:.1f}")

@@ -9,7 +9,7 @@ from polbfl.zk import IcicleProverPool
 
 
 def test_icicle_workers_are_recycled_after_bounded_commands(tmp_path):
-    worker_binary = tmp_path / "fake-icicle-worker"
+    worker_binary = tmp_path / "test-icicle-worker"
     worker_binary.write_text(
         """#!/usr/bin/env python3
 import json

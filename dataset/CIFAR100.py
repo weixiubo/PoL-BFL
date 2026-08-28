@@ -8,4 +8,3 @@ def get_cifar100(train:bool = True):
                                 transform = transforms.Compose([transforms.RandomCrop(32,padding=4),
                                                               transforms.RandomHorizontalFlip(),
                                                               transforms.ToTensor(),]))
-    

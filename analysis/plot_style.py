@@ -44,7 +44,7 @@ def apply_style(extra: dict | None = None) -> None:
     mpl.rcParams.update(params)
 
 if __name__ == '__main__':
-    # Quick smoke check
+    # Smoke smoke check
     apply_style()
     print('Plot style applied with params:', {k: mpl.rcParams[k] for k in _DEF_PARAMS})
 

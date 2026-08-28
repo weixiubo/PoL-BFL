@@ -10,7 +10,7 @@ def test_deferred_cleanup_flag_and_execution():
     tmpdir = tempfile.mkdtemp(prefix="pol_test_")
     try:
         save_dir = os.path.join(tmpdir, "pol_data")
-        # Setup manager: enable auto cleanup with small interval to trigger quickly
+        # Enable automatic cleanup with a short interval to exercise the callback.
         pm = PoLManager(
             client_id="test_client",
             save_dir=save_dir,
@@ -59,4 +59,3 @@ def test_deferred_cleanup_flag_and_execution():
 
     finally:
         shutil.rmtree(tmpdir, ignore_errors=True)
-

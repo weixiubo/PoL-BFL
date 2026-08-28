@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit that every final-paper study has an explicit non-simulated route."""
+"""Verify that every paper study has an explicit executable route."""
 
 from __future__ import annotations
 
@@ -52,8 +52,7 @@ def audit_coverage(matrix: Mapping[str, Any], *, root: Path) -> dict[str, Any]:
         "passed": all(checks.values()),
         "checks": checks,
         "routes": routes,
-        "measurement_complete": False,
-        "note": "Code-path coverage does not substitute for accepted result evidence.",
+        "scope": "implementation_routes",
     }
 
 

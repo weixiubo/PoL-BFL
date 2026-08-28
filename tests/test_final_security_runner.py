@@ -7,8 +7,8 @@ torch = pytest.importorskip("torch")
 from experiments.final.run_security_cell import (
     apply_delta,
     client_account_snapshot,
-    fake_commitment,
-    fake_fingerprint,
+    synthetic_commitment,
+    synthetic_fingerprint,
     evaluate_cell_acceptance,
     model_delta,
     process_training_policy,
@@ -46,7 +46,7 @@ def test_security_rates_average_client_decisions_across_rounds():
             ]
         )
 
-def test_security_runner_delta_roundtrip_and_fake_trace_shape():
+def test_security_runner_delta_roundtrip_and_synthetic_trace_shape():
     global_state = {"w": torch.tensor([1.0, 2.0]), "counter": torch.tensor(1)}
     local_state = {"w": torch.tensor([1.5, 1.0]), "counter": torch.tensor(2)}
     delta = model_delta(local_state, global_state)
@@ -54,27 +54,27 @@ def test_security_runner_delta_roundtrip_and_fake_trace_shape():
     assert torch.equal(restored["w"], local_state["w"])
     assert torch.equal(restored["counter"], global_state["counter"])
 
-    commitment = fake_commitment("round-1", "client-1", expected_steps=160, seed=7)
-    fingerprint = fake_fingerprint(commitment, seed=8, batch_size=32)
+    commitment = synthetic_commitment("round-1", "client-1", expected_steps=160, seed=7)
+    fingerprint = synthetic_fingerprint(commitment, seed=8, batch_size=32)
     assert commitment.checkpoint_count == 33
     assert len(fingerprint.checkpoint_vectors) == 33
     assert len(fingerprint.checkpoint_vectors[0]) == 14
-    other = fake_fingerprint(
-        fake_commitment("round-1", "client-2", expected_steps=160, seed=7),
+    other = synthetic_fingerprint(
+        synthetic_commitment("round-1", "client-2", expected_steps=160, seed=7),
         seed=8,
         batch_size=32,
     )
     assert fingerprint.batch_indices != other.batch_indices
 
-    fake_population = [
-        fake_fingerprint(
-            fake_commitment("round-1", f"client-{index}", expected_steps=160, seed=7),
+    synthetic_population = [
+        synthetic_fingerprint(
+            synthetic_commitment("round-1", f"client-{index}", expected_steps=160, seed=7),
             seed=100 + index,
             batch_size=32,
         )
         for index in range(10)
     ]
-    assert not screen_trace_fingerprints(fake_population).flagged_clients
+    assert not screen_trace_fingerprints(synthetic_population).flagged_clients
 
 
 def test_process_training_policy_executes_lazy_free_rider_for_one_epoch_without_pol():

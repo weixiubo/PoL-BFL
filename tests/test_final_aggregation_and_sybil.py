@@ -114,7 +114,7 @@ def test_robust_screening_flags_clear_update_outlier():
 
 def test_aggregation_rejects_nonfinite_and_unsafe_krum_parameters():
     with pytest.raises(ValueError, match="finite"):
-        aggregate_verified_updates([_update("bad", np.nan)], method="median")
+        aggregate_verified_updates([_update("nonfinite", np.nan)], method="median")
     with pytest.raises(ValueError, match="Krum requires"):
         aggregate_verified_updates(
             [_update("a", 0), _update("b", 1), _update("c", 2), _update("d", 3)],

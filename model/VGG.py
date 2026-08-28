@@ -11,7 +11,7 @@ __all__ = [
 class VGG(nn.Module):
     def __init__(self, class_num=10, in_channels=3, pixels=32, pattern="A"):
         super(VGG, self).__init__()
-        self.allow_pattern = { 
+        self.allow_pattern = {
         'A': [64, 'M', 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],
         'B': [64, 64, 'M', 128, 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],
         'D': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M'],
@@ -38,13 +38,13 @@ class VGG(nn.Module):
                 self.vgg_layer.append(nn.ReLU(inplace=True))
                 in_channels = i
         self.vgg_layer = nn.Sequential(*self.vgg_layer)
-        
+
         #init classifier
         self.mlp_layer = []
         in_dim = self.pixels
         for i in range(5):
             in_dim = int(in_dim/2)
-        if(in_dim == 0) : 
+        if(in_dim == 0) :
             raise ValueError(
                 "input resolution is too small for five VGG pooling stages; "
                 "select a shallower VGG configuration"
@@ -74,7 +74,7 @@ def VGG_D(class_num=10, in_channels=3, pixels=32):
         return VGG(class_num=class_num, in_channels=in_channels, pixels=pixels, pattern="D")
 def VGG_E(class_num=10, in_channels=3, pixels=32):
         return VGG(class_num=class_num, in_channels=in_channels, pixels=pixels, pattern="E")
-    
+
 if __name__ == '__main__':
     # Unit test pass
     a = VGG_A()
@@ -103,7 +103,7 @@ def make_mlp(self):
         mlp_layer.append(nn.ReLU(inplace=True))
         mlp_layer.append(nn.Linear(512, self.class_num))
         return nn.Sequential(*mlp_layer)
-           
+
 def make_vgg(self):
     vgg_layer = []
     in_channels = self.in_channels
@@ -117,9 +117,9 @@ def make_vgg(self):
             vgg_layer.append(nn.ReLU(inplace=True))
             in_channels = i
     return nn.Sequential(*vgg_layer)
-    
-        
-            
+
+
+
 
 class VGG16(nn.Module):
     def __init__(self, num_classes=200):

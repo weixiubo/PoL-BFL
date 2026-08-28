@@ -5,7 +5,7 @@ pragma solidity ^0.6.0;
 import "./SafeMath.sol";
 
 /**
-    @title Bare-bones Token implementation
+    @title Minimal token implementation
     @notice Based on the ERC-20 token standard as defined at
             https://eips.ethereum.org/EIPS/eip-20
  */
@@ -103,8 +103,8 @@ contract Token {
 
     /**
         @notice Transfer tokens from one address to another
-        @param _from The address which you want to send tokens from
-        @param _to The address which you want to transfer to
+        @param _from Source address
+        @param _to Destination address
         @param _value The amount of tokens to be transferred
         @return Success boolean
      */

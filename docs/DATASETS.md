@@ -1,8 +1,7 @@
 # Datasets
 
 PoL-BFL includes experiment configurations for CIFAR-10, CIFAR-100, and
-FEMNIST. Dataset files are stored outside the source tree and supplied to
-experiment commands through `--data-root`.
+FEMNIST.
 
 ## Directory layout
 

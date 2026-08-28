@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Run formal paper reproduction configs with resumable cell manifests.
+"""Execute paper experiment configurations with resumable run manifests.
 
-The paper configs in this directory describe target matrices. This launcher
-turns them into concrete runner invocations, keeps every result under
-``experiments/results/repro_recovery/formal``, and skips cells that already have
-successful manifests. It never edits the paper.
+The launcher expands target matrices into concrete runner invocations, stores
+results in configuration-selected output directories, and resumes from
+completed run manifests.
 """
 
 from __future__ import annotations
@@ -184,7 +183,7 @@ def _execution_value(config: Dict[str, Any], key: str, default: Any) -> Any:
 
 
 def _output_root(config: Dict[str, Any]) -> Path:
-    return _resolve(config.get("output_root", "experiments/results/repro_recovery/formal"))
+    return _resolve(config.get("output_root", "experiments/results/paper_runs"))
 
 
 def _dataset_items(config: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -1160,7 +1159,7 @@ def _write_validation_gate_report(
         lines.append("## Root-Cause Entry Points")
         lines.extend(
             [
-                "- Check `run_manifest.json` environment overrides against the known-good formal settings.",
+                "- Compare `run_manifest.json` environment overrides with the validated settings.",
                 "- Check whether the attack actually affected malicious clients and whether malicious clients were verified.",
                 "- Check strict replay pass/fail evidence before changing numeric thresholds.",
                 "- Check aggregation weighting and validation target mapping before treating a result as a paper discrepancy.",
@@ -1376,7 +1375,7 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
     parser.add_argument(
         "--include-running-manifests",
         action="store_true",
-        help="With --resume, do not skip jobs whose run_manifest.json is still marked running",
+        help="With --resume, include jobs whose run_manifest.json records an active state",
     )
     parser.add_argument(
         "--skip-passed-validation-manifest",
@@ -1385,7 +1384,7 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
         help="Skip jobs whose paper-table rows already pass in an existing validation_manifest.json",
     )
     parser.add_argument("--dry-run", action="store_true")
-    parser.add_argument("--refresh-validation-gates", action="store_true", help="Refresh validation gate reports for selected completed jobs without rerunning training")
+    parser.add_argument("--refresh-validation-gates", action="store_true", help="Refresh validation reports for selected completed jobs")
     parser.add_argument("--start-verifiers", action="store_true", help="Start local strict replay VerifierNode processes for each GPU worker")
     parser.add_argument("--verifier-port-base", type=int, default=19088)
     parser.add_argument("--verifier-startup-sleep", type=float, default=3.0)
@@ -1396,7 +1395,7 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
     parser.add_argument("--gpu-wait-sleep-sec", type=float, default=float(os.getenv("POL_GPU_WAIT_SLEEP_SEC", "60")))
     parser.add_argument("--require-gpu-name", default=os.getenv("POL_REQUIRE_GPU_NAME", ""), help="Regex that each requested non-CPU GPU name must match before launching")
     parser.add_argument("--validate-after-job", action="store_true", help="Run paper validation after each completed job and write a gate report")
-    parser.add_argument("--validation-results-root", type=Path, default=None, help="Results root passed to validate_reproduction.py; defaults to the formal root")
+    parser.add_argument("--validation-results-root", type=Path, default=None, help="Results root passed to validate_reproduction.py; defaults to the paper-run root")
     parser.add_argument("--validation-output-root", type=Path, default=None, help="Directory for per-job validation gate outputs")
     parser.add_argument("--continue-on-job-failure", action="store_true", help="Keep launching queued jobs after a runner exits non-zero")
     parser.add_argument("--continue-on-validation-fail", action="store_true", help="Keep launching queued jobs after a validation gate blocks")

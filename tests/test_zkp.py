@@ -33,7 +33,7 @@ def test_zkp_real_verify_and_bind_ok():
         "circuits/build/parameter_update.vkey.json",
     )
     if not all(os.path.exists(path) for path in required):
-        pytest.skip("legacy parameter_update circuit artifacts are not installed")
+        pytest.skip("optional parameter_update compatibility artifacts are not installed")
 
     prover, verifier = _mk_prover_verifier(simulation=False)
 
@@ -60,7 +60,7 @@ def test_zkp_real_bind_fails_on_mismatch():
         "circuits/build/parameter_update.vkey.json",
     )
     if not all(os.path.exists(path) for path in required):
-        pytest.skip("legacy parameter_update circuit artifacts are not installed")
+        pytest.skip("optional parameter_update compatibility artifacts are not installed")
 
     prover, verifier = _mk_prover_verifier(simulation=False)
 
@@ -81,4 +81,3 @@ def test_zkp_real_bind_fails_on_mismatch():
 
     ok = verifier.verify_proof_with_binding(ckpt0_bad, ckpt1_ok, indices, proof, public)
     assert ok is False
-

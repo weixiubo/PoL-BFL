@@ -57,8 +57,8 @@ For each selected interval, the Groth16 relation verifies:
   root.
 
 Verifier nodes evaluate the proof independently. A decision requires three
-distinct signed receipts from a five-member committee. Duplicate, expired,
-mismatched, or unauthorized receipts are excluded.
+distinct, timely, context-matched signed receipts from authorized members of a
+five-member committee.
 
 Numerical tolerances apply to the fixed-point trace relation. Groth16 proof
 verification remains exact.
@@ -73,8 +73,8 @@ aggregation set. The implementation provides reputation-weighted variants of:
 - coordinate-wise Median.
 
 Sybil screening uses committed batch-index evidence and checkpoint-trajectory
-similarity. Statistical exclusion from aggregation is distinct from a
-cryptographic proof failure.
+similarity. Statistical filtering at aggregation and cryptographic proof
+verification are recorded as distinct outcomes.
 
 ### Incentives and reputation
 

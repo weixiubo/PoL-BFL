@@ -3,7 +3,7 @@
 CIFAR-10 ablation runner (baseline + Byzantine noise-scale variants)
 - Baseline (no attack) for Vanilla_FL and Trimmed_Mean
 - Byzantine attacks at noise_scale in a list, 20% malicious by default
-- Short runs to quickly sanity-check trends and prepare paper paragraphs
+- Reduced-scale runs for validating trends before full evaluation
 
 Outputs JSON to experiments/results/cifar10_ablation/results.json
 """
@@ -258,4 +258,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

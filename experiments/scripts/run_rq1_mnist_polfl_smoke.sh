@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# RQ1 MNIST PoL_FL smoke test (short run, clearance-focused)
+# RQ1 MNIST PoL_FL smoke test (short run, validation-focused)
 # Runs 3 rounds of all 10 attacks with PoL_FL baseline only, using the
 # cleared default configuration (delta=5.0, verification_rate=1.0).
 

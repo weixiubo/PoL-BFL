@@ -62,10 +62,10 @@ def test_training_round_completion_requires_contiguous_rows_and_checkpoint(tmp_p
 
 @pytest.mark.skipif(os.name != "posix", reason="process-group monitoring is POSIX-only")
 def test_supervisor_ignores_foreign_gpu_after_all_training_rounds(tmp_path):
-    fake_bin = tmp_path / "bin"
-    fake_bin.mkdir()
-    fake_nvidia = fake_bin / "nvidia-smi"
-    fake_nvidia.write_text(
+    test_bin = tmp_path / "bin"
+    test_bin.mkdir()
+    test_nvidia = test_bin / "nvidia-smi"
+    test_nvidia.write_text(
         "#!/bin/sh\n"
         "case \"$*\" in\n"
         "  *query-gpu=*) printf '0, 0\\n0, 0\\n' ;;\n"
@@ -74,7 +74,7 @@ def test_supervisor_ignores_foreign_gpu_after_all_training_rounds(tmp_path):
         "esac\n",
         encoding="utf-8",
     )
-    fake_nvidia.chmod(0o755)
+    test_nvidia.chmod(0o755)
     run_dir = tmp_path / "run"
     run_dir.mkdir()
     (run_dir / "manifest.json").write_text(
@@ -95,7 +95,7 @@ def test_supervisor_ignores_foreign_gpu_after_all_training_rounds(tmp_path):
     environment = os.environ.copy()
     environment.update(
         {
-            "PATH": str(fake_bin) + os.pathsep + environment["PATH"],
+            "PATH": str(test_bin) + os.pathsep + environment["PATH"],
             "FOREIGN_GPU_PID": str(os.getpid()),
             "TEST_RUN_DIR": str(run_dir),
         }
@@ -145,10 +145,10 @@ def test_supervisor_ignores_foreign_gpu_after_all_training_rounds(tmp_path):
 def test_supervisor_preempts_foreign_gpu_and_resets_an_uncheckpointed_first_round(
     tmp_path,
 ):
-    fake_bin = tmp_path / "bin"
-    fake_bin.mkdir()
-    fake_nvidia = fake_bin / "nvidia-smi"
-    fake_nvidia.write_text(
+    test_bin = tmp_path / "bin"
+    test_bin.mkdir()
+    test_nvidia = test_bin / "nvidia-smi"
+    test_nvidia.write_text(
         "#!/bin/sh\n"
         "case \"$*\" in\n"
         "  *query-gpu=*) printf '0, 0\\n0, 0\\n' ;;\n"
@@ -157,7 +157,7 @@ def test_supervisor_preempts_foreign_gpu_and_resets_an_uncheckpointed_first_roun
         "esac\n",
         encoding="utf-8",
     )
-    fake_nvidia.chmod(0o755)
+    test_nvidia.chmod(0o755)
     run_dir = tmp_path / "run"
     child = tmp_path / "child.py"
     child.write_text(
@@ -172,7 +172,7 @@ def test_supervisor_preempts_foreign_gpu_and_resets_an_uncheckpointed_first_roun
     environment = os.environ.copy()
     environment.update(
         {
-            "PATH": str(fake_bin) + os.pathsep + environment["PATH"],
+            "PATH": str(test_bin) + os.pathsep + environment["PATH"],
             "FOREIGN_GPU_PID": str(os.getpid()),
             "TEST_RUN_DIR": str(run_dir),
         }

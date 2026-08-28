@@ -1,7 +1,7 @@
 #!/bin/bash
 # 监控参数扫描进度
 
-OUTPUT_BASE="experiments/results/param_scan_stage1"
+OUTPUT_BASE="experiments/results/param_scan_coarse"
 
 echo "========================================"
 echo "参数扫描进度监控"
@@ -28,7 +28,7 @@ for dir in "$OUTPUT_BASE"/delta*_vr*/; do
         if [ -f "$dir/rq1_results_gpu0.json" ] || [ -f "$dir/rq1_results_gpu1.json" ]; then
             dirname=$(basename "$dir")
             completed=$((completed + 1))
-            echo "  ✅ $dirname"
+            echo "  [PASS] $dirname"
         fi
     fi
 done

@@ -43,10 +43,10 @@ def test_torch_replay_matches_original_sgd_transition():
         batch_size=2,
         checkpoint_interval=2,
     )
-    dummy = type("Record", (), {"step": 0})()
-    end_dummy = type("Record", (), {"step": 2})()
-    start = CheckpointOpening(0, dummy, (), initial, [], [], (), {})
-    end = CheckpointOpening(1, end_dummy, (), expected, [], [], (), {})
+    start_record = type("Record", (), {"step": 0})()
+    end_record = type("Record", (), {"step": 2})()
+    start = CheckpointOpening(0, start_record, (), initial, [], [], (), {})
+    end = CheckpointOpening(1, end_record, (), expected, [], [], (), {})
     witness = IntervalWitness(0, batches, optimizer_initial, {})
 
     replay = TorchSGDReplay(

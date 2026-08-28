@@ -14,7 +14,7 @@ class SignTrainer(BaseTrainer):
         super().__init__(model, dataloader, criterion, args, watermarks)
         self.criterion = torch.nn.CrossEntropyLoss()
         self.ind = 0
-        
+
     def _train_epoch(self, epoch):
 
         model = self.model
@@ -38,7 +38,7 @@ class SignTrainer(BaseTrainer):
             loss = self.criterion(log_probs, labels)  # pylint: disable=E1102
             sign_loss = torch.tensor(0.).to(device)
             if(self.watermarks is not None):
-                sign_loss += SignLoss(self.watermarks, self.model, self.ind).get_loss() 
+                sign_loss += SignLoss(self.watermarks, self.model, self.ind).get_loss()
             (loss + sign_loss).backward()
 
             # Uncommet this following line to avoid nan loss
@@ -47,7 +47,7 @@ class SignTrainer(BaseTrainer):
             self.optimizer.step()
             batch_loss.append(loss.item())
             batch_sign_loss.append(sign_loss.item())
-            
+
         if len(batch_loss) == 0:
             epoch_loss = 0.0
             epoch_sign_loss = 0.0
@@ -58,17 +58,17 @@ class SignTrainer(BaseTrainer):
         ret['loss'] = epoch_loss
         ret['sign_loss'] = epoch_sign_loss
         return ret
-    
-    
-    
+
+
+
 class SignLoss():
     def __init__(self, kwargs, model, scheme):
         super(SignLoss, self).__init__()
         self.alpha = 0.2  #self.sl_ratio
         self.loss = 0
-        self.scheme = scheme 
+        self.scheme = scheme
         self.model = model
-        self.kwargs = kwargs 
+        self.kwargs = kwargs
 
     def get_loss(self):
         self.reset()
@@ -77,33 +77,33 @@ class SignLoss():
                 if self.kwargs[m]['flag'] == True:
                     b = self.kwargs[m]['b']
                     M = self.kwargs[m]['M']
-                    
+
                     b = b.to(torch.device('cuda'))
                     M = M.to(torch.device('cuda'))
 
-                    if self.scheme == 0:    
+                    if self.scheme == 0:
                         self.loss += (self.alpha * F.relu(-self.model.features[int(m)].scale.view([1, -1]).mm(M).mul(b.view(-1)))).sum()
 
                     if self.scheme == 1:
                         for i in range(b.shape[0]):
                             if b[i] == -1:
                                 b[i] = 0
-                        y = self.model.features[int(m)].scale.view([1, -1]).mm(M) 
+                        y = self.model.features[int(m)].scale.view([1, -1]).mm(M)
                         # print(y)
                         loss1 = torch.nn.BCEWithLogitsLoss()
                         self.loss += self.alpha * loss1(y.view(-1), b)
 
-                    if self.scheme == 2:    
+                    if self.scheme == 2:
                         conv_w = torch.mean(self.model.features[int(m)].conv.weight, dim=0)
                         self.loss += (self.alpha * F.relu(-conv_w.view([1, -1]).mm(M).mul(b.view(-1)))).sum()
                     if self.scheme == 3:
                         for i in range(b.shape[0]):
                             if b[i] == -1:
                                 b[i] = 0
-                
-                        conv_w = torch.mean(self.model.features[int(m)].conv.weight, dim=0)                        
-                        y = conv_w.view([1, -1]).mm(M) 
-                        
+
+                        conv_w = torch.mean(self.model.features[int(m)].conv.weight, dim=0)
+                        y = conv_w.view([1, -1]).mm(M)
+
                         # print(y)
                         loss1 = torch.nn.BCEWithLogitsLoss()
                         self.loss += self.alpha * loss1(y.view(-1), b)

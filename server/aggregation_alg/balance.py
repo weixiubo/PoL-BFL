@@ -9,13 +9,13 @@ class balanceAggregator(ServerAggregator):
         self.gamma = gamma
         self.kappa = kappa
         self.saved_model = init_model
-        
+
     def _on_before_aggregation(self, raw_client_model_or_grad_list):
         return raw_client_model_or_grad_list
-        
+
     def _on_after_aggregation(self, aggregated_model_or_grad):
         return aggregated_model_or_grad
-        
+
     def test(self, test_data=None, device=None, args=None):
         return {
             'gamma': self.gamma,
@@ -34,7 +34,7 @@ class balanceAggregator(ServerAggregator):
                 parts.append(np.asarray(value, dtype=np.float64).reshape(-1))
             return np.concatenate(parts)
         return np.asarray(model, dtype=np.float64).reshape(-1)
-        
+
 
     def _aggregate_alg(self, raw_client_model_or_grad_list=None, t=None):
         if raw_client_model_or_grad_list is None:

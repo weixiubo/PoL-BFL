@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "runner": "experiments/scripts/runners/run_rq9_adaptive.py",
-  "output_root": "experiments/results/repro_recovery/formal/rq9_adaptive",
+  "output_root": "experiments/results/paper_runs/rq9_adaptive",
   "protocol": {
     "pol_integrity": 1,
     "pol_remote_mode": "strict_replay",

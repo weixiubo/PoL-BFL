@@ -38,16 +38,13 @@ model/                      neural network architectures
 chainEnv/contracts/         Solidity contracts
 circuits/final/             Circom circuits and proof interfaces
 experiments/final/          experiment configurations and runners
-experiments/reproducibility/  reproduction utilities
+experiments/reproducibility/  configuration and result-verification utilities
 analysis/                   analysis and measurement utilities
 config/                     protocol and toolchain configuration
 scripts/                    build and execution utilities
 docs/                       technical documentation
 tests/                      automated tests
 ```
-
-Generated datasets, checkpoints, proof artifacts, native binaries, and
-experiment outputs are excluded from version control.
 
 ## Requirements
 
@@ -76,8 +73,7 @@ npm ci
 ## Datasets
 
 The repository includes dataset interfaces and experiment configurations for
-CIFAR-10, CIFAR-100, and FEMNIST. Dataset files are not distributed with the
-source code. Preparation procedures are provided in
+CIFAR-10, CIFAR-100, and FEMNIST. Preparation procedures are provided in
 [docs/DATASETS.md](docs/DATASETS.md).
 
 ## Verification

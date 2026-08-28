@@ -426,7 +426,7 @@ class IncentiveExperiment:
                 base_client_id="attacker"
             )
             sybil_identities = sybil_attack.create_identities()
-            logger.info(f"Created Sybil attack with {len(sybil_identities)} fake identities: {sybil_identities}")
+            logger.info(f"Created Sybil attack with {len(sybil_identities)} Sybil identities: {sybil_identities}")
 
         # Metrics
         results = {
@@ -773,7 +773,7 @@ def main():
     experiment = IncentiveExperiment(config)
     results = experiment.run_all_experiments()
 
-    logger.info("\nRQ4: Economic Incentive Effectiveness Completed!")
+    logger.info("\nRQ4: Economic Incentive Effectiveness Completed.")
 
 
 if __name__ == '__main__':

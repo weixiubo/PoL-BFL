@@ -3,7 +3,7 @@ import os
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-# Ensure we can import sibling modules when invoked from repo root
+# Add the analysis directory for sibling-module imports.
 try:
     from plot_style import apply_style, COLORS
 except ImportError:  # pragma: no cover
@@ -52,4 +52,3 @@ out_path = os.path.join(root, 'rq4_incentive.pdf')
 # High quality output with minimal padding
 plt.savefig(out_path, format='pdf', bbox_inches='tight', pad_inches=0.02, dpi=300)
 print(f"Saved {out_path}")
-

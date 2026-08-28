@@ -15,10 +15,10 @@ class Client:
     '''
     Client base class for a client in federated learning
 
-    1.Just receive a cid for the uique toked when initialize
+    1. Receive a client identifier during initialization.
     2.download() method to get global model form the server
-    3.Use train() to produce training 
-    4.Test is no need in this senario 
+    3.Use train() to produce training
+    4.Test is no need in this senario
     '''
     def __init__(
         self,
@@ -39,7 +39,7 @@ class Client:
         self.args = args
         self.test_dataloader = test_dataloader
         self.watermarks = watermarks
-        
+
     def set_model(self, model: nn.Module) -> None:
         # Use the same model reference so that training updates are visible here
         # (Deepcopy would decouple trainer.model and client.model, breaking aggregation.)
@@ -47,24 +47,24 @@ class Client:
 
     def load_state_dict(self, state_dict: OrderedDict) -> None:
         self.model.load_state_dict(state_dict=state_dict)
-        
+
     def get_model_state_dict(self) -> OrderedDict:
         return self.model.state_dict()
-    
+
     def show_train_result(self, epoch: int, ret_list: list):
         #get the ret_list from trainer and show the trainig result
-        
+
         #Info Head
         logger.info(f"Epoch: {epoch}, client id {self.client_id}",)
-        
+
         for ind, ret in enumerate(ret_list):
             result = f"Inner Epoch: {ind} "
             for key, value in ret.items():
                 result += f"{key}: {value} "
             logger.info(result)
-        
+
         return
-        
+
     def test(self, epoch: int) -> dict:
         '''
         return dict
@@ -73,10 +73,10 @@ class Client:
           loss
           acc
         '''
-        #test routine for image classification 
+        #test routine for image classification
         if (self.test_dataloader == None):
             logger.warn("No test data")
-            return 
+            return
         self.model.eval()
         total_loss = 0
         correct = 0
@@ -104,10 +104,10 @@ class Client:
         ret['acc'] = acc
         logger.info(f"client id {self.client_id} with inner epoch {ret['epoch']}, Loss: {total_l}, Acc: {acc}")
         return ret
-    
+
     def sign_test(self, epoch: int):
         kwargs = self.watermarks
-        ind = 0 
+        ind = 0
         avg_private = 0
         count_private = 0
         self.model.eval()
@@ -128,15 +128,15 @@ class Client:
 
                         privatebit = b
                         privatebit = privatebit.sign().to(self.args['device'])
-                
+
                         # print(privatebit)
-    
+
                         detection = (signbit == privatebit).float().mean().item()
                         avg_private += detection
                         count_private += 1
 
         if kwargs == None:
-            avg_private = -1.0 # Watermark doesn't exist
+            avg_private = -1.0  # No watermark is available.
         if count_private != 0:
             avg_private /= count_private
         ret = dict()
@@ -145,24 +145,24 @@ class Client:
         ret['sign_acc']  = avg_private
         logger.info(f"client id {self.client_id} with inner epoch {epoch}, Sign Accuarcy: {avg_private}")
         return ret
-    
+
     @abstractmethod
     def train(self, epoch: int):
         return
 
 class BaseClient(Client):
-    
-    def train(self, epoch: int):    
+
+    def train(self, epoch: int):
         cal = self.trainer(self.model,self.dataloader,torch.nn.CrossEntropyLoss(),self.args)
         ret_list = cal.train(self.args.get('num_steps'))
-        
+
         self.show_train_result(epoch, ret_list)
         return
-    
+
 
 class SignClient(Client):
     # test the watermark accuarcy.
-    
+
     def train(self, epoch: int, watermarks: dict = None):
         cal = self.trainer(self.model,self.dataloader,torch.nn.CrossEntropyLoss(), self.args, self.watermarks)
         ret_list = cal.train(self.args.get('num_steps'))
@@ -170,5 +170,5 @@ class SignClient(Client):
         # avg_loss = ret['loss']
         # sign_loss = ret['sign_loss']
         # Loss: {avg_loss}, Sign Loss: {sign_loss}")
-        return 
-    
+        return
+

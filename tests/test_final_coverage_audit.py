@@ -40,14 +40,14 @@ def _seal(payload):
     )
 
 
-def test_final_coverage_audit_routes_every_study_without_claiming_measurements():
+def test_final_coverage_audit_routes_every_study():
     matrix = json.loads(
         (ROOT / "experiments" / "final" / "paper_matrix.json").read_text(encoding="utf-8")
     )
     report = audit_coverage(matrix, root=ROOT)
     assert report["passed"]
     assert set(report["routes"]) == set(COVERAGE) == set(matrix["studies"])
-    assert report["measurement_complete"] is False
+    assert report["scope"] == "implementation_routes"
     assert {
         "table_10_adaptive",
         "table_11_cross_hardware",

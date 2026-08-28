@@ -66,7 +66,7 @@ POL_CONFIG = {
     'memory_checkpoint_limit': _env_int('POL_MEMORY_CHECKPOINT_LIMIT', 5),
 
     # 是否启用自动清理（定期删除旧checkpoint）
-    'enable_auto_cleanup': True,  # Enabled with verification-lock fix
+    'enable_auto_cleanup': True,  # Coordinated with the verification lock.
 
     # 自动清理间隔（每N个checkpoint清理一次）
     'auto_cleanup_interval': 50,
@@ -83,7 +83,7 @@ POL_CONFIG = {
     # 量化位数
     'quantization_bits': 8,
 
-    # ========== ZKP配置（阶段二）==========
+    # ========== ZKP configuration ==========
 
     # 是否启用ZKP
     'use_zkp': False,
@@ -97,7 +97,7 @@ POL_CONFIG = {
     # ZKP验证密钥路径
     'zkp_verification_key': 'circuits/verification_key.json',
 
-    # ========== 经济激励配置（阶段三）==========
+    # ========== Economic incentive configuration ==========
 
     # 是否启用质押机制
     'enable_staking': False,
@@ -326,8 +326,8 @@ if __name__ == "__main__":
     is_valid, errors = validate_config(full_config)
 
     if is_valid:
-        print("✓ Configuration is valid")
+        print("[PASS] Configuration is valid")
     else:
-        print("✗ Configuration has errors:")
+        print("[FAIL] Configuration has errors:")
         for error in errors:
             print(f"  - {error}")

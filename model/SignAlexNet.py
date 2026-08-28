@@ -70,7 +70,7 @@ class ConvBlock(nn.Module):
         if self.relu is not None:
             x = self.relu(x)
         return x
-    
+
 class PassportPrivateBlock(nn.Module):
     def __init__(self, i, o, ks=3, s=1, pd=1):
         super().__init__()
@@ -109,10 +109,10 @@ class PassportPrivateBlock(nn.Module):
         x = x * self.scale [None, :, None, None] + self.bias [None, :, None, None]
         x = self.relu(x)
         return x
-    
+
 
 
 def get_sign_alexnet(class_num, in_channels, watermark_args):
-    return SignAlexNet(in_channels = in_channels, 
+    return SignAlexNet(in_channels = in_channels,
                        num_classes = class_num,
                        passport_kwargs = watermark_args)

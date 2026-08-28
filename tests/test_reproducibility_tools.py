@@ -72,7 +72,7 @@ def test_run_paper_config_rq1_training_hyperparams_are_explicit():
     config_path = ROOT / "experiments" / "reproducibility" / "configs" / "paper" / "rq1_main_security_formal.json"
     config = {
         "runner": "experiments/scripts/runners/run_rq1_security.py",
-        "output_root": "experiments/results/repro_recovery/formal/unit_hparams",
+        "output_root": "experiments/results/paper_runs/unit_hparams",
         "protocol": {"pol_integrity": 1},
         "execution": {
             "rounds": 3,
@@ -268,7 +268,7 @@ def test_run_paper_config_attack_params_get_distinct_job_id():
     config_path = ROOT / "experiments" / "reproducibility" / "configs" / "paper" / "rq1_main_security_formal.json"
     config = {
         "runner": "experiments/scripts/runners/run_rq1_security.py",
-        "output_root": "experiments/results/repro_recovery/formal/unit_params",
+        "output_root": "experiments/results/paper_runs/unit_params",
         "protocol": {"pol_integrity": 1},
         "execution": {"rounds": 3, "num_clients": 5, "clients_per_round": 2, "local_epochs": 1, "seeds": [42]},
         "datasets": [{"name": "CIFAR10", "model": "ResNet18"}],
@@ -310,7 +310,7 @@ def test_run_paper_config_can_skip_jobs_already_validated_pass(tmp_path):
     config_path = ROOT / "experiments" / "reproducibility" / "configs" / "paper" / "rq1_main_security_formal.json"
     config = {
         "runner": "experiments/scripts/runners/run_rq1_security.py",
-        "output_root": "experiments/results/repro_recovery/formal/unit_skip_validated",
+        "output_root": "experiments/results/paper_runs/unit_skip_validated",
         "protocol": {"pol_integrity": 1},
         "execution": {"rounds": 200, "num_clients": 50, "clients_per_round": 50, "local_epochs": 5, "seeds": [42]},
         "datasets": [{"name": "CIFAR10", "model": "ResNet18"}],
@@ -681,29 +681,6 @@ def test_rq1_non_lazy_baseline_detection_keeps_aggregator_evidence():
     assert suspects == {"client_11", "client_13"}
 
 
-def test_collect_recovery_evidence_no_remote(tmp_path):
-    script = ROOT / "experiments" / "reproducibility" / "collect_recovery_evidence.py"
-    if not script.exists():
-        pytest.skip("optional recovery evidence collector is not included in this distribution")
-
-    proc = subprocess.run(
-        [sys.executable, str(script), "--no-remote", "--output-dir", str(tmp_path)],
-        cwd=str(ROOT),
-        capture_output=True,
-        text=True,
-        check=False,
-        timeout=60,
-    )
-    assert proc.returncode == 0, proc.stderr
-    manifest = tmp_path / "evidence_manifest.json"
-    report = tmp_path / "gap_report.md"
-    assert manifest.exists()
-    assert report.exists()
-    payload = json.loads(manifest.read_text(encoding="utf-8"))
-    assert "table1_main_security" in payload["target_status"]
-    assert payload["local"]["paper_targets"]["tables"]["table1_main_security"]["exists"] is True
-
-
 def test_run_repro_smoke_dry_run(tmp_path):
     script = ROOT / "experiments" / "reproducibility" / "run_repro_smoke.py"
     config = ROOT / "experiments" / "reproducibility" / "configs" / "smoke_mnist.json"
@@ -1017,4 +994,4 @@ def test_audit_reproduction_coverage(tmp_path):
     assert payload["summary"]["overall"]["total"] == 583
     assert payload["summary"]["overall"]["runnable"] > 0
     assert payload["summary"]["overall"].get("blocked_method", 0) == 0
-    assert payload["summary"]["overall"]["measurement_required"] > 0
+    assert payload["summary"]["overall"]["measurement_pipeline"] > 0

@@ -26,7 +26,7 @@ contract NetworkManager{
 
     FLMeta public fl_info;
     TrainResult[] fl_result;
-    
+
     modifier only_owner{
         require(msg.sender == owner,"Only Owner Can Call This Function");
         _;
@@ -47,7 +47,7 @@ contract NetworkManager{
         return false;
     }
     function client_regist() public {
-        require(!is_duplicate_client(msg.sender),"Client has registed!");
+        require(!is_duplicate_client(msg.sender),"Client has registed.");
         regist_client.push(msg.sender);
         regist_result[msg.sender] = TrainResult(0,0,0);
     }

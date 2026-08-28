@@ -14,7 +14,7 @@ contract clientManager{
     }
 
     // function pickIds(uint64 count) public view returns (uint64[] memory) {
-        
+
     //     require(count > 0, "Count must be greater than zero");
     //     require(count <= nextId - 1, "Count must be less than or equal to the number of registered addresses");
 

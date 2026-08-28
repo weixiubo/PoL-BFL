@@ -42,7 +42,7 @@ class PoLVerifier:
         self.distance_metric = args.get('distance_metric', 'l2')
         self.device = args.get('device', 'cpu')
         self.top_q = args.get('top_q', None)
-        # Minimum pairwise success rate to accept verification (root-cause fix)
+        # Minimum pairwise success rate required for verification.
         _mpsr_env = os.getenv('POL_MIN_PAIR_SUCCESS_RATE')
         try:
             _mpsr_from_args = float(args.get('min_pair_success_rate')) if args.get('min_pair_success_rate') is not None else None
@@ -302,7 +302,7 @@ class PoLVerifier:
                 return False
             batch_idx_list = data_indices[begin:end]
 
-            # CRITICAL FIX: Use DataLoader for batch loading instead of individual dataset[idx] calls
+            # Load batches through DataLoader rather than individual dataset accesses.
             # This reduces I/O overhead from ~20s to ~2s per verification pair
             try:
                 from torch.utils.data import Subset, DataLoader
@@ -350,7 +350,7 @@ class PoLVerifier:
                 y_batch = y_batch.to(self.device, dtype=torch.long)
 
             except Exception as e:
-                # Fallback to old method if DataLoader fails (should be rare)
+                # Use direct dataset access when DataLoader construction fails.
                 logger.warning(f"DataLoader batch loading failed, falling back to individual loading: {e}")
                 xs, ys = [], []
                 for gidx in batch_idx_list:
@@ -389,7 +389,7 @@ class PoLVerifier:
                 if not torch.isfinite(loss):
                     logger.warning(f"[NaNGuard-Verify] Non-finite loss at replay_step={s+1}: {float(loss)}. Skipping this step.")
                     # Skip this step without updating model; do not advance steps_to_replay counter explicitly
-                    # We still consume the same batch of indices to align offsets
+                    # Consume the same index batch to preserve offset alignment.
                     total_consumed += need
                     continue
             except Exception:

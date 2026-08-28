@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 参数扫描结果分析脚本
-分析阶段1粗调结果，推荐最优参数组合
+Analyzes coarse parameter-scan results and selects the highest-scoring configuration.
 """
 
 import json
@@ -15,7 +15,7 @@ def load_results(input_dir):
     """加载所有实验结果"""
     results = []
     input_path = Path(input_dir)
-    
+
     for result_file in input_path.rglob("rq1_results.json"):
         try:
             with open(result_file) as f:
@@ -24,12 +24,12 @@ def load_results(input_dir):
                     # 提取参数信息（从目录名）
                     dir_name = result_file.parent.name
                     parts = dir_name.split('_')
-                    
+
                     # 解析参数
                     delta = None
                     vr = None
                     attack = None
-                    
+
                     for i, part in enumerate(parts):
                         if part.startswith('delta'):
                             delta = float(part.replace('delta', ''))
@@ -40,10 +40,10 @@ def load_results(input_dir):
                                 attack = part
                             else:
                                 attack += '_' + part
-                    
+
                     # 提取指标
                     metrics = data[0]['detection_metrics']
-                    
+
                     results.append({
                         'delta': delta,
                         'verification_rate': vr,
@@ -60,18 +60,18 @@ def load_results(input_dir):
                     })
         except Exception as e:
             print(f"Error loading {result_file}: {e}")
-    
+
     return results
 
 
 def analyze_results(results):
     """分析结果并推荐参数"""
     if not results:
-        print("No results found!")
+        print("No results found.")
         return None
-    
+
     df = pd.DataFrame(results)
-    
+
     # 按参数组合聚合
     grouped = df.groupby(['delta', 'verification_rate']).agg({
         'TPR': 'mean',
@@ -84,7 +84,7 @@ def analyze_results(results):
         'participation_rate': 'mean',
         'verification_pass_rate': 'mean',
     }).reset_index()
-    
+
     # 计算综合得分
     # 权重: TPR(40%) + (1-FPR)(30%) + Accuracy(20%) + F1(10%)
     grouped['score'] = (
@@ -93,10 +93,10 @@ def analyze_results(results):
         0.20 * grouped['final_accuracy'] +
         0.10 * grouped['f1']
     )
-    
+
     # 排序
     grouped = grouped.sort_values('score', ascending=False)
-    
+
     # 筛选条件
     # 1. TPR >= 0.90
     # 2. FPR <= 0.10
@@ -106,7 +106,7 @@ def analyze_results(results):
         (grouped['FPR'] <= 0.10) &
         (grouped['final_accuracy'] >= 0.80)
     ]
-    
+
     analysis = {
         'total_combinations': len(grouped),
         'qualified_combinations': len(qualified),
@@ -115,7 +115,7 @@ def analyze_results(results):
         'top_3': grouped.head(3).to_dict('records'),
         'recommendations': []
     }
-    
+
     # 生成推荐
     if len(qualified) > 0:
         top = qualified.iloc[0]
@@ -129,7 +129,7 @@ def analyze_results(results):
             'score': top['score'],
             'reason': 'Best overall score among qualified combinations'
         })
-        
+
         # 推荐高TPR配置
         high_tpr = qualified.nlargest(1, 'TPR').iloc[0]
         if high_tpr['delta'] != top['delta'] or high_tpr['verification_rate'] != top['verification_rate']:
@@ -143,7 +143,7 @@ def analyze_results(results):
                 'score': high_tpr['score'],
                 'reason': 'Highest TPR among qualified combinations'
             })
-        
+
         # 推荐低FPR配置
         low_fpr = qualified.nsmallest(1, 'FPR').iloc[0]
         if (low_fpr['delta'] != top['delta'] or low_fpr['verification_rate'] != top['verification_rate']) and \
@@ -159,7 +159,7 @@ def analyze_results(results):
                 'reason': 'Lowest FPR among qualified combinations'
             })
     else:
-        print("Warning: No qualified combinations found!")
+        print("Warning: No qualified combinations found.")
         print("Relaxing criteria...")
         # 放宽条件
         relaxed = grouped[
@@ -178,7 +178,7 @@ def analyze_results(results):
                 'score': top['score'],
                 'reason': 'Best under relaxed criteria (TPR>=0.80, FPR<=0.15)'
             })
-    
+
     return analysis
 
 
@@ -187,14 +187,14 @@ def print_summary(analysis):
     print("\n" + "="*60)
     print("参数扫描分析摘要")
     print("="*60)
-    
+
     print(f"\n总参数组合数: {analysis['total_combinations']}")
     print(f"合格组合数: {analysis['qualified_combinations']}")
-    
+
     print("\n" + "-"*60)
     print("Top 3 参数组合（按综合得分）:")
     print("-"*60)
-    
+
     for i, result in enumerate(analysis['top_3'], 1):
         print(f"\n#{i}")
         print(f"  Delta: {result['delta']}")
@@ -203,12 +203,12 @@ def print_summary(analysis):
         print(f"  FPR: {result['FPR']:.4f}")
         print(f"  Accuracy: {result['final_accuracy']:.4f}")
         print(f"  Score: {result['score']:.4f}")
-    
+
     if analysis['recommendations']:
         print("\n" + "-"*60)
         print("推荐配置:")
         print("-"*60)
-        
+
         for rec in analysis['recommendations']:
             print(f"\n推荐 #{rec['rank']}: {rec['reason']}")
             print(f"  Delta: {rec['delta']}")
@@ -218,12 +218,12 @@ def print_summary(analysis):
             print(f"  Accuracy: {rec['accuracy']:.4f}")
             print(f"  Score: {rec['score']:.4f}")
     else:
-        print("\n⚠️  警告: 没有找到合格的参数组合！")
+        print("\n[WARNING]  警告: 没有找到合格的参数组合。")
         print("建议:")
         print("  1. 扩大参数搜索范围")
         print("  2. 检查代码实现")
         print("  3. 调整评估标准")
-    
+
     print("\n" + "="*60)
 
 
@@ -233,27 +233,26 @@ def main():
                         help='输入目录（包含实验结果）')
     parser.add_argument('--output', type=str, required=True,
                         help='输出文件（JSON格式）')
-    
+
     args = parser.parse_args()
-    
+
     print(f"加载结果从: {args.input_dir}")
     results = load_results(args.input_dir)
     print(f"找到 {len(results)} 个实验结果")
-    
+
     if results:
         analysis = analyze_results(results)
-        
+
         # 保存结果
         with open(args.output, 'w') as f:
             json.dump(analysis, f, indent=2)
         print(f"\n分析结果已保存到: {args.output}")
-        
+
         # 打印摘要
         print_summary(analysis)
     else:
-        print("没有找到有效的实验结果！")
+        print("没有找到有效的实验结果。")
 
 
 if __name__ == '__main__':
     main()
-

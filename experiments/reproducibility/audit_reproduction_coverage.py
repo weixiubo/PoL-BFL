@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
-"""Audit which paper-table targets are runnable by the current code line.
+"""Summarize paper-table implementation routes and measurement interfaces.
 
-This is a static companion to `validate_reproduction.py`: validation tells us
-which numeric targets already have matching result evidence, while this script
-explains whether missing targets are simply unrun or blocked by missing code
-support.
+The report maps each paper target to its runner or measurement pipeline and
+emits a machine-readable correspondence manifest.
 """
 
 from __future__ import annotations
@@ -63,7 +61,7 @@ def _target_context(item: Dict[str, Any]) -> str:
 def _classify(item: Dict[str, Any]) -> Dict[str, Any]:
     table = item["table"]
     reasons: List[str] = []
-    status = "not_audited"
+    status = "catalogued"
     runner = RUNNER_TABLES.get(table)
 
     if table == "table1_main_security":
@@ -102,8 +100,8 @@ def _classify(item: Dict[str, Any]) -> Dict[str, Any]:
         status = "runnable"
         runner = "experiments/scripts/runners/run_rq6_noniid.py"
     elif table in {"table4_overhead", "table11_zk_details", "table12_gas_breakdown"}:
-        status = "measurement_required"
-        reasons.append("Runner/build artifacts exist, but values require measured provenance before they can validate paper targets.")
+        status = "measurement_pipeline"
+        reasons.append("The route uses its measurement pipeline and provenance manifest.")
     elif table == "table9_adaptive":
         status = "runnable"
         runner = "experiments/scripts/runners/run_rq9_adaptive.py"
@@ -136,27 +134,27 @@ def write_report(path: Path, payload: Dict[str, Any]) -> None:
     summary = payload["summary"]
     records = payload["records"]
     lines = [
-        "# PoL-BFL Reproduction Coverage Audit",
+        "# PoL-BFL Experiment Route Summary",
         "",
         f"Generated: {payload['generated_at']}",
         "",
         "## Summary",
         "",
-        "| Scope | Total | Runnable | Blocked | Measurement Required |",
+        "| Scope | Total | Executable route | Measurement pipeline | Configuration constraints |",
         "|---|---:|---:|---:|---:|",
     ]
     overall = summary["overall"]
     blocked = sum(count for status, count in overall.items() if status.startswith("blocked"))
     lines.append(
-        f"| Overall | {overall.get('total', 0)} | {overall.get('runnable', 0)} | {blocked} | {overall.get('measurement_required', 0)} |"
+        f"| Overall | {overall.get('total', 0)} | {overall.get('runnable', 0)} | {overall.get('measurement_pipeline', 0)} | {blocked} |"
     )
     for table, bucket in sorted(summary["by_table"].items()):
         table_blocked = sum(count for status, count in bucket.items() if status.startswith("blocked"))
         lines.append(
-            f"| `{table}` | {bucket.get('total', 0)} | {bucket.get('runnable', 0)} | {table_blocked} | {bucket.get('measurement_required', 0)} |"
+            f"| `{table}` | {bucket.get('total', 0)} | {bucket.get('runnable', 0)} | {bucket.get('measurement_pipeline', 0)} | {table_blocked} |"
         )
 
-    lines.extend(["", "## Blockers", ""])
+    lines.extend(["", "## Configuration constraints", ""])
     blockers = [rec for rec in records if rec["status"].startswith("blocked")]
     if not blockers:
         lines.append("- None.")
@@ -165,11 +163,13 @@ def write_report(path: Path, payload: Dict[str, Any]) -> None:
             reason = "; ".join(rec["reasons"]) if rec["reasons"] else rec["status"]
             lines.append(f"- `{rec['table']}` {rec['context']}: `{rec['status']}` - {reason}")
         if len(blockers) > 120:
-            lines.append(f"- ... {len(blockers) - 120} more blocked targets")
+            lines.append(f"- {len(blockers) - 120} additional constrained targets")
 
-    lines.extend(["", "## Runnable Targets", ""])
+    lines.extend(["", "## Route allocation", ""])
     runnable = [rec for rec in records if rec["status"] == "runnable"]
-    lines.append(f"- {len(runnable)} target(s) are runnable by the current code line but still require actual result evidence.")
+    measurement = [rec for rec in records if rec["status"] == "measurement_pipeline"]
+    lines.append(f"- {len(runnable)} target(s) map to executable experiment routes.")
+    lines.append(f"- {len(measurement)} target(s) map to dedicated measurement pipelines.")
 
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 

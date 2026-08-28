@@ -20,24 +20,24 @@ DELTA_VALUES=(5.0 7.5 10.0 15.0 20.0)
 
 for delta in "${DELTA_VALUES[@]}"; do
     echo "--------------------------------------------------------------------------------"
-    echo "🚀 启动实验: delta=$delta"
+    echo "[START] 启动实验: delta=$delta"
     echo "--------------------------------------------------------------------------------"
-    
+
     # 生成标签
     TAG="delta$(echo $delta | tr '.' '_')_scan"
-    
+
     # 启动实验
     bash experiments/scripts/run_param_scan_rq1.sh "$DATASET" "$GPU_ID" delta "$delta" "$TAG"
-    
+
     EXIT_CODE=$?
-    
+
     if [ $EXIT_CODE -eq 0 ]; then
-        echo "✅ delta=$delta 完成"
+        echo "[PASS] delta=$delta 完成"
     else
-        echo "❌ delta=$delta 失败 (exit code: $EXIT_CODE)"
-        echo "⚠️ 继续下一个实验..."
+        echo "[FAIL] delta=$delta 失败 (exit code: $EXIT_CODE)"
+        echo "[WARNING] 继续下一个实验..."
     fi
-    
+
     echo ""
     sleep 5
 done

@@ -11,41 +11,41 @@ echo "======================================================================="
 echo ""
 
 # Check if conda environment is activated
-if [[ -z "${CONDA_DEFAULT_ENV}" ]] || [[ "${CONDA_DEFAULT_ENV}" != "wxb__veryfl_pol" ]]; then
-    echo "Error: Please activate the wxb__veryfl_pol conda environment first"
-    echo "Run: conda activate wxb__veryfl_pol"
+if [[ -z "${CONDA_DEFAULT_ENV}" ]] || [[ "${CONDA_DEFAULT_ENV}" != "polbfl" ]]; then
+    echo "Error: activate the polbfl environment or set PYTHON_BIN."
+    echo "Run: conda activate polbfl"
     exit 1
 fi
 
-echo "✓ Conda environment: ${CONDA_DEFAULT_ENV}"
+echo "[PASS] Conda environment: ${CONDA_DEFAULT_ENV}"
 echo ""
 
 # Create results directory
 mkdir -p results
-echo "✓ Results directory created"
+echo "[PASS] Results directory created"
 echo ""
 
 # Function to run experiment with error handling
 run_experiment() {
     local name=$1
     local script=$2
-    
+
     echo "======================================================================="
     echo "Running ${name}..."
     echo "======================================================================="
     echo ""
-    
+
     start_time=$(date +%s)
-    
+
     if python ${script}; then
         end_time=$(date +%s)
         duration=$((end_time - start_time))
         echo ""
-        echo "✓ ${name} completed successfully in ${duration}s"
+        echo "[PASS] ${name} completed successfully in ${duration}s"
         echo ""
     else
         echo ""
-        echo "✗ ${name} failed!"
+        echo "[FAIL] ${name} failed."
         echo "Check the error messages above for details"
         exit 1
     fi
@@ -77,7 +77,7 @@ done
 
 # Summary
 echo "======================================================================="
-echo "All Experiments Completed!"
+echo "All Experiments Completed."
 echo "======================================================================="
 echo ""
 echo "Results saved in:"
@@ -88,4 +88,3 @@ echo "  - results/rq4_incentive/ (MNIST, CIFAR10, CIFAR100)"
 echo ""
 echo "Completed at $(date)"
 echo ""
-

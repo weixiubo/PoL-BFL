@@ -478,7 +478,7 @@ def main():
     experiment = SecurityExperimentWithDetection(config)
     results = experiment.run_all_experiments()
 
-    logger.info("\nRQ1: Security Evaluation with Detection Completed!")
+    logger.info("\nRQ1: Security Evaluation with Detection Completed.")
     logger.info(f"Total experiments: {len(results)}")
 
 

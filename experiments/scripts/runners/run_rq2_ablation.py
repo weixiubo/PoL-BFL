@@ -56,14 +56,14 @@ logger = logging.getLogger(__name__)
 
 
 # RQ2 Ablation Study Config
-# ⚠️ IMPORTANT: Original config is 100 rounds (see RQ2_EXPERIMENT_CONFIGS.md)
+# [WARNING] IMPORTANT: Original config is 100 rounds (see RQ2_EXPERIMENT_CONFIGS.md)
 # Current config: 20 rounds for faster validation of improved design
 RQ2_ABLATION_CONFIG = {
     'dataset': 'CIFAR10',
     'model': 'ResNet18',
     'num_clients': 20,
     'clients_per_round': 10,
-    'num_rounds': 20,  # ⭐ TEMPORARY: 20 rounds (original: 100) for faster testing
+    'num_rounds': 20,  # Reduced-scale compatibility default.
     'data_distribution': 'NonIID_Dirichlet',
 
     # Attack scenario (fixed for ablation)
@@ -178,7 +178,7 @@ class AblationStudyExperiment:
                 result = self._run_single_experiment(variant, rep)
                 variant_results.append(result)
 
-                # Save intermediate results
+                # Persist the result for this configuration.
                 self._save_results(all_results + [{'variant': variant, 'results': variant_results}])
 
             # Aggregate results across repetitions
@@ -206,15 +206,15 @@ class AblationStudyExperiment:
 
         # Create aggregator
         if enable_pol:
-            # Fixed: PoLVerifyAggregator expects flat structure, not nested pol_config
+            # PoLVerifyAggregator consumes a flat configuration structure.
             # Override distance metric/delta per model to reduce FPR and stabilize pass rate
-            # Allow env override for quick probe: POL_DELTA_OVERRIDE
+            # Allow env override for smoke probe: POL_DELTA_OVERRIDE
             _model_name = self.config.get('model', '')
             _default_delta = 100.0 if _model_name == 'ResNet18' else 10.0
             delta_override = float(os.getenv('POL_DELTA_OVERRIDE', str(_default_delta)))
             agg_args = {
                 'device': str(self.device),
-                'enable_pol': True,  # Must be at top level!
+                'enable_pol': True,  # Must be at top level.
                 'verification_rate': POL_CONFIG['verification_rate'],
                 'pol_delta': delta_override,
                 'pol_distance_metric': 'l2',
@@ -289,7 +289,7 @@ class AblationStudyExperiment:
                 # PoL-enabled: use receive_upload() which handles verification
                 aggregator.receive_upload(clients)
 
-                # Aggregate (PoLVerifyAggregator.aggregate() doesn't need parameters)
+                # Aggregate through the parameter-free compatibility method.
                 # NOTE: Verification happens inside aggregate() via _on_before_aggregation()
                 global_model_dict = aggregator.aggregate()
 
@@ -562,7 +562,7 @@ class AblationStudyExperiment:
                 # Honest client
                 trainer.train(total_epoch=FL_CONFIG['local_epochs'])
 
-            # Store the trained model (we'll extract state_dict later)
+            # Store the trained model for subsequent state extraction.
             # Create a simple object to hold client_id and model
             class SimpleClient:
                 def __init__(self, client_id, model):
@@ -702,10 +702,8 @@ def main():
     experiment = AblationStudyExperiment(config)
     results = experiment.run_all_experiments()
 
-    logger.info("\nRQ2: Ablation Study Completed!")
+    logger.info("\nRQ2: Ablation Study Completed.")
 
 
 if __name__ == '__main__':
     main()
-
-

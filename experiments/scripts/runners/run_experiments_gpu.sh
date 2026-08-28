@@ -11,13 +11,13 @@ echo "======================================================================="
 echo ""
 
 # 检查conda环境
-if [[ -z "${CONDA_DEFAULT_ENV}" ]] || [[ "${CONDA_DEFAULT_ENV}" != "wxb__veryfl_pol" ]]; then
-    echo "错误: 请先激活 wxb__veryfl_pol conda环境"
-    echo "运行: conda activate wxb__veryfl_pol"
+if [[ -z "${CONDA_DEFAULT_ENV}" ]] || [[ "${CONDA_DEFAULT_ENV}" != "polbfl" ]]; then
+    echo "Error: activate the polbfl environment or set PYTHON_BIN."
+    echo "运行: conda activate polbfl"
     exit 1
 fi
 
-echo "✓ Conda环境: ${CONDA_DEFAULT_ENV}"
+echo "[PASS] Conda环境: ${CONDA_DEFAULT_ENV}"
 echo ""
 
 # 检查GPU
@@ -28,7 +28,7 @@ echo ""
 # 创建日志目录
 LOG_DIR="./logs/$(date +%Y%m%d_%H%M%S)"
 mkdir -p ${LOG_DIR}
-echo "✓ 日志目录: ${LOG_DIR}"
+echo "[PASS] 日志目录: ${LOG_DIR}"
 echo ""
 
 # 创建结果目录
@@ -36,7 +36,7 @@ mkdir -p results/rq1_security
 mkdir -p results/rq2_overhead
 mkdir -p results/rq3_scalability
 mkdir -p results/rq4_incentive
-echo "✓ 结果目录已创建"
+echo "[PASS] 结果目录已创建"
 echo ""
 
 # GPU任务分配策略：
@@ -60,18 +60,18 @@ run_on_gpu() {
     local exp_name=$2
     local exp_script=$3
     local log_file="${LOG_DIR}/gpu${gpu_id}_${exp_name}.log"
-    
+
     echo "[GPU ${gpu_id}] 启动 ${exp_name}..."
     echo "[GPU ${gpu_id}] 日志文件: ${log_file}"
-    
+
     # 使用nohup在后台运行，指定GPU
     CUDA_VISIBLE_DEVICES=${gpu_id} nohup python ${exp_script} \
         > ${log_file} 2>&1 &
-    
+
     local pid=$!
     echo "[GPU ${gpu_id}] ${exp_name} 已启动 (PID: ${pid})"
     echo ${pid} > ${LOG_DIR}/gpu${gpu_id}_${exp_name}.pid
-    
+
     return ${pid}
 }
 
@@ -80,22 +80,22 @@ wait_for_process() {
     local pid=$1
     local name=$2
     local gpu_id=$3
-    
+
     echo "[GPU ${gpu_id}] 等待 ${name} 完成 (PID: ${pid})..."
-    
+
     while kill -0 ${pid} 2>/dev/null; do
         sleep 5
     done
-    
+
     wait ${pid}
     local exit_code=$?
-    
+
     if [ ${exit_code} -eq 0 ]; then
-        echo "[GPU ${gpu_id}] ✓ ${name} 完成"
+        echo "[GPU ${gpu_id}] [PASS] ${name} 完成"
     else
-        echo "[GPU ${gpu_id}] ✗ ${name} 失败 (退出码: ${exit_code})"
+        echo "[GPU ${gpu_id}] [FAIL] ${name} 失败 (退出码: ${exit_code})"
     fi
-    
+
     return ${exit_code}
 }
 
@@ -229,17 +229,17 @@ SECONDS=$((TOTAL_TIME % 60))
 # 生成总结报告
 echo ""
 echo "======================================================================="
-echo "所有实验完成！"
+echo "所有实验完成。"
 echo "======================================================================="
 echo ""
 echo "完成时间: $(date)"
 echo "总耗时: ${HOURS}小时 ${MINUTES}分钟 ${SECONDS}秒"
 echo ""
 echo "实验结果:"
-echo "  RQ1: $([ ${RQ1_EXIT:-1} -eq 0 ] && echo '✓ 成功' || echo '✗ 失败')"
-echo "  RQ2: $([ ${RQ2_EXIT:-1} -eq 0 ] && echo '✓ 成功' || echo '✗ 失败')"
-echo "  RQ3: $([ ${RQ3_EXIT:-1} -eq 0 ] && echo '✓ 成功' || echo '✗ 失败')"
-echo "  RQ4: $([ ${RQ4_EXIT:-1} -eq 0 ] && echo '✓ 成功' || echo '✗ 失败')"
+echo "  RQ1: $([ ${RQ1_EXIT:-1} -eq 0 ] && echo '[PASS] 成功' || echo '[FAIL] 失败')"
+echo "  RQ2: $([ ${RQ2_EXIT:-1} -eq 0 ] && echo '[PASS] 成功' || echo '[FAIL] 失败')"
+echo "  RQ3: $([ ${RQ3_EXIT:-1} -eq 0 ] && echo '[PASS] 成功' || echo '[FAIL] 失败')"
+echo "  RQ4: $([ ${RQ4_EXIT:-1} -eq 0 ] && echo '[PASS] 成功' || echo '[FAIL] 失败')"
 echo ""
 echo "结果文件:"
 echo "  - results/rq1_security/rq1_results.json"
@@ -275,4 +275,3 @@ cat > ${LOG_DIR}/summary.txt <<EOF
 EOF
 
 echo "总结报告已保存到: ${LOG_DIR}/summary.txt"
-

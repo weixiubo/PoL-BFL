@@ -6,7 +6,7 @@ DOI `10.1145/3770855.3817739`.
 
 ## Protocol components
 
-| Paper component | Implementation | Representative tests |
+| Paper component | Implementation | Verification tests |
 |---|---|---|
 | Canonical hashing and serialization | `polbfl/crypto/canonical.py` | `tests/test_final_protocol_core.py` |
 | Learning traces, hash chains, and Merkle commitments | `polbfl/protocol/trace.py`, `polbfl/training/torch_recorder.py` | `tests/test_final_protocol_core.py`, `tests/test_final_torch_recorder.py` |

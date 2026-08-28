@@ -51,7 +51,7 @@ run_step "env_probe" bash -lc "$PY_BIN -V && $PY_BIN -c 'import sys; print(sys.e
 run_step "pytest_checkpoint_cleaner" bash -lc "$PY_BIN -m pytest -q tests/test_checkpoint_cleaner.py"
 run_step "pytest_deferred_cleanup" bash -lc "$PY_BIN -m pytest -q tests/test_deferred_cleanup.py"
 run_step "pytest_zkp" bash -lc "$PY_BIN -m pytest -q tests/test_zkp.py"
-run_step "pytest_pol_aggregator_setup" bash -lc "$PY_BIN -m pytest -q tests/test_rq1_quick.py::test_pol_aggregator_setup"
+run_step "pytest_pol_aggregator_setup" bash -lc "$PY_BIN -m pytest -q tests/test_rq1_smoke.py::test_pol_aggregator_setup"
 
 # GPU assignment (defaults)
 GPU0_DEFAULT="${GPU0:-0}"
@@ -72,7 +72,7 @@ run_step "rq4_mnist_minimal" bash -lc "CUDA_VISIBLE_DEVICES=${GPU1_DEFAULT} $PY_
 
 ok "All smoke steps completed. Review logs under: $LOG_DIR"
 
-# Quick pointers to expected outputs (best-effort)
+# Smoke pointers to expected outputs (best-effort)
 echo "\nExpected outputs (if present):"
 ls -1 "experiments/results/rq1_security" 2>/dev/null || true
 ls -1d "experiments/results/rq2_ablation"/* 2>/dev/null | tail -n 3 || true

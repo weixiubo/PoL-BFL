@@ -44,13 +44,11 @@ The reference benchmark interface is:
 python scripts/zk_reference_benchmark.py --help
 ```
 
-Generated circuit, witness, proof, and setup files are excluded from version
-control. Experiment manifests record the identities of the circuit, proving
-key, verification key, witness generator, prover, and verifier.
+Experiment manifests record the identities of the circuit, proving key,
+verification key, witness generator, prover, and verifier.
 
-Test proving keys are intended for local circuit checks. Deployment keys should
-be generated from a verified multi-party Powers-of-Tau transcript and an
-independent circuit-specific contribution.
+Deployment key generation uses a verified multi-party Powers-of-Tau transcript
+and an independent circuit-specific contribution.
 
 ## Solidity protocol
 

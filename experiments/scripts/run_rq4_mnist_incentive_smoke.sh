@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# RQ4 MNIST incentive smoke test (short run, clearance-focused)
+# RQ4 MNIST incentive smoke test (short run, validation-focused)
 # Runs 3 rounds for each scenario to verify that the incentive
 # logic and Sybil integration behave sanely and do not crash.
 

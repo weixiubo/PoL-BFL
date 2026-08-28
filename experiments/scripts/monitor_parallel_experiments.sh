@@ -24,7 +24,7 @@ echo ""
 
 # RQ1 Default Config Progress
 echo "=== RQ1 Default Config (GPU 0) ==="
-RQ1_LOG=$(ls -t experiments/logs/rq1_*_quick_clearance_v2.log 2>/dev/null | head -1)
+RQ1_LOG=$(ls -t experiments/logs/rq1_*_smoke_validation_v2.log 2>/dev/null | head -1)
 if [ -n "$RQ1_LOG" ]; then
     echo "Log: $RQ1_LOG"
     TOTAL_LINES=$(wc -l < "$RQ1_LOG")
@@ -46,20 +46,20 @@ PARAM_LOGS=$(ls -t experiments/logs/rq1_param_scan_*.log 2>/dev/null || echo "")
 if [ -n "$PARAM_LOGS" ]; then
     CURRENT_SCAN=$(echo "$PARAM_LOGS" | head -1)
     echo "Current scan log: $CURRENT_SCAN"
-    
+
     # Extract parameter info from log
     PARAM_INFO=$(grep "PARAM_NAME=" "$CURRENT_SCAN" | head -1 || echo "N/A")
     echo "Parameter: $PARAM_INFO"
-    
+
     # Check progress
     TOTAL_LINES=$(wc -l < "$CURRENT_SCAN")
     COMPLETED=$(grep -c "Running:.*vs" "$CURRENT_SCAN" || echo 0)
     echo "Progress: $COMPLETED/84 combinations completed"
     echo "Log lines: $TOTAL_LINES"
-    
+
     LAST_RUNNING=$(grep "Running:.*vs" "$CURRENT_SCAN" | tail -1 || echo "N/A")
     echo "Last started: $LAST_RUNNING"
-    
+
     # List all completed scans
     echo ""
     echo "Completed scans:"

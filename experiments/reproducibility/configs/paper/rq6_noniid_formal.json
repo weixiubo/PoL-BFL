@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "runner": "experiments/scripts/runners/run_rq6_noniid.py",
-  "output_root": "experiments/results/repro_recovery/formal/rq6_noniid",
+  "output_root": "experiments/results/paper_runs/rq6_noniid",
   "protocol": {
     "pol_integrity": 1,
     "pol_remote_mode": "strict_replay"

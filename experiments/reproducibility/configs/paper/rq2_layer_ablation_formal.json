@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "runner": "experiments/scripts/runners/run_rq2_layer_contribution.py",
-  "output_root": "experiments/results/repro_recovery/formal/rq2_layer_ablation",
+  "output_root": "experiments/results/paper_runs/rq2_layer_ablation",
   "protocol": {
     "pol_integrity": 1,
     "validation_target_table": "table2_layer_contribution"

@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 class PoLExperimentHelper:
     """Helper class for integrating PoL into experiments"""
-    
+
     @staticmethod
     def setup_pol_trainer(
         model: nn.Module,
@@ -38,7 +38,7 @@ class PoLExperimentHelper:
     ) -> PoLTrainer:
         """
         Setup PoL trainer for a client
-        
+
         Args:
             model: PyTorch model
             dataloader: Training dataloader
@@ -46,7 +46,7 @@ class PoLExperimentHelper:
             client_id: Client ID
             pol_config: PoL configuration dict
             device: Device to use
-        
+
         Returns:
             trainer: PoLTrainer instance
         """
@@ -62,17 +62,17 @@ class PoLExperimentHelper:
             'pol_save_dir': pol_config.get('save_dir', './pol_data'),
             'pol_compress': pol_config.get('compress', True),
         }
-        
+
         trainer = PoLTrainer(
             model=model,
             dataloader=dataloader,
             criterion=criterion,
             args=args
         )
-        
+
         logger.info(f"Setup PoL trainer for client {client_id}")
         return trainer
-    
+
     @staticmethod
     def setup_pol_aggregator(
         model: nn.Module,
@@ -82,12 +82,12 @@ class PoLExperimentHelper:
     ) -> PoLVerifyAggregator:
         """
         Setup PoL aggregator
-        
+
         Args:
             model: Global model
             pol_config: PoL configuration dict
             device: Device to use
-        
+
         Returns:
             aggregator: PoLVerifyAggregator instance
         """
@@ -127,7 +127,7 @@ class PoLExperimentHelper:
 
         logger.info(f"Setup PoL aggregator with verification_rate={aggregator_args['verification_rate']}, min_pair_success_rate={aggregator_args.get('min_pair_success_rate')}, last_k={aggregator_args.get('always_verify_last_k')}, random_q={aggregator_args.get('random_q')}")
         return aggregator
-    
+
     @staticmethod
     def compute_detection_metrics(
         verification_results: Dict[str, bool],
@@ -225,15 +225,15 @@ class PoLExperimentHelper:
     ) -> Dict[str, bool]:
         """
         Extract verification results from PoL aggregator
-        
+
         Args:
             verification_results: Raw verification results from aggregator
-        
+
         Returns:
             results: Dict {client_id: is_valid}
         """
         extracted = {}
-        
+
         if isinstance(verification_results, dict):
             for client_id, result in verification_results.items():
                 if isinstance(result, dict):
@@ -243,5 +243,5 @@ class PoLExperimentHelper:
                     extracted[client_id] = result
                 else:
                     extracted[client_id] = True
-        
+
         return extracted

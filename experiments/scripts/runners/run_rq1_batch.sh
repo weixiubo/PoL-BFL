@@ -33,7 +33,7 @@ for ATTACK in "${ATTACKS[@]}"; do
     echo "=========================================="
     echo "Running: $DATASET + $ATTACK"
     echo "=========================================="
-    
+
     CUDA_VISIBLE_DEVICES=$GPU_ID CUBLAS_WORKSPACE_CONFIG=:4096:8 \
         python experiments/scripts/runners/run_rq1_security.py \
         --dataset $DATASET \
@@ -41,20 +41,20 @@ for ATTACK in "${ATTACKS[@]}"; do
         --attacks $ATTACK \
         --baselines PoL_FL \
         2>&1 | tee /tmp/rq1_${DATASET,,}_${ATTACK}.log
-    
+
     EXIT_CODE=${PIPESTATUS[0]}
-    
+
     if [ $EXIT_CODE -ne 0 ]; then
         echo "ERROR: Experiment failed with exit code $EXIT_CODE"
         echo "Check log: /tmp/rq1_${DATASET,,}_${ATTACK}.log"
         exit $EXIT_CODE
     fi
-    
-    echo "✅ Completed: $DATASET + $ATTACK"
+
+    echo "[PASS] Completed: $DATASET + $ATTACK"
 done
 
 echo ""
 echo "=========================================="
-echo "All experiments completed successfully!"
+echo "All experiments completed successfully."
 echo "=========================================="
 

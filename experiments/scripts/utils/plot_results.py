@@ -64,29 +64,29 @@ def load_results():
 
 def plot_rq1_convergence(results, output_dir):
     """RQ1: 收敛曲线图"""
-    
+
     if 'rq1' not in results:
         print("RQ1 results not found, skipping...")
         return
-    
+
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 3.5))
-    
+
     # Byzantine attack
     byzantine_data = [r for r in results['rq1'] if 'byzantine' in r['attack_type']]
     for method_data in byzantine_data:
         method = method_data['baseline_method']
         accuracies = method_data['test_accuracies']
         rounds = list(range(1, len(accuracies) + 1))
-        ax1.plot(rounds, accuracies, marker='o', label=method, 
+        ax1.plot(rounds, accuracies, marker='o', label=method,
                 color=COLORS.get(method, 'gray'), linewidth=2, markersize=5)
-    
+
     ax1.set_xlabel('Training Round')
     ax1.set_ylabel('Test Accuracy')
     ax1.set_title('(a) Byzantine Attack (20% malicious)')
     ax1.legend(loc='lower right')
     ax1.grid(True, alpha=0.3)
     ax1.set_ylim([0, 1.05])
-    
+
     # Free-riding attack
     freeriding_data = [r for r in results['rq1'] if 'free_riding' in r['attack_type']]
     for method_data in freeriding_data:
@@ -95,14 +95,14 @@ def plot_rq1_convergence(results, output_dir):
         rounds = list(range(1, len(accuracies) + 1))
         ax2.plot(rounds, accuracies, marker='s', label=method,
                 color=COLORS.get(method, 'gray'), linewidth=2, markersize=5)
-    
+
     ax2.set_xlabel('Training Round')
     ax2.set_ylabel('Test Accuracy')
     ax2.set_title('(b) Free-Riding Attack (20% lazy clients)')
     ax2.legend(loc='lower right')
     ax2.grid(True, alpha=0.3)
     ax2.set_ylim([0, 1.05])
-    
+
     plt.tight_layout()
     output_file = output_dir / 'rq1_convergence.pdf'
     plt.savefig(output_file, bbox_inches='tight', dpi=300)
@@ -111,47 +111,47 @@ def plot_rq1_convergence(results, output_dir):
 
 def plot_rq2_overhead(results, output_dir):
     """RQ2: 系统开销对比图"""
-    
+
     if 'rq2' not in results:
         print("RQ2 results not found, skipping...")
         return
-    
+
     fig, axes = plt.subplots(1, 3, figsize=(12, 3.5))
-    
+
     methods = []
     training_times = []
     comm_overheads = []
     storage_mbs = []
-    
+
     for method_data in results['rq2']:
         method = method_data['method']
         methods.append(method.replace('_', ' '))
         training_times.append(method_data['total_training_time'])
         comm_overheads.append(method_data['total_communication_mb'])
-        
+
         if 'total_storage_mb' in method_data:
             storage_mbs.append(method_data['total_storage_mb'])
         else:
             storage_mbs.append(0)
-    
+
     # Training time
     x = np.arange(len(methods))
     width = 0.6
-    
+
     bars1 = axes[0].bar(x, training_times, width, color=['#E74C3C', '#9B59B6'])
     axes[0].set_ylabel('Training Time (s)')
     axes[0].set_title('(a) Training Time')
     axes[0].set_xticks(x)
     axes[0].set_xticklabels(methods, rotation=15, ha='right')
     axes[0].grid(True, alpha=0.3, axis='y')
-    
+
     # Add value labels on bars
     for bar in bars1:
         height = bar.get_height()
         axes[0].text(bar.get_x() + bar.get_width()/2., height,
                     f'{height:.1f}s',
                     ha='center', va='bottom', fontsize=9)
-    
+
     # Communication overhead
     bars2 = axes[1].bar(x, comm_overheads, width, color=['#E74C3C', '#9B59B6'])
     axes[1].set_ylabel('Communication (MB)')
@@ -159,13 +159,13 @@ def plot_rq2_overhead(results, output_dir):
     axes[1].set_xticks(x)
     axes[1].set_xticklabels(methods, rotation=15, ha='right')
     axes[1].grid(True, alpha=0.3, axis='y')
-    
+
     for bar in bars2:
         height = bar.get_height()
         axes[1].text(bar.get_x() + bar.get_width()/2., height,
                     f'{height:.1f}MB',
                     ha='center', va='bottom', fontsize=9)
-    
+
     # Storage overhead
     bars3 = axes[2].bar(x, [s/1024 for s in storage_mbs], width, color=['#E74C3C', '#9B59B6'])
     axes[2].set_ylabel('Storage (GB)')
@@ -173,14 +173,14 @@ def plot_rq2_overhead(results, output_dir):
     axes[2].set_xticks(x)
     axes[2].set_xticklabels(methods, rotation=15, ha='right')
     axes[2].grid(True, alpha=0.3, axis='y')
-    
+
     for bar, storage in zip(bars3, storage_mbs):
         height = bar.get_height()
         if storage > 0:
             axes[2].text(bar.get_x() + bar.get_width()/2., height,
                         f'{storage/1024:.2f}GB',
                         ha='center', va='bottom', fontsize=9)
-    
+
     plt.tight_layout()
     output_file = output_dir / 'rq2_overhead.pdf'
     plt.savefig(output_file, bbox_inches='tight', dpi=300)
@@ -189,41 +189,41 @@ def plot_rq2_overhead(results, output_dir):
 
 def plot_rq4_incentive(results, output_dir):
     """RQ4: 激励机制效果图"""
-    
+
     if 'rq4' not in results:
         print("RQ4 results not found, skipping...")
         return
-    
+
     fig, ax = plt.subplots(1, 1, figsize=(8, 4))
-    
+
     scenarios = []
     honest_utils = []
     rational_utils = []
     malicious_utils = []
-    
+
     for scenario_data in results['rq4']:
         scenario = scenario_data.get('scenario', 'Unknown')
         scenarios.append(scenario.replace('_', ' ').title())
-        
+
         utilities = scenario_data.get('utilities', {})
         honest_utils.append(utilities.get('honest', 0))
         rational_utils.append(utilities.get('rational', 0))
         malicious_utils.append(utilities.get('malicious', 0))
-    
+
     x = np.arange(len(scenarios))
     width = 0.25
-    
+
     ax.bar(x - width, honest_utils, width, label='Honest', color='#2ECC71')
     ax.bar(x, rational_utils, width, label='Rational', color='#3498DB')
     ax.bar(x + width, malicious_utils, width, label='Malicious', color='#E74C3C')
-    
+
     ax.set_ylabel('Expected Utility')
     ax.set_title('Incentive Mechanism Effectiveness')
     ax.set_xticks(x)
     ax.set_xticklabels(scenarios, rotation=15, ha='right')
     ax.legend()
     ax.grid(True, alpha=0.3, axis='y')
-    
+
     plt.tight_layout()
     output_file = output_dir / 'rq4_incentive.pdf'
     plt.savefig(output_file, bbox_inches='tight', dpi=300)
@@ -232,11 +232,11 @@ def plot_rq4_incentive(results, output_dir):
 
 def main():
     """主函数"""
-    
+
     print("="*70)
     print("Generating Paper Figures")
     print("="*70)
-    
+
     # 创建输出目录
     from experiment_config import OUTPUT_CONFIG
     output_dir = Path(OUTPUT_CONFIG['plots_dir'])
@@ -245,25 +245,25 @@ def main():
     # 加载结果
     print("\nLoading results...")
     results = load_results()
-    
+
     print(f"Found results for: {list(results.keys())}")
     print()
-    
+
     # 生成图表
     print("Generating figures...")
-    
+
     if 'rq1' in results:
         plot_rq1_convergence(results, output_dir)
-    
+
     if 'rq2' in results:
         plot_rq2_overhead(results, output_dir)
-    
+
     if 'rq4' in results:
         plot_rq4_incentive(results, output_dir)
-    
+
     print()
     print("="*70)
-    print("Done! Figures saved to experiments/plots/")
+    print("Done. Figures saved to experiments/plots/")
     print("="*70)
     print("\nGenerated files:")
     for pdf_file in sorted(output_dir.glob('*.pdf')):

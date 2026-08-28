@@ -22,10 +22,8 @@ Each study has a corresponding aggregation or derivation module under
 
 The `experiments/reproducibility/` package provides:
 
-- configuration expansion through `run_paper_config.py`;
-- reduced-scale launcher checks through `run_repro_smoke.py`;
-- coverage summaries through `audit_reproduction_coverage.py`;
-- result summaries through `validate_reproduction.py`.
+- configuration expansion and execution through `run_paper_config.py`;
+- result-manifest validation through `validate_reproduction.py`.
 
 ## Supporting utilities
 
@@ -41,7 +39,6 @@ The `experiments/scripts/` directory is organized into:
 
 ## Usage notes
 
-- Generated datasets and results are excluded from version control.
 - Runner options are available through `--help`.
 - Experiment comparisons should use consistent datasets, partitions, seeds,
   protocol parameters, and dependency versions.

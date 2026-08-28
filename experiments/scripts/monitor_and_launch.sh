@@ -21,14 +21,14 @@ if ! ps -p $PID_TO_MONITOR > /dev/null; then
 else
     echo "进程 $PID_TO_MONITOR 正在运行，等待完成..." | tee -a "$LOG_FILE"
     LAUNCH_NOW=0
-    
+
     # 等待进程完成
     while ps -p $PID_TO_MONITOR > /dev/null; do
         echo "[$(date +%H:%M:%S)] 进程仍在运行，等待中..." | tee -a "$LOG_FILE"
         sleep 60  # 每分钟检查一次
     done
-    
-    echo "进程 $PID_TO_MONITOR 已完成！" | tee -a "$LOG_FILE"
+
+    echo "进程 $PID_TO_MONITOR 已完成。" | tee -a "$LOG_FILE"
     echo "完成时间: $(date)" | tee -a "$LOG_FILE"
 fi
 
@@ -44,17 +44,17 @@ echo "========================================" | tee -a "$LOG_FILE"
 
 # GPU 0 和 GPU 1 并行运行
 echo "启动 GPU 0 参数扫描..." | tee -a "$LOG_FILE"
-nohup bash experiments/scripts/run_param_scan_stage1_gpu0.sh > experiments/results/param_scan_gpu0.log 2>&1 &
+nohup bash experiments/scripts/run_param_scan_coarse_gpu0.sh > experiments/results/param_scan_gpu0.log 2>&1 &
 GPU0_PID=$!
 echo "GPU 0 PID: $GPU0_PID" | tee -a "$LOG_FILE"
 
 echo "启动 GPU 1 参数扫描..." | tee -a "$LOG_FILE"
-nohup bash experiments/scripts/run_param_scan_stage1_gpu1.sh > experiments/results/param_scan_gpu1.log 2>&1 &
+nohup bash experiments/scripts/run_param_scan_coarse_gpu1.sh > experiments/results/param_scan_gpu1.log 2>&1 &
 GPU1_PID=$!
 echo "GPU 1 PID: $GPU1_PID" | tee -a "$LOG_FILE"
 
 echo "" | tee -a "$LOG_FILE"
-echo "参数扫描已启动！" | tee -a "$LOG_FILE"
+echo "参数扫描已启动。" | tee -a "$LOG_FILE"
 echo "GPU 0 PID: $GPU0_PID" | tee -a "$LOG_FILE"
 echo "GPU 1 PID: $GPU1_PID" | tee -a "$LOG_FILE"
 echo "GPU 0 日志: experiments/results/param_scan_gpu0.log" | tee -a "$LOG_FILE"

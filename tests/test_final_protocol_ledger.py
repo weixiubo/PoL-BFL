@@ -33,7 +33,7 @@ def _ledger():
         ledger.register(
             ParticipantAccount(client, ParticipantRole.CLIENT, Decimal("0.05"))
         )
-    for verifier in ("verifier-good", "verifier-bad"):
+    for verifier in ("verifier-honest", "verifier-misbehaving"):
         ledger.register(
             ParticipantAccount(verifier, ParticipantRole.VERIFIER, Decimal("0.05"))
         )
@@ -58,15 +58,15 @@ def test_atomic_settlement_slashes_only_cryptographic_failures_and_verifier_misb
             ClientRoundOutcome("not-audited", ProofOutcome.NOT_AUDITED, Decimal("0.5")),
         ],
         verifier_outcomes=[
-            VerifierRoundOutcome("verifier-good", True, True),
-            VerifierRoundOutcome("verifier-bad", True, False),
+            VerifierRoundOutcome("verifier-honest", True, True),
+            VerifierRoundOutcome("verifier-misbehaving", True, False),
         ],
     )
     assert settlement.eligible_clients == ("honest", "not-audited")
     assert settlement.slashed == {
         "reject": Decimal("0.05"),
         "timeout": Decimal("0.05"),
-        "verifier-bad": Decimal("0.05"),
+        "verifier-misbehaving": Decimal("0.05"),
     }
     assert ledger.penalty_pool == Decimal("0.15")
     assert ledger.accounts["reject"].stake == 0
@@ -75,7 +75,7 @@ def test_atomic_settlement_slashes_only_cryptographic_failures_and_verifier_misb
     assert ledger.accounts["byzantine"].stake == Decimal("0.05")
     assert settlement.rewards["honest"] == Decimal("1.35")
     assert settlement.rewards["sybil"] == 0
-    assert settlement.rewards["verifier-good"] == Decimal("0.1")
+    assert settlement.rewards["verifier-honest"] == Decimal("0.1")
     assert settlement.reputations["honest"] == Decimal("0.55")
     assert settlement.reputations["sybil"] == Decimal("0.45")
     assert len(settlement.settlement_digest) == 64

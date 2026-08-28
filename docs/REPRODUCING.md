@@ -55,8 +55,8 @@ export POLBFL_ZK_BUILD=/path/to/circuits/final/build
 ## Experiment configuration
 
 The paper matrix is defined in
-`experiments/final/paper_matrix.json`. The main security matrix can be
-inspected without starting training:
+`experiments/final/paper_matrix.json`. The following command prints the main
+security matrix and its resolved experiment metadata:
 
 ```bash
 python -m experiments.final.run_matrix
@@ -119,7 +119,7 @@ Other studies provide corresponding `aggregate_*` modules under
 
 A completed experiment directory contains the experiment manifest, per-round
 records, final metrics, and the cryptographic and contract records required by
-the selected method. Generated results are excluded from version control.
+the selected method.
 
 Comparisons across runs should use the same source revision, dependency set,
 dataset checksums, partition configuration, protocol parameters, and random

@@ -2,7 +2,7 @@
 """
 CIFAR-10实验 - 用于论文补充
 只运行关键测试以验证方法在CIFAR-10上的有效性
-减少轮次以加快速度
+减少轮次以加缩减规模度
 """
 
 import sys
@@ -52,7 +52,7 @@ class SimpleCNN(nn.Module):
         self.fc1 = nn.Linear(64 * 8 * 8, 128)
         self.fc2 = nn.Linear(128, num_classes)
         self.relu = nn.ReLU()
-        
+
     def forward(self, x):
         x = self.pool(self.relu(self.conv1(x)))
         x = self.pool(self.relu(self.conv2(x)))
@@ -69,53 +69,53 @@ def load_cifar10():
         transforms.ToTensor(),
         transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
     ])
-    
+
     transform_test = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
     ])
-    
+
     train_dataset = torchvision.datasets.CIFAR10(
         root='./data', train=True, download=True, transform=transform_train
     )
-    
+
     test_dataset = torchvision.datasets.CIFAR10(
         root='./data', train=False, download=True, transform=transform_test
     )
-    
+
     return train_dataset, test_dataset
 
 def dirichlet_split(dataset, num_clients, alpha=0.5):
     """使用Dirichlet分布分割数据集"""
     num_classes = 10
     num_samples = len(dataset)
-    
+
     # 获取标签
     labels = np.array([dataset[i][1] for i in range(num_samples)])
-    
+
     # 为每个类别生成Dirichlet分布
     client_indices = [[] for _ in range(num_clients)]
-    
+
     for k in range(num_classes):
         idx_k = np.where(labels == k)[0]
         np.random.shuffle(idx_k)
-        
+
         # Dirichlet分布
         proportions = np.random.dirichlet(np.repeat(alpha, num_clients))
         proportions = (np.cumsum(proportions) * len(idx_k)).astype(int)[:-1]
-        
+
         # 分割索引
         splits = np.split(idx_k, proportions)
         for i, split in enumerate(splits):
             client_indices[i].extend(split)
-    
+
     # 创建DataLoader
     client_loaders = {}
     for i in range(num_clients):
         subset = Subset(dataset, client_indices[i])
         loader = DataLoader(subset, batch_size=CONFIG['batch_size'], shuffle=True)
         client_loaders[f'client_{i}'] = loader
-    
+
     return client_loaders
 
 def train_one_epoch(model, dataloader, device, lr=0.01):
@@ -157,7 +157,7 @@ def evaluate(model, dataloader, device):
             _, predicted = torch.max(output.data, 1)
             total += target.size(0)
             correct += (predicted == target).sum().item()
-    
+
     return correct / total
 
 def fedavg_aggregate(updates):
@@ -171,13 +171,13 @@ def trimmed_mean_aggregate(updates, beta=0.1):
     """Trimmed Mean聚合"""
     aggregated = {}
     num_trim = int(len(updates) * beta)
-    
+
     for key in updates[0].keys():
         stacked = torch.stack([u[key].float() for u in updates])
         sorted_vals, _ = torch.sort(stacked, dim=0)
         trimmed = sorted_vals[num_trim:-num_trim] if num_trim > 0 else sorted_vals
         aggregated[key] = trimmed.mean(0)
-    
+
     return aggregated
 
 def add_byzantine_noise(update, noise_scale=0.1):
@@ -192,27 +192,27 @@ def run_experiment(method_name, aggregator_fn, attack_type=None, attack_ratio=0.
     logger.info(f"\n{'='*70}")
     logger.info(f"Running: {method_name} - {attack_type if attack_type else 'No Attack'}")
     logger.info(f"{'='*70}")
-    
+
     # 设置随机种子
     torch.manual_seed(CONFIG['seed'])
     np.random.seed(CONFIG['seed'])
-    
+
     device = torch.device(CONFIG['device'])
-    
+
     # 加载数据
     train_dataset, test_dataset = load_cifar10()
     test_loader = DataLoader(test_dataset, batch_size=128, shuffle=False)
-    
+
     # 分割数据
     client_loaders = dirichlet_split(train_dataset, CONFIG['num_clients'], CONFIG['alpha'])
-    
+
     # 创建全局模型
     global_model = SimpleCNN().to(device)
-    
+
     # 训练
     accuracies = []
     num_malicious = int(CONFIG['clients_per_round'] * attack_ratio)
-    
+
     for round_num in range(CONFIG['num_rounds']):
         # 选择客户端
         selected_clients = np.random.choice(
@@ -220,14 +220,14 @@ def run_experiment(method_name, aggregator_fn, attack_type=None, attack_ratio=0.
             CONFIG['clients_per_round'],
             replace=False
         )
-        
+
         # 客户端训练
         client_updates = []
         for i, client_id in enumerate(selected_clients):
             # 复制全局模型
             client_model = SimpleCNN().to(device)
             client_model.load_state_dict(global_model.state_dict())
-            
+
             # 训练
             if attack_type == 'free_riding' and i < num_malicious:
                 # Free-riding: 直接返回全局模型
@@ -241,26 +241,26 @@ def run_experiment(method_name, aggregator_fn, attack_type=None, attack_ratio=0.
                         device,
                         CONFIG['learning_rate']
                     )
-                
+
                 # Byzantine攻击
                 if attack_type == 'byzantine' and i < num_malicious:
                     update = add_byzantine_noise(update, noise_scale=0.1)
-            
+
             client_updates.append(update)
-        
+
         # 聚合
         aggregated = aggregator_fn(client_updates)
         global_model.load_state_dict(aggregated)
-        
+
         # 评估 - 每10轮评估一次
         if (round_num + 1) % 10 == 0 or round_num == CONFIG['num_rounds'] - 1:
             acc = evaluate(global_model, test_loader, device)
             accuracies.append(acc)
             logger.info(f"Round {round_num+1}/{CONFIG['num_rounds']}: Accuracy = {acc:.4f}")
-    
+
     final_acc = accuracies[-1]
     logger.info(f"Final Accuracy: {final_acc:.4f}")
-    
+
     return {
         'method': method_name,
         'attack_type': attack_type,
@@ -273,7 +273,7 @@ def run_experiment(method_name, aggregator_fn, attack_type=None, attack_ratio=0.
 def main():
     """主函数"""
     logger.info("="*70)
-    logger.info("CIFAR-10 Experiment for Paper")
+    logger.info("CIFAR-10 Paper Experiment")
     logger.info("="*70)
     logger.info(f"Config: {CONFIG}")
     logger.info(f"Device: {CONFIG['device']}")
@@ -352,4 +352,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

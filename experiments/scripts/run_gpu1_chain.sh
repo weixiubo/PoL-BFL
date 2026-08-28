@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 export CUDA_VISIBLE_DEVICES=1
-PY="/home/wxb/miniconda3/envs/wxb__veryfl_pol/bin/python3.9"
+PY="python"
 LOGDIR="experiments/logs"
 mkdir -p "$LOGDIR"
 

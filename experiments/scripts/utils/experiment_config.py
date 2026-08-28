@@ -26,7 +26,7 @@ DATA_ROOT = Path(os.getenv('POL_DATA_DIR') or os.getenv('VERYFL_DATA_DIR') or (P
 RANDOM_SEED = 42
 DEFAULT_NUM_WORKERS = 4  # For data loading
 # Allow env override to adapt concurrency on CPU-only vs GPU runs
-# Fix: Handle empty string from environment variable
+# Treat an empty environment variable as an unset value.
 _num_workers_env = os.getenv('NUM_WORKERS_OVERRIDE', '').strip()
 NUM_WORKERS = int(_num_workers_env) if _num_workers_env else DEFAULT_NUM_WORKERS
 
@@ -105,7 +105,7 @@ POL_CONFIG = {
     # Allow environment overrides for rapid calibration runs
     'save_freq': int(os.getenv('POL_SAVE_FREQ', '10')),               # Save checkpoint every N iterations
     'verification_rate': float(os.getenv('POL_VERIFICATION_RATE', '0.3')),  # Fraction of selected clients to verify
-    'delta': 10.0,                # ⭐ Distance threshold (适合SimpleCNN 18万参数)
+    'delta': 10.0,                # [PARAMETER] Distance threshold (适合SimpleCNN 18万参数)
     'distance_metric': 'l2',      # L1, L2, Linf, or cosine
     'use_top_q': False,           # Use Top-Q optimization
     'top_q': 5,                   # Number of top checkpoints to verify

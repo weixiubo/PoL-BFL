@@ -58,7 +58,6 @@ def test_onchain_incentives_full_flow():
     if unstake_amt > 0:
         assert ci.chain_proxy.unstake('1', unstake_amt)
 
-    # Basic sanity on totals
+    # Verify aggregate totals.
     final1 = ci.chain_proxy.get_stake_info('1')
     assert final1['total'] >= 0 and final1['available'] >= 0
-

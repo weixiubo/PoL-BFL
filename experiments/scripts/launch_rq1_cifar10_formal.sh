@@ -2,7 +2,7 @@
 set -euo pipefail
 
 CODE_ROOT="${CODE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
-PYTHON_BIN="${PYTHON_BIN:-/home/wxb/miniconda3/envs/wxb__veryfl_pol/bin/python}"
+PYTHON_BIN="${PYTHON_BIN:-python}"
 SESSION="${SESSION:-polbfl_20260518_rq1_cifar10_formal}"
 OUTPUT_DIR="$CODE_ROOT/experiments/results/reproduction/formal/rq1_main_security"
 LOG_PATH="$OUTPUT_DIR/cifar10_formal_launcher.log"

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 CODE_ROOT="${CODE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
-PYTHON_BIN="${PYTHON_BIN:-/home/wxb/miniconda3/envs/wxb__veryfl_pol/bin/python}"
+PYTHON_BIN="${PYTHON_BIN:-python}"
 SESSION="${SESSION:-polbfl_20260518_prepare_femnist}"
 LOG_DIR="$CODE_ROOT/experiments/results/reproduction/data_prep"
 LOG_PATH="$LOG_DIR/prepare_femnist_hf.log"

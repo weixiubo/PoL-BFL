@@ -1,6 +1,6 @@
 #!/bin/bash
 # Run RQ4 Incentive experiment with multiple seeds and save per-seed result files.
-# Prefer explicit python from wxb__veryfl_pol.
+# Prefer explicit python from polbfl.
 set -euo pipefail
 
 SEEDS=(42 43 44)

@@ -34,7 +34,7 @@ class TestFinalizeCheckpointConsistency(unittest.TestCase):
             'client_id': 'test_client_final'
         }
         self.trainer = PoLTrainer(self.model, self.loader, torch.nn.CrossEntropyLoss(), self.args)
-        # construct optimizer explicitly (we're not running train())
+        # Construct the optimizer explicitly because train() is not invoked.
         self.trainer.construct_optimizer()
 
     def tearDown(self):
@@ -68,4 +68,3 @@ class TestFinalizeCheckpointConsistency(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-

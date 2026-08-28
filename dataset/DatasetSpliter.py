@@ -13,9 +13,9 @@ class DatasetSpliter:
     '''
     Receive a dataset object. Provided with some method to random divided the dataset.
 
-    For Federated Learning: 
+    For Federated Learning:
     1. Random Split
-    2. Non-IID Split with params of dirichlet distribution. 
+    2. Non-IID Split with params of dirichlet distribution.
     '''
     def __init__(self) -> None:
         self.last_partition = None
@@ -32,7 +32,7 @@ class DatasetSpliter:
             partition[client_id] = [int(index) for index in chunk]
         self.last_partition = partition
         return partition
-    
+
     def _sample_dirichlet(self, dataset: Dataset, client_list: dict, alpha: int) -> defaultdict(list):
         client_ids = list(client_list)
         client_num = len(client_ids)
@@ -41,13 +41,13 @@ class DatasetSpliter:
         if alpha <= 0:
             raise ValueError("Dirichlet alpha must be positive")
         per_class_list = defaultdict(list)
-        
+
         #get each class index
         for ind, (_, label) in enumerate(dataset):
             if hasattr(label, 'item'):
                 label = label.item()
             per_class_list[label].append(ind)
-        
+
         #split the dataset(distribute each dataset sample to client by dirichlet probability distribution)
         per_client_list = defaultdict(list)
         for class_indices in per_class_list.values():
@@ -68,8 +68,8 @@ class DatasetSpliter:
         for client_id in client_ids:
             per_client_list[client_id]
         self.last_partition = per_client_list
-        return per_client_list 
-        
+        return per_client_list
+
     def _build_dataloaders(
         self,
         dataset: Dataset,
@@ -90,11 +90,11 @@ class DatasetSpliter:
 
     def dirichlet_split(self, dataset: Dataset, client_list: dict, batch_size: int = 32, alpha: float = 1) -> dict:
         #get each client samples
-        split_list = self._sample_dirichlet(dataset = dataset, 
+        split_list = self._sample_dirichlet(dataset = dataset,
                                             client_list = client_list,
                                             alpha = alpha)
         return self._build_dataloaders(dataset, split_list, batch_size)
-    
+
     def random_split(self, dataset: Dataset, client_list: dict, batch_size: int = 32) -> dict[DataLoader]:
         split_list = self._sample_random(dataset, client_list)
         return self._build_dataloaders(dataset, split_list, batch_size)

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "runner": "experiments/scripts/runners/run_rq1_security.py",
-  "output_root": "experiments/results/repro_recovery/formal/diagnostics/pol_recipe_probe_20260521",
+  "output_root": "experiments/results/paper_runs/diagnostics/pol_recipe_probe_20260521",
   "protocol": {
     "pol_remote_mode": "strict_replay",
     "pol_integrity": 1,

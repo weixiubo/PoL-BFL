@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "runner": "experiments/scripts/runners/run_rq5_composability.py",
-  "output_root": "experiments/results/repro_recovery/formal/rq5_composability",
+  "output_root": "experiments/results/paper_runs/rq5_composability",
   "protocol": {
     "pol_integrity": 1,
     "pol_remote_mode": "strict_replay"

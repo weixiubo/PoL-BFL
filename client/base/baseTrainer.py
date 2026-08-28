@@ -8,12 +8,12 @@ try:
 except Exception as e:
     logging.warning(f"Blockchain integration unavailable (chain_proxy import failed): {e}")
     _CHAIN_PROXY_AVAILABLE = False
-    class _ChainProxyStub:
+    class _UnavailableChainProxy:
         def upload_model(self, *args, **kwargs):
             raise RuntimeError("chain_proxy unavailable: Brownie/Ganache not configured")
         def download_model(self, *args, **kwargs):
             raise RuntimeError("chain_proxy unavailable: Brownie/Ganache not configured")
-    chain_proxy = _ChainProxyStub()
+    chain_proxy = _UnavailableChainProxy()
 
 import os
 import torch.optim
@@ -30,7 +30,7 @@ class BaseTrainer:
         :param
         model:     Pass the init model to this trainer
         criterion: The loss function
-        args:      Training parameters    
+        args:      Training parameters
        '''
         self.dataloader = dataloader
         self.args = args
@@ -40,15 +40,15 @@ class BaseTrainer:
         #Communication Channel
         self.pipe = chain_proxy
         self.start_epoch = 0
-    
-    
+
+
     #To adaptive suit all kind of downstream tasks.
     def construct_optimizer(self):
         if (self.model == None):
             logger.error("Model missing")
             raise Exception("Model missing")
-        
-        # Allow env var overrides for quick probes without changing code defaults
+
+        # Allow env var overrides for smoke probes without changing code defaults
         # FL_LR overrides learning rate; FL_MOMENTUM overrides SGD momentum (default 0.0)
         lr_val = float(os.getenv('FL_LR', str(self.args['lr'])))
         momentum_val = float(os.getenv('FL_MOMENTUM', str(self.args.get('momentum', 0.0))))
@@ -69,24 +69,24 @@ class BaseTrainer:
                 weight_decay = self.args["weight_decay"],
                 amsgrad=True,
             )
-        else: 
+        else:
             logger.error(f"Unknow Optimizer type {self.args['optimizer']}")
             raise Exception(f"Unknow Optimizer type {self.args['optimizer']}")
     @abstractmethod
     def _train_epoch(self, epoch):
         """
         :info: Training logic for an epoch including the forward and the backward propagation
-        
+
         :param epoch: Current epoch number
-        
-        :return format : using a dict to return 
-            return some result in this epoch like loss ,accuarcy and other  
+
+        :return format : using a dict to return
+            return some result in this epoch like loss ,accuarcy and other
             example:
                   return result = {
                       'loss' : 1.2222
                       'accuarcy' : 0.99
                       'sign' : loss
-                      ... 
+                      ...
                   }
         """
         pass
@@ -97,26 +97,26 @@ class BaseTrainer:
         return a list of dict including training result of multiple epoch.
         """
         self.construct_optimizer()
-        
+
         ret_list = list()
         for epoch in range(self.start_epoch,total_epoch):
-            ret_list.append(self._train_epoch(epoch))  
+            ret_list.append(self._train_epoch(epoch))
         return ret_list
-    
+
     @abstractmethod
     def _on_before_upload(self,epoch):
         '''
         Here may do some thing before upload like compression, crypto
         '''
         pass
-    
+
     @abstractmethod
     def _on_after_download(self,epoch):
         '''
         Here may do some thing after download, the download model may be a compressed one or cryptoed one.
         '''
         pass
-        
+
     @abstractmethod
     def _upload_model(self, epoch):
         """
@@ -124,9 +124,9 @@ class BaseTrainer:
         use a json string to pass the infomation the blockchain needed.
         :example: uploaded_para = {
                       'epoch' : 3
-                      'model' : json-like(model.state_dict() using util.JsonFormat to convert the dict into json) 
+                      'model' : json-like(model.state_dict() using util.JsonFormat to convert the dict into json)
                       'client_id' : self.id
-                      ... 
+                      ...
                   }
         """
         uploaded_para = {
@@ -135,8 +135,8 @@ class BaseTrainer:
             'client_id': self.id
         }
         self.pipe.upload_model(uploaded_para)
-        
-    
+
+
     @abstractmethod
     def _download_model(self,epoch):
         """
@@ -145,4 +145,4 @@ class BaseTrainer:
         """
         download_params = self.pipe.download_model()
         self.model.load_state_dict(download_params['state_dict'])
-        
+

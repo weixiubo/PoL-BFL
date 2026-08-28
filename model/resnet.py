@@ -115,7 +115,7 @@ __all__ = [
 ]
 
 
-if __name__ == "__main__": 
+if __name__ == "__main__":
     net = ResNet18()
     x = torch.randn(32,3,32,32)
     y = net(x)

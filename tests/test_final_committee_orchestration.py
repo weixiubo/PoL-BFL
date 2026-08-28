@@ -127,13 +127,15 @@ def test_authenticated_assignment_is_deterministic_and_disjoint():
     assert "aggregator" not in assignment.member_ids
     assert len(assignment.transcript_digest) == 64
 
-    bad = AuthenticatedVRFSeed("round-committee", "oracle-1", b"r" * 32, b"bad")
+    invalid = AuthenticatedVRFSeed(
+        "round-committee", "oracle-1", b"r" * 32, b"invalid"
+    )
     with pytest.raises(ValueError, match="VRF proof"):
         CommitteeAssignment.create(
             round_id="round-committee",
             aggregator_id="aggregator",
             candidates=assignment.members,
-            vrf=bad,
+            vrf=invalid,
             verify_vrf=_verify_vrf,
         )
 

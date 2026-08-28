@@ -23,7 +23,7 @@ def pytest_collection_modifyitems(config, items):
     if importlib.util.find_spec("brownie") is not None:
         return
     marker = pytest.mark.skip(
-        reason="legacy Brownie integration dependency is not installed"
+        reason="optional Brownie integration dependency is not installed"
     )
     for item in items:
         if item.path.name in LEGACY_BROWNIE_MODULES:
@@ -72,11 +72,10 @@ def fresh_pol_contract():
         # Brownie not available; skip fixture actions
         pass
 
-    # Make sure offline fallback is not forced by default
+    # Ensure that offline fallback is not forced by default.
     if os.environ.get('POL_OFFLINE_FALLBACK') == '1':
         del os.environ['POL_OFFLINE_FALLBACK']
 
     yield
 
     # Teardown: nothing specific; Brownie handles ephemeral chain state on dev network
-

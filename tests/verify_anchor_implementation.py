@@ -17,10 +17,10 @@ sys.path.append('.')
 def check_file_exists(path, description):
     """Check if a file exists"""
     if os.path.exists(path):
-        print(f"✅ {description}: {path}")
+        print(f"[PASS] {description}: {path}")
         return True
     else:
-        print(f"❌ {description} NOT FOUND: {path}")
+        print(f"[FAIL] {description} NOT FOUND: {path}")
         return False
 
 
@@ -30,13 +30,13 @@ def check_code_contains(path, search_string, description):
         with open(path, 'r', encoding='utf-8') as f:
             content = f.read()
             if search_string in content:
-                print(f"✅ {description}")
+                print(f"[PASS] {description}")
                 return True
             else:
-                print(f"❌ {description} NOT FOUND")
+                print(f"[FAIL] {description} NOT FOUND")
                 return False
     except Exception as e:
-        print(f"❌ Error reading {path}: {e}")
+        print(f"[FAIL] Error reading {path}: {e}")
         return False
 
 
@@ -46,9 +46,9 @@ def main():
     print("AnchorRegistry Implementation Verification")
     print("=" * 80)
     print()
-    
+
     all_checks_passed = True
-    
+
     # Check 1: AnchorRegistry.sol exists
     print("Check 1: AnchorRegistry.sol contract")
     print("-" * 80)
@@ -60,7 +60,7 @@ def main():
     else:
         all_checks_passed = False
     print()
-    
+
     # Check 2: chainfl/interact.py modifications
     print("Check 2: chainfl/interact.py modifications")
     print("-" * 80)
@@ -73,7 +73,7 @@ def main():
     else:
         all_checks_passed = False
     print()
-    
+
     # Check 3: Test file exists
     print("Check 3: Test file")
     print("-" * 80)
@@ -85,7 +85,7 @@ def main():
     else:
         all_checks_passed = False
     print()
-    
+
     # Check 4: Integration with PoLVerifyAggregator
     print("Check 4: Integration with PoLVerifyAggregator")
     print("-" * 80)
@@ -96,14 +96,14 @@ def main():
     else:
         all_checks_passed = False
     print()
-    
+
     # Summary
     print("=" * 80)
     print("Verification Summary")
     print("=" * 80)
-    
+
     if all_checks_passed:
-        print("✅ All checks passed!")
+        print("[PASS] All checks passed.")
         print()
         print("Implementation complete:")
         print("  1. AnchorRegistry.sol contract created")
@@ -118,13 +118,12 @@ def main():
         print()
         return 0
     else:
-        print("❌ Some checks failed")
+        print("[FAIL] Some checks failed")
         print()
-        print("Please review the missing components above.")
+        print("Review the preceding missing-component report.")
         print()
         return 1
 
 
 if __name__ == '__main__':
     sys.exit(main())
-

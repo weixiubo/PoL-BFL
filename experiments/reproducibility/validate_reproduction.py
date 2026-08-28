@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Validate reproduced PoL-BFL outputs against paper table targets.
+"""Validate PoL-BFL experiment outputs against paper table targets.
 
-This script is intentionally evidence-oriented: it reads paper tables and
-experiment result JSON files, normalizes known runner schemas, compares numeric
-values with explicit tolerances, and writes a manifest plus a compact report.
-It never edits the paper.
+The validator reads paper tables and experiment result files, normalizes runner
+schemas, compares numerical values with explicit tolerances, and writes a
+provenance manifest with a compact report.
 """
 
 from __future__ import annotations
@@ -22,7 +21,7 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 CODE_ROOT = Path(__file__).resolve().parents[2]
 WORKSPACE_ROOT = CODE_ROOT.parent
 DEFAULT_RESULTS_ROOT = CODE_ROOT / "experiments" / "results"
-DEFAULT_OUTPUT_ROOT = CODE_ROOT / "experiments" / "results" / "repro_recovery" / "validation"
+DEFAULT_OUTPUT_ROOT = CODE_ROOT / "experiments" / "results" / "paper_runs" / "validation"
 
 
 def _default_paper_root() -> Path:
@@ -30,26 +29,11 @@ def _default_paper_root() -> Path:
     candidates = []
     if env_root:
         candidates.append(Path(env_root).expanduser())
-    candidates.extend(
-        [
-            CODE_ROOT / "experiments" / "reproducibility" / "paper_targets",
-            WORKSPACE_ROOT / "Paper_now",
-            WORKSPACE_ROOT / "Paper",
-            WORKSPACE_ROOT / "Project V7" / "Paper",
-            WORKSPACE_ROOT / "Project V7" / "Paper_origin",
-            WORKSPACE_ROOT / "Project V7" / "Paper_orig",
-        ]
-    )
-    dated_papers = sorted(
-        (p for p in WORKSPACE_ROOT.glob("Paper20*") if p.is_dir()),
-        key=lambda p: p.stat().st_mtime,
-        reverse=True,
-    )
-    candidates.extend(dated_papers)
+    candidates.append(CODE_ROOT / "experiments" / "reproducibility" / "paper_targets")
     for candidate in candidates:
         if (candidate / "tables" / "table1_main_security.tex").exists():
             return candidate
-    return candidates[0] if candidates else WORKSPACE_ROOT / "Paper"
+    return candidates[0]
 
 
 def _target_table_files(paper_root: Path) -> Dict[str, Path]:
@@ -1104,12 +1088,12 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
     parser.add_argument("--tolerance-ma", type=float, default=1.0, help="MA tolerance in percentage points")
     parser.add_argument("--tolerance-detection", type=float, default=1.0, help="DR/FPR tolerance in percentage points")
     parser.add_argument("--tolerance-other", type=float, default=5.0, help="Generic numeric tolerance")
-    parser.add_argument("--no-enforce-protocol", action="store_true", help="Compare numeric values even when run protocol does not match paper")
+    parser.add_argument("--no-enforce-protocol", action="store_true", help="Compare numeric values independently of protocol-metadata correspondence")
     parser.add_argument("--min-rounds-rq1", type=int, default=200, help="Paper protocol minimum rounds for RQ1/RQ5 numeric validation")
     parser.add_argument("--min-clients-rq1", type=int, default=50, help="Paper protocol minimum registered clients for RQ1/RQ5 numeric validation")
     parser.add_argument("--min-clients-per-round-rq1", type=int, default=0, help="Optional minimum participating clients per round for RQ1/RQ5; 0 means not enforced")
     parser.add_argument("--min-local-epochs-rq1", type=int, default=5, help="Paper protocol minimum local epochs for RQ1/RQ5 numeric validation")
-    parser.add_argument("--allow-table1-noniid", action="store_true", help="Do not reject Table 1 observations with non-IID partition metadata")
+    parser.add_argument("--allow-table1-noniid", action="store_true", help="Include Table 1 observations with non-IID partition metadata")
     args = parser.parse_args(list(argv) if argv is not None else None)
 
     output_dir = args.output_dir or (DEFAULT_OUTPUT_ROOT / f"validation_{_stamp()}")

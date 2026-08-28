@@ -5,7 +5,7 @@ set -euo pipefail
 # Usage: run_param_scan_rq1.sh <DATASET> <GPU_ID> <PARAM_NAME> <PARAM_VALUE> <TAG>
 # Example: run_param_scan_rq1.sh MNIST 1 verification_rate 0.1 vr01
 
-PYTHON_BIN="${PYTHON_BIN:-/home/wxb/miniconda3/envs/wxb__veryfl_pol/bin/python}"
+PYTHON_BIN="${PYTHON_BIN:-python}"
 
 DATASET=${1:?DATASET required (MNIST|CIFAR10|CIFAR100)}
 GPU=${2:?GPU_ID required}
@@ -18,7 +18,7 @@ LOG="experiments/logs/rq1_param_scan_${STAMP}_${TAG}.log"
 PIDF="experiments/logs/rq1_param_scan_${STAMP}_${TAG}.pid"
 mkdir -p experiments/logs
 
-# Defaults for quick parameter scan runs (10 rounds for speed)
+# Defaults for smoke parameter scan runs (10 rounds for speed)
 case "$DATASET" in
   MNIST)
     NUM_ROUNDS=10

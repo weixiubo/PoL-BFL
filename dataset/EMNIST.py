@@ -8,4 +8,3 @@ def get_emnist(train:bool = True):
                                 transform = transforms.Compose([transforms.RandomCrop(28,padding=4),
                                                               transforms.RandomHorizontalFlip(),
                                                               transforms.ToTensor(),]))
-    

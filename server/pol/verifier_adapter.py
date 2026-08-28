@@ -95,7 +95,7 @@ class RemoteVerifierAdapter(VerifierAdapter):
     Payload and response are JSON.
 
     MVP transport: serialize heavy Python objects (checkpoints with tensors)
-    using torch.save -> base64, so we don't require custom JSON encoders.
+    using torch.save and base64, avoiding custom JSON encoders.
     The remote node will run a distance-only check by default.
     """
 

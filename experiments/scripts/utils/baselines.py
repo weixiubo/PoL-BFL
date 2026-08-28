@@ -66,7 +66,7 @@ def _flatten_delta_sampled(model: ODict, reference: ODict, max_dim: int = None) 
 
 class BaselineAggregator:
     """Base class for baseline aggregation methods"""
-    
+
     def __init__(self, method_name: str):
         self.method_name = method_name
         self.selected_indices = []
@@ -74,15 +74,15 @@ class BaselineAggregator:
         self.scores = []
         self.client_weights = []
         logger.info(f"Initialized {method_name}")
-    
+
     def aggregate(self, models: List[ODict], weights: List[float] = None) -> ODict:
         """
         Aggregate models
-        
+
         Args:
             models: List of model state dicts
             weights: List of aggregation weights (default: equal weights)
-        
+
         Returns:
             aggregated_model: Aggregated model state dict
         """
@@ -92,21 +92,21 @@ class BaselineAggregator:
 class VanillaFLAggregator(BaselineAggregator):
     """
     Vanilla Federated Learning (FedAvg)
-    
+
     Simple weighted average of client models.
     """
-    
+
     def __init__(self):
         super().__init__("Vanilla_FL")
-    
+
     def aggregate(self, models: List[ODict], weights: List[float] = None) -> ODict:
         """
         FedAvg: Weighted average of models
-        
+
         Args:
             models: List of model state dicts
             weights: List of weights (default: equal weights)
-        
+
         Returns:
             aggregated_model: Averaged model
         """
@@ -115,25 +115,25 @@ class VanillaFLAggregator(BaselineAggregator):
         self.selected_indices = list(range(len(models)))
         self.rejected_indices = []
         self.scores = []
-        
+
         # Default to equal weights
         if weights is None:
             weights = [1.0 / len(models)] * len(models)
-        
+
         # Normalize weights
         total_weight = sum(weights)
         weights = [w / total_weight for w in weights]
         self.client_weights = [float(w) for w in weights]
-        
+
         # Initialize aggregated model
         aggregated_model = ODict()
-        
+
         # Weighted average
         for key in models[0].keys():
             aggregated_model[key] = sum(
                 w * model[key] for w, model in zip(weights, models)
             )
-        
+
         logger.debug(f"Aggregated {len(models)} models using FedAvg")
         return aggregated_model
 
@@ -141,11 +141,11 @@ class VanillaFLAggregator(BaselineAggregator):
 class KrumAggregator(BaselineAggregator):
     """
     Krum Aggregation
-    
+
     Byzantine-robust aggregation that selects the model closest to others.
     Reference: Blanchard et al., "Machine Learning with Adversaries: Byzantine Tolerant Gradient Descent"
     """
-    
+
     def __init__(
         self,
         num_byzantine: int = 0,
@@ -156,7 +156,7 @@ class KrumAggregator(BaselineAggregator):
         self.num_byzantine = num_byzantine
         self.multi_krum = bool(multi_krum)
         self.multi_krum_count = multi_krum_count
-    
+
     def _compute_squared_distance(self, model1: ODict, model2: ODict) -> float:
         """Compute squared L2 distance between two model updates.
 
@@ -177,24 +177,24 @@ class KrumAggregator(BaselineAggregator):
                 diff = torch.nan_to_num(diff, nan=0.0, posinf=0.0, neginf=0.0)
             distance += torch.sum(diff ** 2).item()
         return float(distance)
-    
+
     def aggregate(self, models: List[ODict], weights: List[float] = None) -> ODict:
         """
         Krum: Select model with smallest sum of distances to closest models
-        
+
         Args:
             models: List of model state dicts
             weights: Not used in Krum
-        
+
         Returns:
             selected_model: Selected model (not averaged)
         """
         if not models:
             raise ValueError("No models to aggregate")
-        
+
         n = len(models)
         f = self.num_byzantine
-        
+
         # Compute pairwise distances
         distances = np.zeros((n, n))
         for i in range(n):
@@ -202,7 +202,7 @@ class KrumAggregator(BaselineAggregator):
                 dist = self._compute_squared_distance(models[i], models[j])
                 distances[i, j] = dist
                 distances[j, i] = dist
-        
+
         # For each model, compute sum of squared distances to n-f-2 closest models.
         # Krum is formally defined for n > 2f + 2; small smoke tests may violate
         # this, so clamp the neighbor count instead of silently producing all-zero
@@ -215,7 +215,7 @@ class KrumAggregator(BaselineAggregator):
             # Sum of closest distances (excluding self)
             score = np.sum(sorted_distances[1:1 + neighbor_count])
             scores.append(score)
-        
+
         # Select model with smallest score.  In Multi-Krum mode, aggregate the
         # lowest-scoring safe set instead of using a single client update; this
         # is the common stable FL variant of Krum for large client cohorts.
@@ -269,15 +269,15 @@ class KrumAggregator(BaselineAggregator):
 class TrimmedMeanAggregator(BaselineAggregator):
     """
     Trimmed Mean Aggregation
-    
+
     Byzantine-robust aggregation that removes extreme values before averaging.
     Reference: Yin et al., "Byzantine-Robust Distributed Learning: Towards Optimal Statistical Rates"
     """
-    
+
     def __init__(self, trim_ratio: float = 0.1):
         super().__init__("Trimmed_Mean")
         self.trim_ratio = trim_ratio
-    
+
     def aggregate(self, models: List[ODict], weights: List[float] = None) -> ODict:
         """
         Trimmed Mean: Remove extreme values and average the rest
@@ -296,7 +296,7 @@ class TrimmedMeanAggregator(BaselineAggregator):
         self.scores = []
 
         n = len(models)
-        # 修复: 确保至少trim 1个值，避免trim_ratio太小时num_trim=0
+        # 修正: 确保至少trim 1个值，避免trim_ratio太小时num_trim=0
         num_trim = max(1, int(n * self.trim_ratio))
 
         # 确保trim后至少剩下1个模型
@@ -331,13 +331,13 @@ class TrimmedMeanAggregator(BaselineAggregator):
 class MedianAggregator(BaselineAggregator):
     """
     Median Aggregation
-    
+
     Byzantine-robust aggregation using coordinate-wise median.
     """
-    
+
     def __init__(self):
         super().__init__("Median")
-    
+
     def aggregate(self, models: List[ODict], weights: List[float] = None) -> ODict:
         """
         Median: Coordinate-wise median of models
@@ -361,7 +361,7 @@ class MedianAggregator(BaselineAggregator):
             params = torch.stack([model[key] for model in models])
 
             # Compute coordinate-wise median
-            # Note: torch.median on CUDA doesn't have deterministic implementation
+            # torch.median has no deterministic CUDA implementation.
             # Move to CPU for deterministic behavior when needed
             original_device = params.device
             if params.is_cuda and torch.are_deterministic_algorithms_enabled():
@@ -378,23 +378,23 @@ class MedianAggregator(BaselineAggregator):
 class BulyanAggregator(BaselineAggregator):
     """
     Bulyan Aggregation
-    
+
     Combines Krum with trimmed mean for stronger Byzantine robustness.
     Reference: El Mhamdi et al., "The Hidden Vulnerability of Distributed Learning in Byzantium"
     """
-    
+
     def __init__(self, num_byzantine: int = 0):
         super().__init__("Bulyan")
         self.num_byzantine = num_byzantine
         self.krum = KrumAggregator(num_byzantine)
-    
+
     def aggregate(self, models: List[ODict], weights: List[float] = None) -> ODict:
         """
         Bulyan: Apply Krum multiple times, then trimmed mean
-        
+
         Args:
             models: List of model state dicts
-        
+
         Returns:
             aggregated_model: Bulyan aggregated model
         """
@@ -403,26 +403,26 @@ class BulyanAggregator(BaselineAggregator):
         self.selected_indices = list(range(len(models)))
         self.rejected_indices = []
         self.scores = []
-        
+
         n = len(models)
         f = self.num_byzantine
-        
+
         # Select n-2f models using Krum
         selected_models = []
         remaining_models = models.copy()
-        
+
         for _ in range(n - 2 * f):
             # Run Krum on remaining models
             selected = self.krum.aggregate(remaining_models)
             selected_models.append(selected)
-            
+
             # Remove selected model from remaining
             remaining_models = [m for m in remaining_models if m is not selected]
-        
+
         # Apply trimmed mean on selected models
         trimmed_mean = TrimmedMeanAggregator(trim_ratio=0.1)
         aggregated_model = trimmed_mean.aggregate(selected_models)
-        
+
         logger.debug(f"Aggregated {len(models)} models using Bulyan")
         return aggregated_model
 
@@ -434,7 +434,7 @@ class ShapleyFLAggregator(BaselineAggregator):
     Uses Shapley values to assess client contributions and filter malicious clients.
     Paper: "ShapleyFL: Robust Federated Learning Based on Shapley Value" (KDD 2023)
 
-    Note: This is a simplified version that doesn't require validation data.
+    This compatibility variant operates without validation data.
     It uses gradient similarity as a proxy for contribution.
     """
 

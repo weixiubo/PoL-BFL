@@ -102,7 +102,7 @@ EOF
 "$OUTPUT_DIR/rq1_results.json")
         echo "  指标: TPR=$TPR, FPR=$FPR, Acc=$ACC" | tee -a "$LOG_FILE"
       else
-        echo "  ⚠️ 未找到 $OUTPUT_DIR/rq1_results.json" | tee -a "$LOG_FILE"
+        echo "  [WARNING] 未找到 $OUTPUT_DIR/rq1_results.json" | tee -a "$LOG_FILE"
       fi
 
     done

@@ -30,7 +30,7 @@ except Exception as e:
     logger = logging.getLogger(__name__)
     logger.warning(f"Blockchain integration unavailable (chain_proxy import failed): {e}")
     _CHAIN_PROXY_AVAILABLE = False
-    class _ChainProxyStub:
+    class _UnavailableChainProxy:
         def pol_register_client(self, *args, **kwargs):
             return None
         def batch_record_pol_verification(self, *args, **kwargs):
@@ -49,7 +49,7 @@ except Exception as e:
             return {'penalty_pool': 0}
         def distribute_rewards(self, *args, **kwargs):
             return None
-    chain_proxy = _ChainProxyStub()
+    chain_proxy = _UnavailableChainProxy()
 
 from server.incentive.RewardCalculator import RewardCalculator
 from server.incentive.ReputationSystem import ReputationSystem
@@ -659,24 +659,23 @@ class PoLVerifyAggregator(ServerAggregator):
         self, raw_client_model_or_grad_list: List[OrderedDict]
     ) -> List[OrderedDict]:
         """
-        聚合前的处理：执行PoL验证
+        Execute PoL verification before aggregation.
 
         Args:
-            raw_client_model_or_grad_list: 客户端模型列表
+            raw_client_model_or_grad_list: Client model list.
 
         Returns:
-            filtered_list: 过滤后的模型列表（移除验证失败的客户端）
+            Filtered model list with failed clients removed.
         """
         if not self.enable_pol or self.pol_verifier is None:
-            # PoL未启用，直接返回
+            # Return unchanged inputs when PoL verification is disabled.
             return raw_client_model_or_grad_list
 
-        # 随机选择客户端进行验证
+        # Select clients for probabilistic verification.
         num_clients = len(raw_client_model_or_grad_list)
         num_to_verify = max(1, int(num_clients * self.verification_rate))
 
-        # 这里简化处理，实际应该从client_pool中获取客户端信息
-        # 假设每个模型都有对应的client_id（需要在实际集成时调整）
+        # Model positions follow the ordering established by receive_upload.
         clients_to_verify = random.sample(range(num_clients), num_to_verify)
 
         logger.info(f"Verifying {num_to_verify}/{num_clients} clients")
@@ -721,7 +720,7 @@ class PoLVerifyAggregator(ServerAggregator):
             selected_ids.append(client_id)
 
             # Build a challenge: request all checkpoint steps
-            # FIX: Use actual checkpoint steps instead of indices to avoid mismatch
+            # Use checkpoint step identifiers rather than positional indices.
             # when batch_counter accumulates across rounds
             checkpoint_steps = []
             preselected_pair_indices = None
@@ -744,7 +743,7 @@ class PoLVerifyAggregator(ServerAggregator):
             except Exception as e:
                 logger.warning(f"{client_id}: Failed to get checkpoint steps from metadata: {e}", exc_info=True)
 
-            # Fallback: use old index-based logic if no steps found
+            # Use the checkpoint_indices compatibility field when steps are unavailable.
             if not checkpoint_steps:
                 num_ckpts = None
                 if commit:
@@ -755,7 +754,7 @@ class PoLVerifyAggregator(ServerAggregator):
                     except Exception:
                         num_ckpts = 0
 
-                # Old logic: indices [1..num_ckpts] mapped to steps [save_freq, 2*save_freq, ...]
+                # Map compatibility indices to checkpoint steps.
                 checkpoint_indices = list(range(1, max(1, num_ckpts) + 1))
                 logger.warning(f"{client_id}: Using fallback index-based challenge with {len(checkpoint_indices)} indices")
                 challenge = {
@@ -906,7 +905,7 @@ class PoLVerifyAggregator(ServerAggregator):
                 logger.error(f"ZKP verification error for {client_id}: {e}")
                 zkp_ok = False
 
-            # Fallback: if ZKP not present but we have 2+ checkpoints, still issue an on-chain challenge record for auditability
+            # Record an on-chain challenge when at least two checkpoints are available.
             try:
                 if (zkp_ok is None or zkp_ok is False) and self.enable_zkp and len(response.get('checkpoints', [])) >= 2:
                     # Represent absent public signals explicitly when no proof was submitted.
@@ -1553,7 +1552,7 @@ class PoLVerifyAggregator(ServerAggregator):
         Returns:
             processed_model: 处理后的模型
         """
-        # 这里可以添加后处理逻辑，如差分隐私、模型压缩等
+        # The compatibility hook returns the aggregated model unchanged.
         return aggregated_model_or_grad
 
     def test(self, test_data, device, args):

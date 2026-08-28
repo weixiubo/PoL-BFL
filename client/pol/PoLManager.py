@@ -247,7 +247,7 @@ class PoLManager:
                 # 删除最旧的checkpoint
                 oldest_step = min(self.memory_checkpoints.keys())
                 del self.memory_checkpoints[oldest_step]
-                logger.debug(f"Removed old checkpoint from memory: step {oldest_step}")
+                logger.debug(f"Removed earliest checkpoint from memory: step {oldest_step}")
 
             # 更新元数据（不包含path）
             self.metadata['checkpoints'].append({
@@ -335,8 +335,8 @@ class PoLManager:
         """
         计算数据集的哈希
 
-        注意: 这里不能直接访问原始数据（隐私问题）
-        实际实现中应该只哈希数据的元信息
+        The compatibility path hashes recorded samples when they are available
+        and otherwise hashes dataset metadata.
 
         Args:
             dataset: 数据集对象
@@ -572,7 +572,7 @@ class PoLManager:
                 os.remove(filepath)
                 removed_count += 1
 
-        logger.info(f"Cleaned up {removed_count} old checkpoints")
+        logger.info(f"Removed {removed_count} expired checkpoints")
 
     def _auto_cleanup(self):
         """

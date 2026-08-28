@@ -1,7 +1,7 @@
 """
 RQ5: Robust Aggregation Composability Verification
 
-Research Question: Can PoL seamlessly integrate with various robust aggregation methods
+Research Question: Can PoL integrate with various robust aggregation methods
 without degrading their defense capabilities? For attacks that robust aggregation can detect
 but PoL cannot, does PoL maintain or even enhance the defense effectiveness?
 
@@ -100,11 +100,11 @@ RQ5_CONFIG = {
         'PoL_Bulyan',
     ],
 
-    # PoL configuration (aligned with RQ1 clearance defaults)
+    # PoL configuration (aligned with RQ1 validation defaults)
     'pol_config': {
         'enable': True,
         'save_freq': 5,
-        # RQ1 clearance defaults: delta=5.0, verification_rate=1.0
+        # RQ1 validation defaults: delta=5.0, verification_rate=1.0
         'verification_rate': 1.0,
         'delta': 5.0,
         'distance_metric': 'l2',
@@ -256,7 +256,7 @@ class ComposabilityExperiment:
     def run_single_experiment(self, attack_type, attack_params, baseline_method):
         """
         Run a single experiment with given attack and baseline
-        
+
         This is similar to RQ1 but focuses on composability testing
         """
         logger.info(f"\n{'='*70}")
@@ -515,7 +515,7 @@ class ComposabilityExperiment:
         self.generate_summary(all_results)
 
         logger.info("\n" + "="*70)
-        logger.info("RQ5 Experiments Completed!")
+        logger.info("RQ5 Experiments Completed.")
         logger.info("="*70)
 
         return all_results

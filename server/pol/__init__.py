@@ -3,12 +3,11 @@
 
 包含:
 - PoLVerifier: PoL验证器
-- RewardCalculator: 奖励计算器（阶段三）
-- ReputationSystem: 声誉系统（阶段三）
-- SybilDefense: 女巫攻击防御（阶段三）
+- RewardCalculator: reward calculation
+- ReputationSystem: reputation state
+- SybilDefense: Sybil-defense processing
 """
 
 from .PoLVerifier import PoLVerifier
 
 __all__ = ['PoLVerifier']
-

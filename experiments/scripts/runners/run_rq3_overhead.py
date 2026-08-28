@@ -109,7 +109,7 @@ class OverheadExperiment:
         self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
         logger.info(f"Initialized OverheadExperiment on {self.device}")
-        # Track measurement checkpoint files we create so we can clean them safely
+        # Track measurement checkpoints for deterministic cleanup.
         self.created_checkpoint_files = []
 
     def prepare_data(self):
@@ -192,7 +192,7 @@ class OverheadExperiment:
                 int(public_signals.get('max_distance', 0)),
             ]
             method = getattr(pol, 'challengeProofOnchainVerify', None) or pol.get_method('challengeProofOnchainVerify')
-            cid_bytes = bytes(32)  # dummy challenge id
+            cid_bytes = bytes(32)  # Zero-valued challenge identifier.
             tx_params = {'from': getattr(proxy, 'server_accounts', None)}
             gas = method.estimate_gas(cid_bytes, a, b, c, inputs, "", tx_params)
             return int(gas)
@@ -820,7 +820,7 @@ def main():
     experiment = OverheadExperiment(cfg)
     results = experiment.run_all_experiments()
 
-    logger.info("\nRQ3: System Overhead Analysis Completed!")
+    logger.info("\nRQ3: System Overhead Analysis Completed.")
 
 
 if __name__ == '__main__':

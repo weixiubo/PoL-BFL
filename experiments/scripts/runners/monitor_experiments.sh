@@ -27,10 +27,10 @@ for LOG in /tmp/rq1_*.log; do
     if [ -f "$LOG" ]; then
         BASENAME=$(basename "$LOG" .log)
         LAST_LINE=$(tail -1 "$LOG" 2>/dev/null)
-        
+
         # Extract round info if available
         ROUND_INFO=$(grep -oP "Round \d+/\d+" "$LOG" | tail -1)
-        
+
         if [ -n "$ROUND_INFO" ]; then
             echo "  $BASENAME: $ROUND_INFO"
         else

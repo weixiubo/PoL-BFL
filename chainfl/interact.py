@@ -192,7 +192,7 @@ class chainProxy():
 
         '''
         Here Brownie store all address in a vector.
-        We just delegate the index of the vector to the client as the ClientID (str)
+        The vector index is used as the string client identifier.
         The interaction with the blockchain is mainly through the ethereum.
         '''
         self.client_list = defaultdict(type(accounts[0].address))
@@ -278,7 +278,7 @@ class chainProxy():
                     output_channels = int (bit_length * 256/ 896)
 
                 if torch is None:
-                    logger.error("Torch is required for watermark sign generation; please install torch or disable watermark features.")
+                    logger.error("Torch is required for watermark signature generation; install torch or disable watermark features.")
                     raise RuntimeError("torch not available for watermark sign generation")
                 b = torch.sign(torch.rand(output_channels) - 0.5)
                 M = torch.randn(alexnet_channels[layer_key][0], output_channels)

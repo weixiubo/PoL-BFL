@@ -8,7 +8,7 @@ from pathlib import Path
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-# Ensure we can import sibling modules when invoked from repo root
+# Add the analysis directory for sibling-module imports.
 try:
     from plot_style import apply_style, COLORS
 except ImportError:  # pragma: no cover
@@ -24,9 +24,9 @@ FIG_PATH_B = Path('../../author-kit-CVPR2026-v1-latex-/figures/rq1b_freeriding.p
 
 def plot_single_figure(data, title, marker, output_path):
     """Create a single figure for one scenario"""
-    # Single figure with good size: 6 inches width, 3.5 inches height
+    # Use a 6 by 3.5 inch figure.
     fig, ax = plt.subplots(1, 1, figsize=(6, 3.5))
-    
+
     for d in data:
         method = d.get('method')
         accs = d.get('accuracies', [])
@@ -34,14 +34,14 @@ def plot_single_figure(data, title, marker, output_path):
         xs = list(range(10, 10 * (len(accs) + 1), 10))
         ax.plot(xs, accs, marker=marker, label=method.replace('_', ' '),
                 color=COLORS.get(method, '#444444'), linewidth=2, markersize=5)
-    
+
     ax.set_xlabel('Training Round')
     ax.set_ylabel('Test Accuracy')
     ax.set_ylim([0.4, 0.85])
     ax.grid(True, alpha=0.3)
     ax.legend(loc='lower right')
     ax.set_title(title)
-    
+
     # Optimized layout
     fig.tight_layout(pad=0.5)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -68,4 +68,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

@@ -15,53 +15,53 @@ logger = logging.getLogger(__name__)
 class EconomicIncentiveSystem:
     """
     经济激励系统
-    
+
     功能:
     1. 集成质押、奖励、声誉机制
     2. 支持女巫攻击防御
     3. 支持动态激励
     4. 支持完整的经济模型
     """
-    
+
     def __init__(self, args: Dict = None):
         """
         初始化EconomicIncentiveSystem
-        
+
         Args:
             args: 配置参数
         """
         if args is None:
             args = {}
-        
+
         # 初始化各个组件
         self.staking_manager = StakingManager(
             min_stake=args.get('min_stake', 100.0)
         )
-        
+
         self.reward_calculator = RewardCalculator(
             base_reward_per_round=args.get('base_reward', 500.0),
             reputation_weight=args.get('reputation_weight', 0.2)
         )
-        
+
         self.reputation_system = ReputationSystem(
             initial_reputation=args.get('initial_reputation', 0.5),
             decay_factor=args.get('decay_factor', 0.9)
         )
-        
+
         # 女巫攻击防御参数
         self.min_stake_for_participation = args.get('min_stake_for_participation', 100.0)
         self.reputation_threshold = args.get('reputation_threshold', 0.3)
         self.max_clients_per_address = args.get('max_clients_per_address', 1)
-        
+
         # 统计数据
         self.total_rounds = 0
         self.total_rewards_distributed = 0.0
         self.total_stakes_slashed = 0.0
-        
+
         logger.info(f"EconomicIncentiveSystem initialized")
         logger.info(f"  Min stake: {self.min_stake_for_participation}")
         logger.info(f"  Reputation threshold: {self.reputation_threshold}")
-    
+
     def register_client(self, client_id: str, initial_stake: float) -> Tuple[bool, str]:
         """
         注册客户端
@@ -88,7 +88,7 @@ class EconomicIncentiveSystem:
         except Exception as e:
             logger.error(f"Error registering client: {e}")
             return False, str(e)
-    
+
     def verify_client_eligibility(self, client_id: str) -> Tuple[bool, str]:
         """
         验证客户端是否有资格参与
@@ -115,7 +115,7 @@ class EconomicIncentiveSystem:
         except Exception as e:
             logger.error(f"Error verifying eligibility: {e}")
             return False, str(e)
-    
+
     def process_verification_result(self,
                                    client_id: str,
                                    is_verified: bool,
@@ -166,7 +166,7 @@ class EconomicIncentiveSystem:
 
             # 如果验证成功，计算奖励
             if is_verified and training_steps > 0:
-                # 简单的奖励计算
+                # Compute the reward in proportion to verified training work.
                 reward = self.reward_calculator.base_reward_per_round * (training_steps / max(total_steps, 1))
 
                 result['reward'] = reward
@@ -179,7 +179,7 @@ class EconomicIncentiveSystem:
         except Exception as e:
             logger.error(f"Error processing verification result: {e}")
             return {'error': str(e)}
-    
+
     def end_round(self) -> Dict:
         """
         结束一轮（应用衰减等）
@@ -226,4 +226,3 @@ class EconomicIncentiveSystem:
             'reputation': self.reputation_system.reputations.get(client_id, self.reputation_system.initial_reputation),
             'eligible': self.verify_client_eligibility(client_id)[0]
         }
-

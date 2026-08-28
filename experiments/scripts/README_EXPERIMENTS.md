@@ -21,15 +21,14 @@ partitions, seeds, client counts, round counts, and model configurations.
 
 ## Dataset tools
 
-Dataset conversion programs write files beneath the directory supplied through
-their command-line options. Dataset files and generated partitions are excluded
-from version control.
+Dataset conversion programs implement the input transformations used by the
+experiment configurations.
 
 ## Monitoring tools
 
-Monitoring programs report process and result-directory state. They do not
-modify unrelated processes. Hardware allocation and process ownership remain
-the responsibility of the experiment launcher.
+Monitoring programs report process and result-directory state and operate
+read-only with respect to unrelated processes. Hardware allocation and process
+ownership remain the responsibility of the experiment launcher.
 
 ## Related packages
 

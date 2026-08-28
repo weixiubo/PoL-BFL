@@ -423,10 +423,10 @@ class PoLTrainer(BaseTrainer):
             logger.warning("PoL not enabled, cannot respond to challenge")
             return None
 
-        # Support both new 'checkpoint_steps' and old 'checkpoint_indices'
+        # Support checkpoint_steps and the checkpoint_indices compatibility field.
         checkpoint_steps = challenge_data.get('checkpoint_steps', [])
         if not checkpoint_steps:
-            # Fallback to old logic for backward compatibility
+            # Use the compatibility field when checkpoint_steps is unavailable.
             checkpoint_indices = challenge_data.get('checkpoint_indices', [])
             checkpoint_steps = [idx * self.pol_save_freq for idx in checkpoint_indices]
             logger.debug(f"Using index-based challenge: {len(checkpoint_indices)} indices -> {len(checkpoint_steps)} steps")

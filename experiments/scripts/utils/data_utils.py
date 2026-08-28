@@ -457,7 +457,7 @@ class SubsetDeterministicWrapper(Dataset):
                 img, target = sample[0], int(sample[1])
             else:
                 img, target = sample, 0
-            # If already tensor, we return as-is with idx
+            # Return tensor inputs with their source index.
             if isinstance(img, torch.Tensor):
                 return img, target, gidx
 
@@ -615,22 +615,22 @@ def load_dataset(dataset_name: str, data_dir: str = './data', train: bool = True
 def partition_data_iid(dataset, num_clients: int) -> List[Subset]:
     """
     Partition data in IID manner
-    
+
     Args:
         dataset: PyTorch dataset
         num_clients: Number of clients
-    
+
     Returns:
         client_datasets: List of client datasets
     """
     num_samples = len(dataset)
     indices = np.random.permutation(num_samples)
-    
+
     # Split indices evenly
     split_indices = np.array_split(indices, num_clients)
-    
+
     client_datasets = [Subset(dataset, indices.tolist()) for indices in split_indices]
-    
+
     logger.info(f"Partitioned data IID for {num_clients} clients")
     return client_datasets
 
@@ -638,12 +638,12 @@ def partition_data_iid(dataset, num_clients: int) -> List[Subset]:
 def partition_data_dirichlet(dataset, num_clients: int, alpha: float = 0.5) -> List[Subset]:
     """
     Partition data using Dirichlet distribution (Non-IID)
-    
+
     Args:
         dataset: PyTorch dataset
         num_clients: Number of clients
         alpha: Dirichlet concentration parameter (smaller = more non-IID)
-    
+
     Returns:
         client_datasets: List of client datasets
     """
@@ -654,36 +654,36 @@ def partition_data_dirichlet(dataset, num_clients: int, alpha: float = 0.5) -> L
         labels = np.array(dataset.labels)
     else:
         raise ValueError("Dataset does not have targets or labels attribute")
-    
+
     num_classes = len(np.unique(labels))
     num_samples = len(labels)
-    
+
     # Initialize client indices
     client_indices = [[] for _ in range(num_clients)]
-    
+
     # For each class, distribute samples to clients using Dirichlet
     for k in range(num_classes):
         # Get indices of samples with label k
         idx_k = np.where(labels == k)[0]
         np.random.shuffle(idx_k)
-        
+
         # Sample proportions from Dirichlet distribution
         proportions = np.random.dirichlet(np.repeat(alpha, num_clients))
-        
+
         # Distribute samples according to proportions
         proportions = (np.cumsum(proportions) * len(idx_k)).astype(int)[:-1]
         split_idx_k = np.split(idx_k, proportions)
-        
+
         # Assign to clients
         for i, idx in enumerate(split_idx_k):
             client_indices[i].extend(idx.tolist())
-    
+
     # Shuffle each client's data
     for i in range(num_clients):
         np.random.shuffle(client_indices[i])
-    
+
     client_datasets = [Subset(dataset, indices) for indices in client_indices]
-    
+
     logger.info(f"Partitioned data Non-IID (Dirichlet α={alpha}) for {num_clients} clients")
     return client_datasets
 
@@ -692,12 +692,12 @@ def partition_data_pathological(dataset, num_clients: int, shards_per_client: in
     """
     Partition data using pathological distribution (Non-IID)
     Each client gets data from only a few classes.
-    
+
     Args:
         dataset: PyTorch dataset
         num_clients: Number of clients
         shards_per_client: Number of shards (classes) per client
-    
+
     Returns:
         client_datasets: List of client datasets
     """
@@ -708,35 +708,35 @@ def partition_data_pathological(dataset, num_clients: int, shards_per_client: in
         labels = np.array(dataset.labels)
     else:
         raise ValueError("Dataset does not have targets or labels attribute")
-    
+
     num_classes = len(np.unique(labels))
     num_samples = len(labels)
-    
+
     # Sort by label
     sorted_indices = np.argsort(labels)
-    
+
     # Create shards
     num_shards = num_clients * shards_per_client
     shard_size = num_samples // num_shards
     shards = []
-    
+
     for i in range(num_shards):
         start = i * shard_size
         end = start + shard_size if i < num_shards - 1 else num_samples
         shards.append(sorted_indices[start:end].tolist())
-    
+
     # Shuffle shards
     np.random.shuffle(shards)
-    
+
     # Assign shards to clients
     client_indices = [[] for _ in range(num_clients)]
     for i in range(num_clients):
         for j in range(shards_per_client):
             shard_idx = i * shards_per_client + j
             client_indices[i].extend(shards[shard_idx])
-    
+
     client_datasets = [Subset(dataset, indices) for indices in client_indices]
-    
+
     logger.info(f"Partitioned data Pathological ({shards_per_client} shards/client) for {num_clients} clients")
     return client_datasets
 
@@ -813,10 +813,10 @@ def create_dataloaders(client_datasets: List[Subset], batch_size: int = 32,
 def get_data_statistics(client_datasets: List[Subset]) -> Dict:
     """
     Get statistics of data distribution
-    
+
     Args:
         client_datasets: List of client datasets
-    
+
     Returns:
         stats: Dictionary of statistics
     """
@@ -829,7 +829,7 @@ def get_data_statistics(client_datasets: List[Subset]) -> Dict:
         'mean_samples': np.mean([len(ds) for ds in client_datasets]),
         'std_samples': np.std([len(ds) for ds in client_datasets])
     }
-    
+
     # Get label distribution for each client
     label_distributions = []
     for dataset in client_datasets:
@@ -839,13 +839,13 @@ def get_data_statistics(client_datasets: List[Subset]) -> Dict:
             labels = np.array(dataset.dataset.labels)[dataset.indices]
         else:
             continue
-        
+
         unique, counts = np.unique(labels, return_counts=True)
         label_dist = dict(zip(unique.tolist(), counts.tolist()))
         label_distributions.append(label_dist)
-    
+
     stats['label_distributions'] = label_distributions
-    
+
     return stats
 
 
@@ -858,12 +858,12 @@ def print_data_statistics(stats: Dict):
     print(f"Total samples: {stats['total_samples']}")
     print(f"Samples per client: min={stats['min_samples']}, max={stats['max_samples']}, "
           f"mean={stats['mean_samples']:.1f}, std={stats['std_samples']:.1f}")
-    
+
     if 'label_distributions' in stats:
         print("\nLabel distribution per client:")
         for i, dist in enumerate(stats['label_distributions'][:5]):  # Show first 5 clients
             print(f"  Client {i}: {dist}")
         if len(stats['label_distributions']) > 5:
             print(f"  ... ({len(stats['label_distributions']) - 5} more clients)")
-    
+
     print("="*50 + "\n")

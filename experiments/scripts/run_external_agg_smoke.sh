@@ -2,7 +2,7 @@
 set -euo pipefail
 
 CODE_ROOT="${CODE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
-PYTHON_BIN="${PYTHON_BIN:-/home/wxb/miniconda3/envs/wxb__veryfl_pol/bin/python}"
+PYTHON_BIN="${PYTHON_BIN:-python}"
 RUN_ID="${1:-polbfl_external_agg_smoke}"
 PORT="${POL_AGGREGATOR_PORT:-18188}"
 OUTPUT_ROOT="${OUTPUT_ROOT:-$CODE_ROOT/experiments/results/reproduction/smoke}"

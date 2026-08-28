@@ -31,10 +31,10 @@ def check_value(name: str, paper_value: float, actual_value: float, tolerance: f
     """Check if paper value matches actual value within tolerance"""
     diff = abs(paper_value - actual_value)
     match = diff <= tolerance
-    
-    status = f"{GREEN}✓{RESET}" if match else f"{RED}✗{RESET}"
+
+    status = f"{GREEN}[PASS]{RESET}" if match else f"{RED}[FAIL]{RESET}"
     print(f"  {status} {name:40s} Paper: {paper_value:6.2f}%  Actual: {actual_value:6.2f}%  Diff: {diff:5.2f}%")
-    
+
     return match
 
 def verify_table1_mnist():
@@ -42,15 +42,15 @@ def verify_table1_mnist():
     print(f"\n{BLUE}{'='*80}{RESET}")
     print(f"{BLUE}Table 1: RQ1 MNIST Security Evaluation{RESET}")
     print(f"{BLUE}{'='*80}{RESET}")
-    
+
     # Load actual results
     results_file = Path('results/rq1_security/rq1_results.json')
     if not results_file.exists():
-        print(f"{RED}✗ Results file not found: {results_file}{RESET}")
+        print(f"{RED}[FAIL] Results file not found: {results_file}{RESET}")
         return False
-    
+
     results = load_json(results_file)
-    
+
     # Paper values from Table 1
     paper_data = {
         'Vanilla_FL_byzantine': 8.55,
@@ -60,7 +60,7 @@ def verify_table1_mnist():
         'Trimmed_Mean_byzantine': 99.14,
         'Trimmed_Mean_free_riding': 98.93
     }
-    
+
     # Find actual values
     actual_data = {}
     for result in results:
@@ -68,7 +68,7 @@ def verify_table1_mnist():
         attack = result['attack_type']
         key = f"{method}_{attack.replace('_random_noise', '').replace('_no_training', '')}"
         actual_data[key] = result['final_accuracy'] * 100  # Convert to percentage
-    
+
     # Check each value
     all_match = True
     for key, paper_value in paper_data.items():
@@ -76,9 +76,9 @@ def verify_table1_mnist():
             match = check_value(key, paper_value, actual_data[key])
             all_match = all_match and match
         else:
-            print(f"  {RED}✗{RESET} {key:40s} NOT FOUND in results")
+            print(f"  {RED}[FAIL]{RESET} {key:40s} NOT FOUND in results")
             all_match = False
-    
+
     return all_match
 
 def verify_table2_cifar10():
@@ -86,15 +86,15 @@ def verify_table2_cifar10():
     print(f"\n{BLUE}{'='*80}{RESET}")
     print(f"{BLUE}Table 2: CIFAR-10 Results{RESET}")
     print(f"{BLUE}{'='*80}{RESET}")
-    
+
     # Load actual results
     results_file = Path('results/cifar10_paper/results.json')
     if not results_file.exists():
-        print(f"{RED}✗ Results file not found: {results_file}{RESET}")
+        print(f"{RED}[FAIL] Results file not found: {results_file}{RESET}")
         return False
-    
+
     results = load_json(results_file)
-    
+
     # Paper values from Table 2 (tab:cifar10)
     paper_data = {
         'Vanilla_FL_no_attack': 77.04,
@@ -104,7 +104,7 @@ def verify_table2_cifar10():
         'Trimmed_Mean_byzantine': 67.27,
         'Trimmed_Mean_free_riding': 77.28
     }
-    
+
     # Find actual values
     actual_data = {}
     for result in results:
@@ -112,7 +112,7 @@ def verify_table2_cifar10():
         attack = result['attack_type']
         key = f"{method}_{attack}"
         actual_data[key] = result['final_accuracy'] * 100
-    
+
     # Check each value
     all_match = True
     for key, paper_value in paper_data.items():
@@ -120,9 +120,9 @@ def verify_table2_cifar10():
             match = check_value(key, paper_value, actual_data[key], tolerance=0.5)  # Larger tolerance for CIFAR-10
             all_match = all_match and match
         else:
-            print(f"  {YELLOW}⚠{RESET} {key:40s} NOT FOUND in results (may need to run experiment)")
+            print(f"  {YELLOW}[WARNING]{RESET} {key:40s} NOT FOUND in results (may need to run experiment)")
             all_match = False
-    
+
     return all_match
 
 def verify_figures():
@@ -130,7 +130,7 @@ def verify_figures():
     print(f"\n{BLUE}{'='*80}{RESET}")
     print(f"{BLUE}Figure Files Verification{RESET}")
     print(f"{BLUE}{'='*80}{RESET}")
-    
+
     figures_dir = Path('../../../author-kit-CVPR2026-v1-latex-/figures')
     required_figures = [
         'system_architecture.pdf',
@@ -141,7 +141,7 @@ def verify_figures():
         'rq4_incentive.pdf',
         'ablation_beta.pdf'
     ]
-    
+
     all_exist = True
     for fig in required_figures:
         fig_path = figures_dir / fig
@@ -150,11 +150,11 @@ def verify_figures():
             import time
             mtime = os.path.getmtime(fig_path)
             mtime_str = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(mtime))
-            print(f"  {GREEN}✓{RESET} {fig:30s} (modified: {mtime_str})")
+            print(f"  {GREEN}[PASS]{RESET} {fig:30s} (modified: {mtime_str})")
         else:
-            print(f"  {RED}✗{RESET} {fig:30s} NOT FOUND")
+            print(f"  {RED}[FAIL]{RESET} {fig:30s} NOT FOUND")
             all_exist = False
-    
+
     return all_exist
 
 def generate_summary_report():
@@ -162,32 +162,32 @@ def generate_summary_report():
     print(f"\n{BLUE}{'='*80}{RESET}")
     print(f"{BLUE}VERIFICATION SUMMARY{RESET}")
     print(f"{BLUE}{'='*80}{RESET}")
-    
+
     results = {
         'Table 1 (MNIST)': verify_table1_mnist(),
         'Table 2 (CIFAR-10)': verify_table2_cifar10(),
         'Figures': verify_figures()
     }
-    
+
     print(f"\n{BLUE}{'='*80}{RESET}")
     print(f"{BLUE}FINAL RESULTS{RESET}")
     print(f"{BLUE}{'='*80}{RESET}")
-    
+
     all_passed = True
     for name, passed in results.items():
         status = f"{GREEN}PASS{RESET}" if passed else f"{RED}FAIL{RESET}"
         print(f"  {name:30s} {status}")
         all_passed = all_passed and passed
-    
+
     print(f"\n{BLUE}{'='*80}{RESET}")
     if all_passed:
-        print(f"{GREEN}✓ ALL VERIFICATIONS PASSED!{RESET}")
+        print(f"{GREEN}[PASS] ALL VERIFICATIONS PASSED!{RESET}")
         print(f"{GREEN}  The paper data is consistent with experimental results.{RESET}")
     else:
-        print(f"{RED}✗ SOME VERIFICATIONS FAILED!{RESET}")
-        print(f"{RED}  Please review the discrepancies above.{RESET}")
+        print(f"{RED}[FAIL] SOME VERIFICATIONS FAILED!{RESET}")
+        print(f"{RED}  Review the preceding discrepancies.{RESET}")
     print(f"{BLUE}{'='*80}{RESET}\n")
-    
+
     return all_passed
 
 def main():
@@ -196,19 +196,18 @@ def main():
     print(f"{BLUE}Paper Data Verification Tool{RESET}")
     print(f"{BLUE}Checking all experimental data in the paper...{RESET}")
     print(f"{BLUE}{'='*80}{RESET}")
-    
+
     # Change to experiments directory
     os.chdir(Path(__file__).parent)
-    
+
     # Run verification
     all_passed = generate_summary_report()
-    
+
     # Save report
     report_file = Path('verification_report.txt')
     print(f"\nSaving detailed report to: {report_file}")
-    
+
     return 0 if all_passed else 1
 
 if __name__ == '__main__':
     exit(main())
-

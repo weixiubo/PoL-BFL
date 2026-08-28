@@ -7,7 +7,7 @@ The `experiments/` directory contains the evaluation software for PoL-BFL.
 | Directory | Purpose |
 |---|---|
 | `final/` | Paper experiment matrices, single-cell runners, aggregators, and result validation |
-| `reproducibility/` | Configuration expansion, smoke tests, coverage reports, and result validation |
+| `reproducibility/` | Configuration expansion, execution, and result processing |
 | `scripts/` | Analysis, plotting, dataset preparation, monitoring, and supporting runners |
 
 ## Main experiment modules
@@ -28,8 +28,7 @@ Protocol settings are stored in `config/paper_protocol.json`, experiment
 dimensions are stored in `experiments/final/paper_matrix.json`, and numerical
 comparison values are stored under `config/`.
 
-Generated experiment outputs are excluded from version control. Each run
-directory records its configuration, dataset information, seed, metrics, and
+Run directories record configuration, dataset information, seed, metrics, and
 method-specific artifacts.
 
 Execution examples are provided in [`USAGE.md`](USAGE.md) and

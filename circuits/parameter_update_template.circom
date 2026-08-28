@@ -1,7 +1,7 @@
 pragma circom 2.0.0;
 
 // Template-only version of the parameter update circuit (no main component here)
-// so that we can instantiate different param_size values via wrapper files.
+// Wrapper files instantiate the required param_size values.
 
 include "circomlib/circuits/poseidon.circom";
 include "circomlib/circuits/comparators.circom";
@@ -79,4 +79,3 @@ template ParameterUpdateProof(param_size, batch_size) {
     less_than.in[1] <== max_distance;
     less_than.out === 1;
 }
-

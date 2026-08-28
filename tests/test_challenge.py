@@ -4,7 +4,7 @@ import pytest
 from chainfl.interact import chain_proxy
 
 
-@pytest.mark.xfail(reason="Brownie project caching causes wrapper to bind old ABI; direct contract test covers functionality")
+@pytest.mark.xfail(reason="Brownie project caching can bind a stale ABI; the direct contract test covers this functionality")
 def test_issue_and_resolve_challenge_basic():
     # Ensure contract deployed and client exists
     cid = chain_proxy.client_regist()
@@ -16,7 +16,7 @@ def test_issue_and_resolve_challenge_basic():
     chal_id = chain_proxy.issue_challenge(cid, 0, 1, deadline)
     assert isinstance(chal_id, str) and len(chal_id) > 0
 
-    # Submit resolution with public signals (dummy ints) and success=True
+    # Submit a successful resolution with deterministic public signals.
     public = {'W_t_hash': 123, 'W_t1_hash': 456, 'data_hash': 789}
     ok = chain_proxy.challenge_proof(chal_id, public, True, reason="unit_test_ok")
     assert ok is True
@@ -29,4 +29,3 @@ def test_issue_and_resolve_challenge_basic():
     assert ch.get('W_t_hash') == 123
     assert ch.get('W_t1_hash') == 456
     assert ch.get('data_hash') == 789
-

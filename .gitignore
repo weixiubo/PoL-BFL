@@ -91,4 +91,5 @@ config.local.py
 *.backup.*
 *_backup_*/
 backup_*/
-PHASE5_VERIFICATION_REPORT.json
+VERIFICATION_REPORT.json
+COMPLETE_VERIFICATION_RESULTS.json

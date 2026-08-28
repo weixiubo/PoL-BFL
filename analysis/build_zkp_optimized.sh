@@ -75,7 +75,7 @@ snarkjs r1cs info "$r1cs"
 
 echo ""
 echo "=========================================="
-echo "Build Complete!"
+echo "Build Complete."
 echo "=========================================="
 echo "Circuit: $CIRCUIT_NAME"
 echo "R1CS: $r1cs"

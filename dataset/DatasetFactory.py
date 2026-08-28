@@ -12,7 +12,7 @@ class DatasetFactory:
     '''
     Server as an factory for user to get benchmark dataset.
     This class provide a unified interface to access the basic datasets.
-    
+
     '''
     def __init__(self,)->None:
         return

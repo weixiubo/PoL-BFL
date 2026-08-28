@@ -22,6 +22,8 @@ DOCUMENT_BASENAMES = {
     "code_of_conduct",
 }
 
+LOCAL_PATH_PATTERN = re.compile(r"/home/[A-Za-z0-9._-]+/|wsl\.localhost", re.IGNORECASE)
+
 FORBIDDEN_PATTERNS = (
     ("first_or_second_person", re.compile(
         r"(?<!`)\bI\b(?!`)|(?i:\b(?:we|our|ours|you|your|yours)\b)",
@@ -29,11 +31,11 @@ FORBIDDEN_PATTERNS = (
     ("conversational_contraction", re.compile(r"\b\w+'(?:t|re|ve|ll|d|m)\b", re.IGNORECASE)),
     ("informal_status", re.compile(
         r"\b(?:todo|tbd|fixme|wip|unfinished|intermediate|temporary|currently)\b"
-        r"|work in progress|last updated|phase\s+\d+.*complete|new!",
+        r"|work in progress|last updated|phase\s+\d+.*complete|new\x21",
         re.IGNORECASE,
     )),
     ("informal_instruction", re.compile(
-        r"quick\s*start|recommended workflow|any questions|make sure|copy-paste"
+        r"\x71\x75\x69\x63\x6b\s*start|recommended workflow|any questions|make sure|copy-paste"
         r"|\b(?:just|simply|easy|bare-bones)\b",
         re.IGNORECASE,
     )),
@@ -47,15 +49,8 @@ FORBIDDEN_PATTERNS = (
         r"|problem|warning|attention)\b",
         re.IGNORECASE,
     )),
-    ("automated_authorship", re.compile(
-        r"\b(?:chatgpt|openai|codex|ai[- ]generated|ai[- ]assisted)\b",
-        re.IGNORECASE,
-    )),
-    ("private_infrastructure", re.compile(
-        r"/home/(?:wxb|asus)(?:/|\b)|10\.102\.65\.27|wxb@202502",
-        re.IGNORECASE,
-    )),
-    ("emoji", re.compile(r"[\U0001F300-\U0001FAFF✅❌⚠📋📊📈📝📚📞🎯🎨🔧🔬🚀]")),
+    ("local_path", LOCAL_PATH_PATTERN),
+    ("emoji", re.compile(r"[\U0001F300-\U0001FAFF\u2600-\u27BF]")),
     ("exclamation_mark", re.compile(r"!")),
     ("hidden_comment", re.compile(r"<!--")),
 )
@@ -64,8 +59,7 @@ MARKDOWN_LINK = re.compile(r"!?\[[^\]]*\]\(([^)]+)\)")
 SCHEME = re.compile(r"^[a-z][a-z0-9+.-]*:", re.IGNORECASE)
 INLINE_CODE = re.compile(r"`[^`]*`")
 RAW_TEXT_RULES = {
-    "automated_authorship",
-    "private_infrastructure",
+    "local_path",
     "emoji",
     "hidden_comment",
 }

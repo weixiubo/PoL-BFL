@@ -30,7 +30,7 @@ class normalTrainer(BaseTrainer):
             x, labels = x.to(device), labels.to(device)
             log_probs = model(x)
             loss = self.criterion(log_probs, labels)  # pylint: disable=E1102
-            
+
 
             # Uncommet this following line to avoid nan loss
             # torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
@@ -42,7 +42,7 @@ class normalTrainer(BaseTrainer):
             epoch_loss = 0.0
         else:
             epoch_loss = (sum(batch_loss) / len(batch_loss))
-        
+
         ret = dict()
         ret['loss'] = epoch_loss
         return ret

@@ -8,13 +8,13 @@ class krumAggregator(ServerAggregator):
             raise ValueError("num_byzantine cannot be negative")
         self.num_byzantine = num_byzantine
         self.last_scores = None
-        
+
     def _on_before_aggregation(self, raw_client_model_or_grad_list):
         return raw_client_model_or_grad_list
-        
+
     def _on_after_aggregation(self, aggregated_model_or_grad):
         return aggregated_model_or_grad
-        
+
     def test(self, test_data=None, device=None, args=None):
         return {
             'scores': self.last_scores.tolist() if self.last_scores is not None else [],
@@ -32,7 +32,7 @@ class krumAggregator(ServerAggregator):
                 parts.append(np.asarray(value, dtype=np.float64).reshape(-1))
             return np.concatenate(parts)
         return np.asarray(update, dtype=np.float64).reshape(-1)
-        
+
     def _aggregate_alg(self, raw_client_model_or_grad_list=None):
         if raw_client_model_or_grad_list is None:
             raw_client_model_or_grad_list = self.model_pool

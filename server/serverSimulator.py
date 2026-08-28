@@ -9,7 +9,7 @@ from typing import OrderedDict
 class serverSimulator:
     # A local serverSimulator to simulate the blockchain
     # This serverSimulator act as the same with the serverProxy in chainfl.
-    
+
     def __init__(
         self,
         aggregator:ServerAggregator,
@@ -20,7 +20,7 @@ class serverSimulator:
         # 1.checkpoint_folder: indicate the saved model path
         # 2.model: indicate the saved model name
         # 3.train_method: indicate the aggregated method used,
-        #                 attention fedavg is used if provided method doesn't implemented
+        # FedAvg is used when the requested aggregation method is unavailable.
         #
     ) -> None:
         self.aggregator = aggregator
@@ -30,7 +30,7 @@ class serverSimulator:
         self.upload_model_list = []
     def _clear_upload_model_list(self):
         self.upload_model_list = []
-        
+
     def _is_all_client_upload(self) -> bool:
         return len(self.upload_model_list) >= self.client_num
 
@@ -42,7 +42,7 @@ class serverSimulator:
             raise ValueError("test dataset is required")
         self.test_dataset = test_dataset
         self.test_batch_size = test_dataset.batch_size
-        
+
     def _load_model(self):
         file_path = Path(self.args['checkpoint_folder']) / str(self.args['model'])
         state = torch.load(file_path, map_location='cpu')
@@ -69,7 +69,7 @@ class serverSimulator:
         )
         torch.save(payload, file_path)
         return str(file_path)
-    
+
     def upload_model(self,upload_params:dict):
         if 'state_dict' not in upload_params:
             raise ValueError("upload parameters require state_dict")
@@ -79,12 +79,12 @@ class serverSimulator:
             trained_model = self.aggregator.aggregate(self.upload_model_list)
             self._set_global_model(trained_model)
             self._clear_upload_model_list()
-        
+
     def download_model(self,params=None) -> OrderedDict:
         if self.global_model is None:
             raise RuntimeError("global model is unavailable")
         return deepcopy(self.global_model)
-    
+
     def test(
         self,
         model=None,
@@ -125,7 +125,7 @@ class serverSimulator:
             'loss': total_loss / total if criterion is not None else None,
             'samples': total,
         }
-    
+
 if __name__ == '__main__':
     import torch.nn as nn
     class LinearModel(nn.Module):
@@ -136,11 +136,11 @@ if __name__ == '__main__':
             for i in range(len(h_dims) - 1):
                 models.append(nn.Linear(h_dims[i], h_dims[i + 1]))
                 if i != len(h_dims) - 2:
-                    models.append(nn.ReLU()) 
+                    models.append(nn.ReLU())
             self.models = nn.Sequential(*models)
         def forward(self, X):
             return self.models(X)
-    
+
     from server.aggregation_alg.fedavg import fedavgAggregator
 
     test_sample_pool = [LinearModel([10, 1]) for _ in range(10)]

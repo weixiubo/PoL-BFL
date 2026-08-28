@@ -23,7 +23,7 @@ if __name__ == '__main__':
     logger.info("Config: MNIST, 1 round, pol_only variant")
     logger.info("Expected: PoL should detect Byzantine attacks (noise injection)")
     logger.info("")
-    
+
     # Create experiment with minimal config
     config = {
         'dataset': 'MNIST',
@@ -36,7 +36,7 @@ if __name__ == '__main__':
         'variants': ['pol_only'],
         'repetitions': 1,
     }
-    
+
     exp = AblationStudyExperiment(config)
     exp.prepare_data()
 
@@ -61,13 +61,13 @@ if __name__ == '__main__':
         fpr = result['detection_metrics'][-1]['fpr']
 
         if tpr > 0.5:  # At least 50% detection rate
-            logger.info("✅ SUCCESS: PoL is detecting Byzantine attacks!")
+            logger.info("[PASS] SUCCESS: PoL is detecting Byzantine attacks.")
             logger.info(f"   TPR = {tpr:.2%} (malicious nodes detected)")
             logger.info(f"   FPR = {fpr:.2%} (false positives)")
         else:
-            logger.warning("⚠️  WARNING: Low detection rate!")
+            logger.warning("[WARNING]  WARNING: Low detection rate.")
             logger.warning(f"   TPR = {tpr:.2%} (should be > 50%)")
             logger.warning("   This suggests PoL is not effectively detecting Byzantine attacks")
     else:
-        logger.error("❌ ERROR: No detection metrics available!")
+        logger.error("[FAIL] ERROR: No detection metrics available.")
 

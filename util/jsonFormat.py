@@ -21,7 +21,7 @@ def model2json(model_state_dict:OrderedDict):
 def json2model(json_model_state_dict:string):
     model = json.loads(json_model_state_dict)
     if torch is None:
-        raise RuntimeError("torch is required for json2model(); please install torch or avoid calling this in non-ML contexts")
+        raise RuntimeError("torch is required for json2model(); install torch before invoking this function")
     for name,value in model.items():
         model[name] = torch.Tensor(model[name])
     model = OrderedDict(model)

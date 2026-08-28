@@ -42,23 +42,23 @@ contract Groth16Verifier {
     uint256 constant deltay1 = 10086596239951491188123753967011915812936045237498693813242190200529640909811;
     uint256 constant deltay2 = 16872672572169563592073846181225154294535120352470854432493751959140838410962;
 
-    
+
     uint256 constant IC0x = 15261466361500441190833024075912263874065466833533942150992324282117001377315;
     uint256 constant IC0y = 14141269519867312027227268743198323386367182978423791505951973596971981352454;
-    
+
     uint256 constant IC1x = 20233782226998167772755980436188360980419250236312904413549828902087556254260;
     uint256 constant IC1y = 1945895672205407049966815889702839378445337072887746584760875800044981947138;
-    
+
     uint256 constant IC2x = 11966361308181064004615812220123121137383095739589485851613959653802930053645;
     uint256 constant IC2y = 16554602707417056054311130059907817397180557097385456416933256380154476705455;
-    
+
     uint256 constant IC3x = 6408070806582730263294549611400282595280676087923319717295718362833214160452;
     uint256 constant IC3y = 17256587722068177601292613562585712696892285908657231642323609127602408683933;
-    
+
     uint256 constant IC4x = 17189829983847902229407998940959623925275866158807511040063517141213367473944;
     uint256 constant IC4y = 7336541209331454697000540135413410496053543288541814680839070987868260234306;
-    
- 
+
+
     // Memory data
     uint16 constant pVk = 0;
     uint16 constant pPairing = 128;
@@ -73,7 +73,7 @@ contract Groth16Verifier {
                     return(0, 0x20)
                 }
             }
-            
+
             // G1 function to multiply a G1 value(x,y) to value in an address
             function g1_mulAccC(pR, x, y, s) {
                 let success
@@ -108,15 +108,15 @@ contract Groth16Verifier {
                 mstore(add(_pVk, 32), IC0y)
 
                 // Compute the linear combination vk_x
-                
+
                 g1_mulAccC(_pVk, IC1x, IC1y, calldataload(add(pubSignals, 0)))
-                
+
                 g1_mulAccC(_pVk, IC2x, IC2y, calldataload(add(pubSignals, 32)))
-                
+
                 g1_mulAccC(_pVk, IC3x, IC3y, calldataload(add(pubSignals, 64)))
-                
+
                 g1_mulAccC(_pVk, IC4x, IC4y, calldataload(add(pubSignals, 96)))
-                
+
 
                 // -A
                 mstore(_pPairing, calldataload(pA))
@@ -169,17 +169,17 @@ contract Groth16Verifier {
             mstore(0x40, add(pMem, pLastMem))
 
             // Validate that all evaluations ∈ F
-            
+
             checkField(calldataload(add(_pubSignals, 0)))
-            
+
             checkField(calldataload(add(_pubSignals, 32)))
-            
+
             checkField(calldataload(add(_pubSignals, 64)))
-            
+
             checkField(calldataload(add(_pubSignals, 96)))
-            
+
             checkField(calldataload(add(_pubSignals, 128)))
-            
+
 
             // Validate all evaluations
             let isValid := checkPairing(_pA, _pB, _pC, _pubSignals, pMem)

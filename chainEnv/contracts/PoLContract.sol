@@ -19,7 +19,7 @@ interface IZKVerifier {
  * 1. 提交PoL证明（commitment, data_hash等）
  * 2. 挑战机制（服务器挑战客户端）
  * 3. 记录验证结果
- * 4. 质押和奖励机制（阶段三）
+ * 4. Stake and reward mechanisms
  */
 contract PoLContract {
 
@@ -318,7 +318,7 @@ contract PoLContract {
 
     /**
      * @dev 提交挑战的ZKP结果（仅owner）
-     * 目前假设ZKP验证在链下完成，这里记录公共信号与结果，用于审计
+     * @dev Records public signals and results for proofs verified off chain.
      */
     function challengeProof(
         bytes32 challengeId,
@@ -722,4 +722,3 @@ contract PoLContract {
         );
     }
 }
-

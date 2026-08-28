@@ -22,7 +22,7 @@ wait_for_completion() {
     while kill -0 $pid 2>/dev/null; do
         sleep 30
     done
-    echo "[$(date +%H:%M:%S)] $tag completed!"
+    echo "[$(date +%H:%M:%S)] $tag completed."
 }
 
 # Function to run a parameter scan and wait
@@ -30,15 +30,15 @@ run_and_wait() {
     local param_name=$1
     local param_value=$2
     local tag=$3
-    
+
     echo ""
     echo "=========================================="
     echo "[$(date +%H:%M:%S)] Starting: $param_name=$param_value (tag: $tag)"
     echo "=========================================="
-    
+
     # Run the experiment
     bash experiments/scripts/run_param_scan_rq1.sh "$DATASET" "$GPU" "$param_name" "$param_value" "$tag"
-    
+
     # Get the PID
     local pidfile="experiments/logs/last_param_scan_${tag}.pidpath"
     if [ -f "$pidfile" ]; then
@@ -53,7 +53,7 @@ run_and_wait() {
 # Verification Rate Scan (5 experiments)
 echo ""
 echo "=========================================="
-echo "Phase 1: Verification Rate Scan"
+echo "Verification rate scan"
 echo "=========================================="
 
 # vr01 is already running, skip it
@@ -67,7 +67,7 @@ run_and_wait "verification_rate" "0.5" "vr05_scan"
 # Delta Scan (5 experiments)
 echo ""
 echo "=========================================="
-echo "Phase 2: Delta Threshold Scan"
+echo "Delta threshold scan"
 echo "=========================================="
 
 run_and_wait "delta" "5.0" "d05_scan"
@@ -78,7 +78,7 @@ run_and_wait "delta" "30.0" "d30_scan"
 
 echo ""
 echo "=========================================="
-echo "All Parameter Scans Completed!"
+echo "All Parameter Scans Completed."
 echo "Finished at: $(date)"
 echo "=========================================="
 echo ""
@@ -87,4 +87,3 @@ echo "  - Verification Rate: 0.1, 0.2, 0.3, 0.4, 0.5"
 echo "  - Delta: 5.0, 10.0, 15.0, 20.0, 30.0"
 echo ""
 echo "Log files are in: experiments/logs/rq1_param_scan_*"
-

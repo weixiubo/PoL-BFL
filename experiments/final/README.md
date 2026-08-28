@@ -69,8 +69,7 @@ A completed run directory contains:
 - contract-transition records when blockchain execution is enabled.
 
 Study-specific `aggregate_*` modules combine results from the seeds and
-configurations defined by the matrix. Generated outputs are excluded from
-version control.
+configurations defined by the matrix.
 
 Additional instructions are provided in
 [`docs/REPRODUCING.md`](../../docs/REPRODUCING.md).
