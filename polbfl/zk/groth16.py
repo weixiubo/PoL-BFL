@@ -103,7 +103,7 @@ class Groth16Backend:
         self.artifacts = artifacts
         self._circuit_digest = artifacts.circuit_digest
         self.node_binary = str(node_binary)
-        self.snarkjs_cli = str(snarkjs_cli)
+        self.snarkjs_cli = str(Path(snarkjs_cli).expanduser().resolve())
         self.witness_binary = None if witness_binary is None else str(Path(witness_binary).resolve())
         self.prover_binary = None if prover_binary is None else str(Path(prover_binary).resolve())
         self.verifier_binary = None if verifier_binary is None else str(Path(verifier_binary).resolve())

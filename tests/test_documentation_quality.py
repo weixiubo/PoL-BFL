@@ -20,9 +20,10 @@ def test_all_tracked_documentation_meets_publication_standard():
 def test_readme_runtime_and_installation_are_consistent():
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     package = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))
-    assert package["engines"]["node"] == ">=18 <21"
-    assert "Node.js 18–20" in readme
-    assert "Node.js 24" not in readme
+    toolchain = json.loads((ROOT / "config/toolchain.lock.json").read_text())
+    major = int(toolchain["node"].split(".")[0])
+    assert package["engines"]["node"] == f">={major} <{major + 1}"
+    assert f"Node.js {toolchain['node']}" in readme
     assert "pip install -r requirements-final.txt" in readme
     assert "npm ci" in readme
     assert "docs/REPRODUCING.md" in readme

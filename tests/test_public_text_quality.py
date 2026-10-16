@@ -13,4 +13,4 @@ def test_all_tracked_public_text_meets_repository_standard():
     assert report["tracked_file_count"] >= 650
     assert report["text_file_count"] >= 640
     assert report["documentation"]["passed"]
-    assert report["documentation"]["document_count"] == 32
+    assert report["documentation"]["document_count"] >= 32

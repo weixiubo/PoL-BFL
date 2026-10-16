@@ -45,3 +45,30 @@ def test_real_groth16_backend_proves_verifies_and_rejects_tampering():
     tampered = replace(proof, public_signals=tuple(tampered_public))
     valid, _ = backend.verify(tampered)
     assert not valid
+
+
+def test_relative_snarkjs_path_survives_proof_working_directory(tmp_path, monkeypatch):
+    import subprocess
+
+    for name in ("circuit.wasm", "circuit.zkey", "verification_key.json"):
+        (tmp_path / name).write_bytes(b"fixture")
+    artifacts = Groth16Artifacts(
+        wasm=tmp_path / "circuit.wasm",
+        proving_key=tmp_path / "circuit.zkey",
+        verification_key=tmp_path / "verification_key.json",
+    )
+    monkeypatch.chdir(tmp_path)
+    backend = Groth16Backend(artifacts, snarkjs_cli="tools/snarkjs.js")
+    proof_dir = tmp_path / "proof-execution"
+    proof_dir.mkdir()
+    monkeypatch.chdir(proof_dir)
+    calls = []
+
+    def run(args, **kwargs):
+        calls.append((args, kwargs))
+        return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(subprocess, "run", run)
+    backend._run(("--version",), cwd=proof_dir)
+    assert calls[0][0][1] == str(tmp_path / "tools/snarkjs.js")
+    assert calls[0][1]["cwd"] == proof_dir

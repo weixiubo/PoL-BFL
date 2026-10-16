@@ -165,11 +165,14 @@ def audit_repository(root: Path = ROOT) -> dict[str, object]:
     gas_table = paper_table_text[
         root / "experiments/reproducibility/paper_targets/tables/table12_gas_breakdown.tex"
     ]
+    toolchain = json.loads((root / "config/toolchain.lock.json").read_text(encoding="utf-8"))
+    node_version = toolchain["node"]
+    node_major = int(node_version.split(".")[0])
     checks = {
         "documents_present": len(paths) > 0,
         "formal_language": not failures,
-        "readme_node_reference": "Node.js 18–20" in readme and "Node.js 24" not in readme,
-        "node_engine_range": package.get("engines", {}).get("node") == ">=18 <21",
+        "readme_node_reference": f"Node.js {node_version}" in readme,
+        "node_engine_range": package.get("engines", {}).get("node") == f">={node_major} <{node_major + 1}",
         "required_public_paths": all((root / path).exists() for path in REQUIRED_PUBLIC_PATHS),
         "readme_repository_structure": all(
             f"{directory}/" in readme

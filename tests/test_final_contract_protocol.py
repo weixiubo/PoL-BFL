@@ -8,10 +8,12 @@ import pytest
 ROOT = Path(__file__).parents[1]
 
 
-def test_contract_node_engine_matches_bundled_ganache_uws():
+def test_contract_node_engine_matches_recorded_toolchain():
     package = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))
     lock = json.loads((ROOT / "package-lock.json").read_text(encoding="utf-8"))
-    assert package["engines"]["node"] == ">=18 <21"
+    toolchain = json.loads((ROOT / "config/toolchain.lock.json").read_text())
+    major = int(toolchain["node"].split(".")[0])
+    assert package["engines"]["node"] == f">={major} <{major + 1}"
     assert lock["packages"][""]["engines"] == package["engines"]
 
     binaries = {

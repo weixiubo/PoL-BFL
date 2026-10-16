@@ -93,3 +93,7 @@ config.local.py
 backup_*/
 VERIFICATION_REPORT.json
 COMPLETE_VERIFICATION_RESULTS.json
+
+# Downloaded research artifacts
+artifacts/local/
+.artifact-cache/

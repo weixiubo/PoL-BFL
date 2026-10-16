@@ -49,7 +49,7 @@ tests/                      automated tests
 ## Requirements
 
 - Python 3.13
-- Node.js 18–20
+- Node.js 24.14.0
 - CUDA-enabled PyTorch for GPU execution
 - Circom and snarkjs for zero-knowledge proof workflows
 - Solidity-compatible tooling and Ganache for blockchain workflows
@@ -121,3 +121,11 @@ python -m experiments.final.run_matrix
 
 PoL-BFL is distributed under the MIT License. Third-party components retain
 their respective licenses.
+
+## Research artifacts
+
+Archived source versions, paper materials, experiment records and dataset inputs
+are available in the [research release](https://github.com/weixiubo/PoL-BFL/releases/tag/public-archive-2026-10-16).
+[Artifact download and verification](docs/ARTIFACTS.md) describes retrieval and
+CPU execution. [Experiment records](docs/EXPERIMENT_RECORDS.md) describes the
+recorded source versions and study coverage.
