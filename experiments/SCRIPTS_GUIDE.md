@@ -5,7 +5,7 @@
 
 ---
 
-## 📋 目录
+##  目录
 
 1. [RQ1: Security Evaluation](#rq1-security-evaluation)
 2. [RQ2: System Overhead](#rq2-system-overhead)
@@ -86,7 +86,7 @@ python experiments/run_rq1_with_detection.py
 
 ---
 
-#### 3. `run_rq1_pol_detection.py` 🔬 **Detection专用**
+#### 3. `run_rq1_pol_detection.py`  **Detection专用**
 **用途**: 专门测量PoL Detection Rate  
 **特点**:
 - 最小化实验（1轮，4个客户端）
@@ -106,11 +106,11 @@ python experiments/run_rq1_pol_detection.py
 
 **输出**: `experiments/results/rq1_security/pol_detection.json`
 
-**状态**: ⚠️ 功能已被`run_rq1_with_detection.py`包含，可考虑归档
+**状态**:  功能已被`run_rq1_with_detection.py`包含，可考虑归档
 
 ---
 
-#### 4. `run_rq1_resnet18.py` 🎯 **ResNet-18版本**
+#### 4. `run_rq1_resnet18.py`  **ResNet-18版本**
 **用途**: 使用ResNet-18 + CIFAR-10进行RQ1实验  
 **特点**:
 - 更复杂的模型和数据集
@@ -142,10 +142,10 @@ python experiments/run_rq1_resnet18.py
 
 | 脚本 | 数据集 | 模型 | PoL | Detection | 用途 |
 |------|--------|------|-----|-----------|------|
-| `run_rq1_security.py` | MNIST | SimpleCNN | ❌ | ❌ | 基线对比 |
-| `run_rq1_with_detection.py` | MNIST | SimpleCNN | ✅ | ✅ | PoL + Detection |
-| `run_rq1_pol_detection.py` | MNIST | SimpleCNN | ✅ | ✅ | 快速Detection测试 |
-| `run_rq1_resnet18.py` | CIFAR-10 | ResNet-18 | ❌ | ❌ | 复杂模型评估 |
+| `run_rq1_security.py` | MNIST | SimpleCNN | Fail | Fail | 基线对比 |
+| `run_rq1_with_detection.py` | MNIST | SimpleCNN | Pass | Pass | PoL + Detection |
+| `run_rq1_pol_detection.py` | MNIST | SimpleCNN | Pass | Pass | 快速Detection测试 |
+| `run_rq1_resnet18.py` | CIFAR-10 | ResNet-18 | Fail | Fail | 复杂模型评估 |
 
 **推荐使用**:
 - 论文实验: `run_rq1_with_detection.py` (完整数据)
@@ -250,7 +250,7 @@ python experiments/run_cifar10_paper.py --only-no-attack
 
 ---
 
-### 2. `run_cifar10_ablation.py` 🔬 **消融实验**
+### 2. `run_cifar10_ablation.py`  **消融实验**
 **用途**: CIFAR-10消融研究，测试不同noise scale的影响
 **特点**:
 - 支持命令行参数配置
@@ -284,7 +284,7 @@ python experiments/run_cifar10_ablation.py --num-rounds 20 --local-epochs 3
 
 ---
 
-### 3. `run_cifar10_trimmed_beta_ablation.py` 🔬 **Beta参数消融**
+### 3. `run_cifar10_trimmed_beta_ablation.py`  **Beta参数消融**
 **用途**: 专门测试Trimmed Mean的Beta参数影响
 **特点**:
 - 测试Beta值: [0.1, 0.2, 0.3]
@@ -315,14 +315,14 @@ python experiments/run_cifar10_trimmed_beta_ablation.py
 
 ---
 
-### 4. `run_cifar10_quick.py` ⚠️ **快速测试（已废弃）**
+### 4. `run_cifar10_quick.py`  **快速测试（已废弃）**
 **用途**: 快速验证CIFAR-10实验代码
 **特点**:
 - 20轮，1个local epoch
 - 简化配置
 - 仅用于调试
 
-**状态**: ❌ **建议删除** - 功能已被`run_cifar10_paper.py --only-no-attack`替代
+**状态**:  **建议删除** - 功能已被`run_cifar10_paper.py --only-no-attack`替代
 
 ---
 
@@ -330,10 +330,10 @@ python experiments/run_cifar10_trimmed_beta_ablation.py
 
 | 脚本 | 轮次 | Local Epochs | 用途 | 状态 |
 |------|------|--------------|------|------|
-| `run_cifar10_paper.py` | 50 | 5 | 论文完整实验 | ✅ 保留 |
-| `run_cifar10_ablation.py` | 10 | 2 | Noise scale消融 | ✅ 保留 |
-| `run_cifar10_trimmed_beta_ablation.py` | 10 | 2 | Beta参数消融 | ✅ 保留 |
-| `run_cifar10_quick.py` | 20 | 1 | 快速调试 | ❌ 删除 |
+| `run_cifar10_paper.py` | 50 | 5 | 论文完整实验 |  保留 |
+| `run_cifar10_ablation.py` | 10 | 2 | Noise scale消融 |  保留 |
+| `run_cifar10_trimmed_beta_ablation.py` | 10 | 2 | Beta参数消融 |  保留 |
+| `run_cifar10_quick.py` | 20 | 1 | 快速调试 |  删除 |
 
 **推荐使用**:
 - 论文数据: `run_cifar10_paper.py`
@@ -344,7 +344,7 @@ python experiments/run_cifar10_trimmed_beta_ablation.py
 
 ## Utility Scripts
 
-### 1. `test_infrastructure.py` 🛠️
+### 1. `test_infrastructure.py`
 **用途**: 测试实验基础设施  
 **测试内容**:
 - 数据加载
@@ -358,7 +358,7 @@ python experiments/run_cifar10_trimmed_beta_ablation.py
 python experiments/test_infrastructure.py
 ```
 
-### 2. `test_rq1_mini.py` 🛠️
+### 2. `test_rq1_mini.py`
 **用途**: RQ1最小化测试  
 **特点**: 3轮，3客户端，快速验证
 
@@ -367,11 +367,11 @@ python experiments/test_infrastructure.py
 ## 脚本使用建议
 
 ### 论文投稿前
-1. ✅ 运行`run_rq1_with_detection.py` - 获取完整RQ1数据
-2. ✅ 运行`run_rq2_overhead.py` - 获取开销数据
-3. ✅ 运行`run_rq3_scalability.py` - 获取可扩展性数据
-4. ✅ 运行`run_rq4_incentive.py` - 获取激励机制数据
-5. ⚠️ 可选: `run_rq1_resnet18.py` - 如果审稿人要求复杂模型
+1.  运行`run_rq1_with_detection.py` - 获取完整RQ1数据
+2.  运行`run_rq2_overhead.py` - 获取开销数据
+3.  运行`run_rq3_scalability.py` - 获取可扩展性数据
+4.  运行`run_rq4_incentive.py` - 获取激励机制数据
+5.  可选: `run_rq1_resnet18.py` - 如果审稿人要求复杂模型
 
 ### 快速验证
 1. `test_infrastructure.py` - 验证基础设施
@@ -387,23 +387,23 @@ python experiments/test_infrastructure.py
 ## 脚本清理建议
 
 ### 保留（核心功能）
-- ✅ `run_rq1_security.py`
-- ✅ `run_rq1_with_detection.py`
-- ✅ `run_rq1_resnet18.py`
-- ✅ `run_rq2_overhead.py`
-- ✅ `run_rq3_scalability.py`
-- ✅ `run_rq4_incentive.py`
-- ✅ `run_cifar10_paper.py`
-- ✅ `run_cifar10_ablation.py`
-- ✅ `run_cifar10_trimmed_beta_ablation.py`
-- ✅ `test_infrastructure.py`
-- ✅ `test_rq1_mini.py`
+-  `run_rq1_security.py`
+-  `run_rq1_with_detection.py`
+-  `run_rq1_resnet18.py`
+-  `run_rq2_overhead.py`
+-  `run_rq3_scalability.py`
+-  `run_rq4_incentive.py`
+-  `run_cifar10_paper.py`
+-  `run_cifar10_ablation.py`
+-  `run_cifar10_trimmed_beta_ablation.py`
+-  `test_infrastructure.py`
+-  `test_rq1_mini.py`
 
 ### 可归档（功能重复）
-- ⚠️ `run_rq1_pol_detection.py` - 功能已被`run_rq1_with_detection.py`包含
+-  `run_rq1_pol_detection.py` - 功能已被`run_rq1_with_detection.py`包含
 
 ### 可删除（调试用）
-- ❌ `run_cifar10_quick.py` - 仅用于快速测试
+-  `run_cifar10_quick.py` - 仅用于快速测试
 
 ---
 

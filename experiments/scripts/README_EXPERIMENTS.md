@@ -2,7 +2,7 @@
 
 This guide explains how to run all PoL-BFL experiments with statistical significance testing and generate publication-ready results.
 
-## 📋 Table of Contents
+##  Table of Contents
 
 - [Quick Start](#quick-start)
 - [Experiment Overview](#experiment-overview)
@@ -14,7 +14,7 @@ This guide explains how to run all PoL-BFL experiments with statistical signific
 
 ---
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### Run All Experiments (Recommended)
 
@@ -53,7 +53,7 @@ python runners/run_rq5_composability.py --seed 42
 
 ---
 
-## 📊 Experiment Overview
+##  Experiment Overview
 
 ### RQ1: Security Evaluation
 
@@ -113,7 +113,7 @@ python runners/run_rq5_composability.py --seed 42
 
 ---
 
-## 🔬 Running Experiments
+##  Running Experiments
 
 ### Multi-Seed Experiments (Recommended)
 
@@ -152,7 +152,7 @@ python runners/run_rq3_overhead.py \
 
 ---
 
-## 📈 Statistical Analysis
+##  Statistical Analysis
 
 ### Aggregate Multi-Seed Results
 
@@ -202,7 +202,7 @@ The aggregation script automatically:
 
 ---
 
-## 🎨 Visualization
+##  Visualization
 
 ### Generate All Figures
 
@@ -242,7 +242,7 @@ python visualize_results.py \
 
 ---
 
-## 📝 Paper Tables
+##  Paper Tables
 
 ### Generate LaTeX Tables
 
@@ -269,15 +269,15 @@ python generate_paper_tables.py \
 
 ### Table Features
 
-- ✅ Mean ± Std formatting
-- ✅ Statistical significance markers (*, **, ***)
-- ✅ Bold formatting for best results
-- ✅ Multi-row formatting for attacks
-- ✅ Ready to copy-paste into LaTeX paper
+-  Mean ± Std formatting
+-  Statistical significance markers (*, **, ***)
+-  Bold formatting for best results
+-  Multi-row formatting for attacks
+-  Ready to copy-paste into LaTeX paper
 
 ---
 
-## 🔧 Troubleshooting
+##  Troubleshooting
 
 ### Common Issues
 
@@ -317,7 +317,7 @@ bash run_all_experiments.sh 3  # Run with 3 seeds
 
 ---
 
-## 📚 File Structure
+##  File Structure
 
 ```
 experiments/
@@ -352,7 +352,7 @@ experiments/
 
 ---
 
-## 🎯 Recommended Workflow
+##  Recommended Workflow
 
 ### For Paper Submission
 
@@ -400,7 +400,7 @@ experiments/
 
 ---
 
-## 📞 Support
+##  Support
 
 For issues or questions:
 1. Check this README

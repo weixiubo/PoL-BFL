@@ -6,7 +6,7 @@ Measure storage, computation, and communication overheads of PoL-FL.
 Metrics:
 - Training Time
 - Checkpoint Save Time
-- Verification Time (TODO: add PoL verification)
+- Verification time is not measured by this historical runner.
 - Storage (checkpoint size)
 - Communication (model size)
 """

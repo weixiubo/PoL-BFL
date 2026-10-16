@@ -13,7 +13,7 @@ The `experiments/` package contains attacks, baselines, paper-scale runners, rep
 - `experiments/scripts/runners/run_rq6_noniid.py`: Non-IID sensitivity runner.
 - `experiments/scripts/runners/run_rq9_adaptive.py`: adaptive attacker runner.
 
-## Quick Start
+## Installation and execution
 
 ```bash
 python experiments/reproducibility/run_repro_smoke.py \

@@ -39,7 +39,7 @@ class DatasetSpliter:
             #Decide the Sampling probability.
             sampled_probabilities = class_size * numpy.random.dirichlet(numpy.array(client_num * [alpha]))
             for ind, (client_id, _) in enumerate(client_list.items()):
-                #TODO 这里可能有少部分的数据样本没有分配到任何一个客户端中
+                # Rounding may leave some samples unassigned to clients.
                 no_imgs = int(round(sampled_probabilities[ind]))
                 sampled_list = per_class_list[n][:min(len(per_class_list[n]), no_imgs)]
                 per_client_list[client_id].extend(sampled_list)

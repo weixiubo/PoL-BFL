@@ -48,7 +48,7 @@ npm install
 
 For ZKP experiments, install Circom and snarkjs in the environment used to build the circuits. For blockchain experiments, install Brownie-compatible Solidity tooling and run a local test chain such as Ganache.
 
-## Quick Smoke Test
+## Smoke test
 
 Run a small dry-run first to confirm the launcher and manifest path:
 

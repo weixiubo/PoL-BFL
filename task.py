@@ -27,7 +27,7 @@ class Task:
         self.model = None
         
         #Get Dataset
-        # TODO pass the schema (object) instead of args directly.  
+        # Dataset construction receives configuration arguments directly.
         logger.info("Constructing dataset %s from dataset Factory", global_args.get('dataset'))
         self.train_dataset = DatasetFactory().get_dataset(global_args.get('dataset'),True)
         self.test_dataset =  DatasetFactory().get_dataset(global_args.get('dataset'),False)
@@ -79,7 +79,7 @@ class Task:
                     self.keys.append(None)
             for ind, (client_id,_) in enumerate(self.client_list.items()):
                 self.keys_dict[client_id] = self.keys[ind]
-            #Project the watermake to the client TODO work with the blockchain
+            # Generate the client watermark through the chain proxy.
             #Get model Here better split another function.                 
             tmp_args = chain_proxy.construct_sign(self.global_args)
             self.model = ModelFactory().get_sign_model(model          = self.global_args.get('model'),
