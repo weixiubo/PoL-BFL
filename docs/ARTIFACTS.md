@@ -1,6 +1,6 @@
 # Research Artifacts
 
-The [research release](https://github.com/weixiubo/PoL-BFL/releases/tag/public-archive-2026-10-16)
+The [research release](https://github.com/weixiubo/PoL-BFL/releases/tag/research-artifacts-2026-10-16)
 contains source versions, paper sources, experimental records, checkpoints,
 dataset inputs and public cryptographic parameters associated with PoL-BFL.
 The maintained implementation remains in the repository's main branch.
@@ -34,7 +34,8 @@ The historical repository is restored as `source-history/research.git`.
 Its references and complete object storage are checked independently. Commit
 and reference maps retain correspondence with the recorded source versions.
 
-Repeated downloads reuse verified contents. Existing modified files or Git
+Use a separate destination for each archive edition. Repeated downloads
+reuse verified contents. Existing modified files or Git
 references cause an error rather than an overwrite. Verification uses no
 network. Offline restoration from a previously downloaded set of parts is also
 supported:
