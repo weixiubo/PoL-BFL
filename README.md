@@ -125,7 +125,7 @@ their respective licenses.
 ## Research artifacts
 
 Archived source versions, paper materials, experiment records and dataset inputs
-are available in the [research release](https://github.com/weixiubo/PoL-BFL/releases/tag/research-artifacts-2026-10-17).
+are available in the [research release](https://github.com/weixiubo/PoL-BFL/releases/tag/research-artifacts-2026-10-17-r2).
 [Artifact download and verification](docs/ARTIFACTS.md) describes retrieval and
 CPU execution. [Experiment records](docs/EXPERIMENT_RECORDS.md) describes the
 recorded source versions and study coverage.

@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
-  "archive_id": "polbfl-research-2026-10-17",
+  "archive_id": "polbfl-research-2026-10-17-r2",
   "original_source_commit": "6881b45193def83fa280a94d8958500e26849c5c",
   "manifest": {
     "name": "manifest.jsonl.gz",
-    "size": 258962,
-    "sha256": "d20503691db0a73f555a7e5b02c1f16b3427c1b47f0676764fdb66048e379b5a"
+    "size": 255170,
+    "sha256": "3a329dc439ca6a831698fd10cab954b06e151539fdc31b6abbe3c56302003057"
   },
   "sources": {
-    "github": "https://github.com/weixiubo/PoL-BFL/releases/download/research-artifacts-2026-10-17/"
+    "github": "https://github.com/weixiubo/PoL-BFL/releases/download/research-artifacts-2026-10-17-r2/"
   },
   "parts": [
     {
@@ -24,22 +24,22 @@
     {
       "name": "polbfl-materials.tar.gz.part003",
       "size": 1073741824,
-      "sha256": "96f760fcc2f09547655c6652f628c0673357e673350a3695226fd87241846cab"
+      "sha256": "42c2188a599e800cfe0dea0e5c8d48538b57b7b6c8c394a327be4a962aed8d04"
     },
     {
       "name": "polbfl-materials.tar.gz.part004",
       "size": 1073741824,
-      "sha256": "648d3862080d5b35d97451a46c3b5833fc4b7edb45b27816d026fe7dfca891b8"
+      "sha256": "d20b37f60625ed58bfc26e225dd2d639cf71d21264d162902d6bae8c42ee1bb8"
     },
     {
       "name": "polbfl-materials.tar.gz.part005",
       "size": 1073741824,
-      "sha256": "a84312ff31962eff9fa14ac2c7f9237965c0ec85f7005f1ada60eafa5a050927"
+      "sha256": "aa317756301fbadc28ed9a41840afff8fefb6be4f5bddfcc5b87b4683d67e128"
     },
     {
       "name": "polbfl-materials.tar.gz.part006",
-      "size": 851060874,
-      "sha256": "060bef62c1cbfa055ac1ca09d8af0fed88617bdd8ff7fd8b78bf1c46723ea235"
+      "size": 850954104,
+      "sha256": "893436887aa91a04e8fdd0961f6d77cccf42dcf30c01e092e0b56f949ebc0d07"
     }
   ],
   "history": {
