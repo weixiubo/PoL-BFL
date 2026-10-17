@@ -1,6 +1,6 @@
 # Research artifacts
 
-The [research archive](https://github.com/weixiubo/PoL-BFL/releases/tag/research-artifacts-2026-10-17-r2)
+The [research archive](https://github.com/weixiubo/PoL-BFL/releases/tag/research-artifacts-2026-10-17-r3)
 provides source versions, published experiment records, supporting inputs,
 final manuscript material and figures. Maintained source and installation
 instructions are available on the main branch.
